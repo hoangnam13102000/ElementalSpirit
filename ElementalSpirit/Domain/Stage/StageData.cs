@@ -7,6 +7,7 @@ namespace ElementalSpirit.Domain.Stage
     {
         public int StageNumber { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string BackgroundImageName { get; set; } = string.Empty;
         public List<WaveData> Waves { get; set; } = new();
 
         public static StageData CreateEarthForest()
@@ -14,7 +15,8 @@ namespace ElementalSpirit.Domain.Stage
             var stage = new StageData
             {
                 StageNumber = 1,
-                Name = "Earth Forest"
+                Name = "Earth Forest",
+                BackgroundImageName = "EarthForest.png"
             };
 
             // Wave 1

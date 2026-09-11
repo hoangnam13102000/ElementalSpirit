@@ -28,6 +28,7 @@ namespace ElementalSpirit.GameEngine
         public int TotalWaves => _currentStage?.Waves.Count ?? 0;
         public WaveState State => _state;
         public string StageName => _currentStage?.Name ?? "Unknown";
+        public string StageBackgroundImageName => _currentStage?.BackgroundImageName ?? "";
 
         public event Action? OnStageCompleted;
         public event Action<int>? OnWaveStarted;

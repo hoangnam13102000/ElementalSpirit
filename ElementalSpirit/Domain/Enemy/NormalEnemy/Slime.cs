@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Drawing;
+using ElementalSpirit.Presentation.Assets;
 
 namespace ElementalSpirit.Domain.Enemy.NormalEnemy
 {
@@ -7,15 +9,15 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
         private readonly Random _random = new();
         private readonly float _speed = 70f;
 
-        // Hướng di chuyển hiện tại
+        // Huong di chuyen hien tai
         private float _dirX = 0f;
         private float _dirY = 0f;
 
-        // Thời gian giữ hướng hiện tại
+        // Thoi gian giu huong hien tai
         private float _changeDirectionTimer = 0f;
         private float _changeDirectionInterval = 0.8f;
 
-        // Giới hạn biên di chuyển (để không bay lung tung quá xa)
+        // Gioi han bien di chuyen (de khong bay lung tung qua xa)
         private float _minX = 400f;
         private float _maxX = 1200f;
         private float _minY = 80f;
@@ -27,7 +29,14 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
             Width = 40;
             Height = 32;
 
-            // Khởi tạo hướng ngẫu nhiên ngay từ đầu
+            // ===== THEM: Load hinh anh slime tu Resources =====
+            // AssetLoader se tu dong tim file trong cac thu muc con cua Resources/Images
+            // Vi du: Resources/Images/Enemies/Slime.png
+            // Neu load that bai, Image se la null va GameForm se fallback ve hinh tron
+            Image = AssetLoader.Get("Slime.png");
+            // =================================================
+
+            // Khoi tao huong ngau nhien ngay tu dau
             ChooseNewDirection();
         }
 
@@ -37,17 +46,17 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
 
             _changeDirectionTimer -= deltaTime;
 
-            // Đến lúc đổi hướng
+            // Den luc doi huong
             if (_changeDirectionTimer <= 0)
             {
                 ChooseNewDirection();
             }
 
-            // Di chuyển
+            // Di chuyen
             X += _dirX * _speed * deltaTime;
             Y += _dirY * _speed * deltaTime;
 
-            // Giữ trong vùng hợp lý (không để nó chạy ra ngoài màn hình quá nhiều)
+            // Giua trong vung hop ly (khong de no chay ra ngoai man hinh qua nhieu)
             if (X < _minX) { X = _minX; _dirX = Math.Abs(_dirX); }
             if (X > _maxX) { X = _maxX; _dirX = -Math.Abs(_dirX); }
             if (Y < _minY) { Y = _minY; _dirY = Math.Abs(_dirY); }
@@ -56,20 +65,19 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
 
         private void ChooseNewDirection()
         {
-            // Chọn 1 trong 8 hướng 
+            // Chon 1 trong 8 huong 
             int choice = _random.Next(0, 9);
-
             switch (choice)
             {
-                case 0: _dirX = 0; _dirY = -1; break; // lên
-                case 1: _dirX = 0; _dirY = 1; break; // xuống
-                case 2: _dirX = -1; _dirY = 0; break; // trái
-                case 3: _dirX = 1; _dirY = 0; break; // phải
-                case 4: _dirX = -1; _dirY = -1; break; // lên-trái
-                case 5: _dirX = 1; _dirY = -1; break; // lên-phải
-                case 6: _dirX = -1; _dirY = 1; break; // xuống-trái
-                case 7: _dirX = 1; _dirY = 1; break; // xuống-phải
-                default: _dirX = 0; _dirY = 0; break; // đứng yên một chút
+                case 0: _dirX = 0; _dirY = -1; break; // len
+                case 1: _dirX = 0; _dirY = 1; break; // xuong
+                case 2: _dirX = -1; _dirY = 0; break; // trai
+                case 3: _dirX = 1; _dirY = 0; break; // phai
+                case 4: _dirX = -1; _dirY = -1; break; // len-trai
+                case 5: _dirX = 1; _dirY = -1; break; // len-phai
+                case 6: _dirX = -1; _dirY = 1; break; // xuong-trai
+                case 7: _dirX = 1; _dirY = 1; break; // xuong-phai
+                default: _dirX = 0; _dirY = 0; break; // dung yen mot chut
             }
 
             if (_dirX != 0 && _dirY != 0)
@@ -79,7 +87,7 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
                 _dirY /= length;
             }
 
-            // Thời gian giữ hướng này (0.6 → 1.4 giây)
+            // Thoi gian giu huong nay (0.6 → 1.4 giay)
             _changeDirectionInterval = 0.6f + (float)_random.NextDouble() * 0.8f;
             _changeDirectionTimer = _changeDirectionInterval;
         }

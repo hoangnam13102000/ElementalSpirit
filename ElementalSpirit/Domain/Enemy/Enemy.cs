@@ -6,16 +6,18 @@ namespace ElementalSpirit.Domain.Enemy
     {
         public float X { get; protected set; }
         public float Y { get; protected set; }
-
         public int Width { get; protected set; } = 36;
         public int Height { get; protected set; } = 36;
-
         public int MaxHealth { get; protected set; }
         public int Health { get; protected set; }
         public int Damage { get; protected set; }
 
-        public bool IsAlive => Health > 0;
+        // ===== THEM: Thuoc tinh hinh anh de ve enemy =====
+        // Gia tri null co nghia chua load duoc hinh, se fallback ve hinh tron
+        public Image? Image { get; protected set; }
+        // ================================================
 
+        public bool IsAlive => Health > 0;
         public RectangleF Bounds => new RectangleF(X, Y, Width, Height);
 
         protected Enemy(float x, float y, int maxHealth, int damage)
@@ -37,7 +39,7 @@ namespace ElementalSpirit.Domain.Enemy
 
         public virtual void OnDeath()
         {
-            // Override nếu cần drop item, effect...
+            // Override neu can drop item, effect...
         }
     }
 }

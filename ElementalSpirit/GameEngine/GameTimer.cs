@@ -10,7 +10,7 @@ namespace ElementalSpirit.GameEngine
         private readonly Stopwatch _stopwatch;
         private long _lastTicks;
 
-        public event Action<float>? OnTick; // deltaTime in seconds
+        public event Action<float>? OnTick;
 
         public bool IsRunning { get; private set; }
 
@@ -27,7 +27,6 @@ namespace ElementalSpirit.GameEngine
         public void Start()
         {
             if (IsRunning) return;
-
             _stopwatch.Restart();
             _lastTicks = _stopwatch.ElapsedTicks;
             _uiTimer.Start();
@@ -37,10 +36,26 @@ namespace ElementalSpirit.GameEngine
         public void Stop()
         {
             if (!IsRunning) return;
-
             _uiTimer.Stop();
             _stopwatch.Stop();
             IsRunning = false;
+        }
+
+        public void Pause()
+        {
+            if (!IsRunning) return;
+            _uiTimer.Stop();
+            IsRunning = false;
+        }
+
+        public void Resume()
+        {
+            if (IsRunning) return;
+            _lastTicks = _stopwatch.ElapsedTicks;
+            if (!_stopwatch.IsRunning)
+                _stopwatch.Start();
+            _uiTimer.Start();
+            IsRunning = true;
         }
 
         private void OnUiTimerTick(object? sender, EventArgs e)
@@ -48,10 +63,7 @@ namespace ElementalSpirit.GameEngine
             long currentTicks = _stopwatch.ElapsedTicks;
             float deltaTime = (currentTicks - _lastTicks) / (float)Stopwatch.Frequency;
             _lastTicks = currentTicks;
-
-            // Prevent spiral of death
             if (deltaTime > 0.1f) deltaTime = 0.1f;
-
             OnTick?.Invoke(deltaTime);
         }
 
