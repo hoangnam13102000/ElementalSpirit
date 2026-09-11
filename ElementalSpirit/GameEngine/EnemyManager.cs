@@ -1,0 +1,37 @@
+﻿using System.Collections.Generic;
+using ElementalSpirit.Domain.Enemy;
+
+namespace ElementalSpirit.GameEngine
+{
+    public class EnemyManager
+    {
+        private readonly List<Enemy> _enemies = new();
+
+        public IReadOnlyList<Enemy> Enemies => _enemies;
+
+        public void Add(Enemy enemy)
+        {
+            _enemies.Add(enemy);
+        }
+
+        public void Update(float deltaTime)
+        {
+            for (int i = _enemies.Count - 1; i >= 0; i--)
+            {
+                var e = _enemies[i];
+                e.Update(deltaTime);
+
+                if (!e.IsAlive)
+                {
+                    e.OnDeath();
+                    _enemies.RemoveAt(i);
+                }
+            }
+        }
+
+        public void Clear()
+        {
+            _enemies.Clear();
+        }
+    }
+}
