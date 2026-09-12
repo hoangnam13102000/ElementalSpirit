@@ -1,21 +1,16 @@
-﻿using System.Drawing;
+using ElementalSpirit.Domain;
 
 namespace ElementalSpirit.Domain.Projectile
 {
-    public abstract class Projectile
+    public abstract class Projectile : Entity
     {
-        public float X { get; protected set; }
-        public float Y { get; protected set; }
         public float VelocityX { get; protected set; }
         public float VelocityY { get; protected set; }
         public int Damage { get; protected set; }
         public float Lifetime { get; protected set; }
         public bool IsAlive { get; protected set; } = true;
-        public int Width { get; set; } = 8;
-        public int Height { get; set; } = 8;
-        public RectangleF Bounds => new RectangleF(X, Y, Width, Height);
-
         protected Projectile(float x, float y, float vx, float vy, int damage, float lifetime = 2.5f)
+            : base(x, y, 8, 8)
         {
             X = x;
             Y = y;

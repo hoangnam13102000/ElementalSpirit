@@ -13,10 +13,7 @@ namespace ElementalSpirit.Factories
         public static PlayerProjectile CreateFireball(float x, float y, float direction, int damage)
         {
             float speed = 380f * direction;
-            var proj = new PlayerProjectile(x, y, speed, damage, isFireball: true);
-            proj.Width = 24;
-            proj.Height = 24;
-            return proj;
+            return new PlayerProjectile(x, y, speed, damage, isFireball: true);
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Drawing;
+using ElementalSpirit.Domain;
 
 namespace ElementalSpirit.Domain.Player
 {
@@ -11,14 +11,8 @@ namespace ElementalSpirit.Domain.Player
         Falling
     }
 
-    public class Player
+    public class Player : Character
     {
-        public float X { get; private set; }
-        public float Y { get; private set; }
-        public int Width { get; } = 32;
-        public int Height { get; } = 32;
-        public RectangleF Bounds => new RectangleF(X, Y, Width, Height);
-
         public float VelocityX { get; set; }
         public float VelocityY { get; private set; }
         public float WalkSpeed { get; private set; } = 140f;
@@ -38,11 +32,9 @@ namespace ElementalSpirit.Domain.Player
         public FacingDirection Facing { get; set; } = FacingDirection.Right;
 
         public int BaseMaxHp { get; private set; } = 100;
-        public int MaxHp { get; private set; } = 100;
-        public int CurrentHp { get; private set; } = 100;
+        public int CurrentHp => HP;
         public int CoreDamage { get; private set; } = 10;
         public int BaseDamage { get; private set; } = 10;
-        public int Damage { get; private set; } = 10;
         public int Defense { get; private set; } = 0;
         private float _damageMultiplier = 1f;
 
@@ -58,12 +50,9 @@ namespace ElementalSpirit.Domain.Player
 
         public float AttackCooldown { get; private set; }
         public float AttackInterval { get; private set; } = 0.45f;
-        public bool IsAlive => CurrentHp > 0;
 
         public bool IsAttacking { get; private set; }
         public bool IsFiring { get; private set; }
-        public bool IsHurt { get; private set; }
-        public bool IsDead { get; private set; }
 
         public event Action? OnAttackHitFrame;
         public event Action? OnFireCastFrame;
@@ -73,9 +62,8 @@ namespace ElementalSpirit.Domain.Player
         public event Action? OnDeathAnimationEnded;
 
         public Player(float startX, float startY)
+            : base(startX, startY, 32, 32, 100, 10)
         {
-            X = startX;
-            Y = startY;
             VelocityX = 0f;
             VelocityY = 0f;
             IsGrounded = false;
@@ -151,24 +139,24 @@ namespace ElementalSpirit.Domain.Player
         [Obsolete("Use ClampHorizontalBounds().")]
         public void ClampToBounds(float minX, float minY, float maxX, float maxY) => ClampHorizontalBounds(minX, maxX);
 
-        public void TakeDamage(int amount)
+        public override void TakeDamage(int amount)
         {
             if (IsInvulnerable || ActiveShield || IsDead) return;
             int reduced = Math.Max(1, amount - Defense);
-            CurrentHp = Math.Max(0, CurrentHp - reduced);
-            if (CurrentHp <= 0) StartDeath();
+            HP = Math.Max(0, HP - reduced);
+            if (HP <= 0) StartDeath();
             else StartHurt();
         }
 
-        public void Heal(int amount) => CurrentHp = Math.Min(MaxHp, CurrentHp + amount);
+        public void Heal(int amount) => HP = Math.Min(MaxHp, HP + amount);
 
         public void ApplyEquipmentBonuses(int bonusDamage, int bonusMaxHp, int bonusDefense)
         {
-            float hpRatio = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float hpRatio = MaxHp > 0 ? (float)HP / MaxHp : 1f;
             BaseDamage = CoreDamage + bonusDamage;
             MaxHp = BaseMaxHp + bonusMaxHp;
             Defense = bonusDefense;
-            CurrentHp = Math.Clamp((int)(MaxHp * hpRatio + 0.5f), 0, MaxHp);
+            HP = Math.Clamp((int)(MaxHp * hpRatio + 0.5f), 0, MaxHp);
             Damage = Math.Max(1, (int)(BaseDamage * _damageMultiplier));
         }
 

@@ -1,20 +1,14 @@
 ﻿using System;
 using System.Drawing;
+using ElementalSpirit.Domain;
 
 namespace ElementalSpirit.Domain.Enemy
 {
-    public abstract class Enemy
+    public abstract class Enemy : Character
     {
-        public float X { get; protected set; }
-        public float Y { get; protected set; }
-        public int Width { get; protected set; } = 36;
-        public int Height { get; protected set; } = 36;
-        public int MaxHealth { get; protected set; }
-        public int Health { get; protected set; }
-        public int Damage { get; protected set; }
+        public int MaxHealth => MaxHp;
+        public int Health => HP;
         public Image? Image { get; protected set; }
-        public bool IsAlive => Health > 0;
-        public bool IsHurt { get; protected set; }
         public bool IsDying { get; protected set; }
         public bool IsDeathAnimationComplete { get; protected set; }
         public Domain.Player.FacingDirection Facing { get; protected set; } = Domain.Player.FacingDirection.Left;
@@ -24,11 +18,9 @@ namespace ElementalSpirit.Domain.Enemy
         protected virtual float HurtDuration => 0.35f;
         protected virtual float DeathDuration => 0.6f;
 
-        public RectangleF Bounds => new RectangleF(X, Y, Width, Height);
-
         protected Enemy(float x, float y, int maxHealth, int damage)
+            : base(x, y, 36, 36, maxHealth, damage)
         {
-            X = x; Y = y; MaxHealth = maxHealth; Health = maxHealth; Damage = damage;
         }
 
         public abstract void Update(float deltaTime, float groundY);
@@ -50,11 +42,11 @@ namespace ElementalSpirit.Domain.Enemy
             }
         }
 
-        public virtual void TakeDamage(int amount)
+        public override void TakeDamage(int amount)
         {
             if (!IsAlive) return;
-            Health = Math.Max(0, Health - amount);
-            if (Health <= 0) { IsDying = true; IsHurt = false; _deathTimer = DeathDuration; }
+            HP = Math.Max(0, HP - amount);
+            if (HP <= 0) { IsDying = true; IsDead = true; IsHurt = false; _deathTimer = DeathDuration; }
             else { IsHurt = true; _hurtTimer = HurtDuration; }
         }
 
