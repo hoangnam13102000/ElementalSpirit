@@ -3,10 +3,6 @@ using System.Drawing;
 
 namespace ElementalSpirit.Domain.Player
 {
-    /// <summary>
-    /// Simple movement states to prepare for future animation system.
-    /// Physics does not depend on these; they are derived from velocity.
-    /// </summary>
     public enum PlayerMovementState
     {
         Idle,
@@ -17,40 +13,30 @@ namespace ElementalSpirit.Domain.Player
 
     public class Player
     {
-        // ===== Position & size =====
         public float X { get; private set; }
         public float Y { get; private set; }
         public int Width { get; } = 32;
         public int Height { get; } = 32;
         public RectangleF Bounds => new RectangleF(X, Y, Width, Height);
 
-        // ===== Platformer physics =====
-        /// <summary>Horizontal velocity in pixels/second.</summary>
-        public float VelocityX { get; private set; }
-
-        /// <summary>Vertical velocity in pixels/second (positive = downward).</summary>
+        public float VelocityX { get; set; }
         public float VelocityY { get; private set; }
-
-        /// <summary>Horizontal movement speed.</summary>
-        public float MoveSpeed { get; private set; } = 260f;
-
-        /// <summary>Initial upward velocity when jumping.</summary>
+        public float WalkSpeed { get; private set; } = 140f;
+        public float RunSpeed { get; private set; } = 280f;
+        public float CurrentMoveSpeed { get; private set; }
+        public bool WantsToRun { get; set; }
         public float JumpForce { get; private set; } = 560f;
-
-        /// <summary>Gravitational acceleration (pixels/second²).</summary>
         public float Gravity { get; private set; } = 1500f;
-
-        /// <summary>True when the player is standing on solid ground.</summary>
         public bool IsGrounded { get; private set; }
-
-        /// <summary>Derived movement state for future animation support.</summary>
         public PlayerMovementState MovementState { get; private set; }
 
-        // ===== Legacy speed property kept for compatibility =====
-        [Obsolete("Use MoveSpeed instead. Kept for any external references.")]
+        [Obsolete("Use WalkSpeed/RunSpeed instead.")]
         public float Speed { get; private set; } = 220f;
+        [Obsolete("Use WalkSpeed/RunSpeed instead.")]
+        public float MoveSpeed { get; private set; } = 260f;
 
-        // ===== Combat stats =====
+        public FacingDirection Facing { get; set; } = FacingDirection.Right;
+
         public int BaseMaxHp { get; private set; } = 100;
         public int MaxHp { get; private set; } = 100;
         public int CurrentHp { get; private set; } = 100;
@@ -61,6 +47,9 @@ namespace ElementalSpirit.Domain.Player
         private float _damageMultiplier = 1f;
 
         public bool IsInvulnerable { get; set; }
+        private float _invulnerabilityTimer;
+        public float InvulnerabilityDuration { get; private set; } = 0.8f;
+
         public bool ActiveShield { get; set; }
         public bool ActiveFireBoost { get; set; }
         public bool ActiveHealEffect { get; set; }
@@ -68,9 +57,20 @@ namespace ElementalSpirit.Domain.Player
         public int ExtraProjectiles { get; set; }
 
         public float AttackCooldown { get; private set; }
-        public float AttackInterval { get; private set; } = 0.25f;
-
+        public float AttackInterval { get; private set; } = 0.45f;
         public bool IsAlive => CurrentHp > 0;
+
+        public bool IsAttacking { get; private set; }
+        public bool IsFiring { get; private set; }
+        public bool IsHurt { get; private set; }
+        public bool IsDead { get; private set; }
+
+        public event Action? OnAttackHitFrame;
+        public event Action? OnFireCastFrame;
+        public event Action? OnAttackAnimationEnded;
+        public event Action? OnFireAnimationEnded;
+        public event Action? OnHurtAnimationEnded;
+        public event Action? OnDeathAnimationEnded;
 
         public Player(float startX, float startY)
         {
@@ -80,61 +80,53 @@ namespace ElementalSpirit.Domain.Player
             VelocityY = 0f;
             IsGrounded = false;
             MovementState = PlayerMovementState.Idle;
+            CurrentMoveSpeed = WalkSpeed;
         }
 
-        /// <summary>
-        /// Apply horizontal movement input. dirX should be -1, 0, or 1 (normalized).
-        /// Sets VelocityX directly; actual position is updated in Update().
-        /// </summary>
         public void MoveHorizontal(float dirX, float deltaTime)
         {
             dirX = Math.Clamp(dirX, -1f, 1f);
-            VelocityX = dirX * MoveSpeed;
+            CurrentMoveSpeed = WantsToRun ? RunSpeed : WalkSpeed;
+            VelocityX = dirX * CurrentMoveSpeed;
+            if (dirX > 0.1f) Facing = FacingDirection.Right;
+            else if (dirX < -0.1f) Facing = FacingDirection.Left;
         }
 
-        /// <summary>
-        /// Attempt to jump. Only succeeds when IsGrounded is true.
-        /// Sets an upward velocity (negative Y) and clears grounded state.
-        /// </summary>
         public void TryJump()
         {
-            if (!IsGrounded) return;
-
+            if (!IsGrounded || IsDead || IsHurt) return;
             VelocityY = -JumpForce;
             IsGrounded = false;
         }
 
-        /// <summary>
-        /// Core physics update: applies gravity, integrates velocity into position,
-        /// and derives the current movement state.
-        /// Ground collision is resolved separately by GameManager via ResolveGroundCollision.
-        /// </summary>
         public void Update(float deltaTime)
         {
-            if (AttackCooldown > 0)
-                AttackCooldown -= deltaTime;
-
+            if (AttackCooldown > 0) AttackCooldown -= deltaTime;
+            if (_invulnerabilityTimer > 0)
+            {
+                _invulnerabilityTimer -= deltaTime;
+                if (_invulnerabilityTimer <= 0) IsInvulnerable = false;
+            }
+            if (IsDead)
+            {
+                VelocityY += Gravity * deltaTime;
+                if (VelocityY > 1200f) VelocityY = 1200f;
+                Y += VelocityY * deltaTime;
+                return;
+            }
             if (!IsGrounded)
             {
                 VelocityY += Gravity * deltaTime;
-                if (VelocityY > 1200f)
-                    VelocityY = 1200f;
+                if (VelocityY > 1200f) VelocityY = 1200f;
             }
-
             X += VelocityX * deltaTime;
             Y += VelocityY * deltaTime;
-
             UpdateMovementState();
         }
 
-        /// <summary>
-        /// Resolve collision with a flat ground plane at the given Y coordinate.
-        /// If the player's bottom is at or below groundY, snap to ground and stop falling.
-        /// </summary>
         public void ResolveGroundCollision(float groundY)
         {
             float playerBottom = Y + Height;
-
             if (playerBottom >= groundY)
             {
                 Y = groundY - Height;
@@ -143,45 +135,32 @@ namespace ElementalSpirit.Domain.Player
             }
             else
             {
-                if (VelocityY > 1f || VelocityY < -1f)
-                    IsGrounded = false;
+                if (VelocityY > 1f || VelocityY < -1f) IsGrounded = false;
             }
         }
 
-        /// <summary>
-        /// Clamp horizontal position to stay within the play area.
-        /// Vertical bounds are handled by gravity + ground collision.
-        /// </summary>
         public void ClampHorizontalBounds(float minX, float maxX)
         {
             if (X < minX) X = minX;
             if (X + Width > maxX) X = maxX - Width;
         }
 
-        [Obsolete("Use MoveHorizontal() and TryJump() for platformer movement.")]
-        public void Move(float dirX, float dirY, float deltaTime)
-        {
-            MoveHorizontal(dirX, deltaTime);
-        }
+        [Obsolete("Use MoveHorizontal() and TryJump().")]
+        public void Move(float dirX, float dirY, float deltaTime) => MoveHorizontal(dirX, deltaTime);
 
-        [Obsolete("Use ClampHorizontalBounds() for platformer movement.")]
-        public void ClampToBounds(float minX, float minY, float maxX, float maxY)
-        {
-            ClampHorizontalBounds(minX, maxX);
-        }
+        [Obsolete("Use ClampHorizontalBounds().")]
+        public void ClampToBounds(float minX, float minY, float maxX, float maxY) => ClampHorizontalBounds(minX, maxX);
 
-        // ===== Combat methods (unchanged) =====
         public void TakeDamage(int amount)
         {
-            if (IsInvulnerable || ActiveShield) return;
+            if (IsInvulnerable || ActiveShield || IsDead) return;
             int reduced = Math.Max(1, amount - Defense);
             CurrentHp = Math.Max(0, CurrentHp - reduced);
+            if (CurrentHp <= 0) StartDeath();
+            else StartHurt();
         }
 
-        public void Heal(int amount)
-        {
-            CurrentHp = Math.Min(MaxHp, CurrentHp + amount);
-        }
+        public void Heal(int amount) => CurrentHp = Math.Min(MaxHp, CurrentHp + amount);
 
         public void ApplyEquipmentBonuses(int bonusDamage, int bonusMaxHp, int bonusDefense)
         {
@@ -205,26 +184,44 @@ namespace ElementalSpirit.Domain.Player
             Damage = BaseDamage;
         }
 
-        public bool CanAttack() => AttackCooldown <= 0;
-
+        public bool CanAttack() => AttackCooldown <= 0 && !IsAttacking && !IsFiring && !IsHurt && !IsDead;
+        public bool CanFire() => AttackCooldown <= 0 && !IsAttacking && !IsFiring && !IsHurt && !IsDead;
         public void ResetAttackCooldown() => AttackCooldown = AttackInterval;
+
+        public void StartAttack() { if (!IsDead) IsAttacking = true; }
+        public void StartFire() { if (!IsDead) IsFiring = true; }
+
+        private void StartHurt()
+        {
+            IsHurt = true;
+            IsInvulnerable = true;
+            _invulnerabilityTimer = InvulnerabilityDuration;
+        }
+
+        private void StartDeath()
+        {
+            IsDead = true;
+            IsAttacking = false;
+            IsFiring = false;
+            IsHurt = false;
+            VelocityX = 0f;
+        }
+
+        public void NotifyAttackHitFrame() => OnAttackHitFrame?.Invoke();
+        public void NotifyFireCastFrame() => OnFireCastFrame?.Invoke();
+        public void NotifyAttackAnimationEnded() { IsAttacking = false; OnAttackAnimationEnded?.Invoke(); }
+        public void NotifyFireAnimationEnded() { IsFiring = false; OnFireAnimationEnded?.Invoke(); }
+        public void NotifyHurtAnimationEnded() { IsHurt = false; OnHurtAnimationEnded?.Invoke(); }
+        public void NotifyDeathAnimationEnded() => OnDeathAnimationEnded?.Invoke();
 
         private void UpdateMovementState()
         {
             if (!IsGrounded)
-            {
-                MovementState = VelocityY < 0
-                    ? PlayerMovementState.Jumping
-                    : PlayerMovementState.Falling;
-            }
+                MovementState = VelocityY < 0 ? PlayerMovementState.Jumping : PlayerMovementState.Falling;
             else if (Math.Abs(VelocityX) > 1f)
-            {
                 MovementState = PlayerMovementState.Running;
-            }
             else
-            {
                 MovementState = PlayerMovementState.Idle;
-            }
         }
     }
 }

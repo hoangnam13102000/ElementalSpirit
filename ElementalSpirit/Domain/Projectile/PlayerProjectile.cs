@@ -1,12 +1,18 @@
-﻿namespace ElementalSpirit.Domain.Projectile
+﻿using System.Drawing;
+
+namespace ElementalSpirit.Domain.Projectile
 {
     public class PlayerProjectile : Projectile
     {
-        public PlayerProjectile(float x, float y, float speed, int damage)
-            : base(x, y, speed, 0f, damage, 2.5f)
+        public bool IsFireball { get; }
+        public Image? Image { get; set; }
+
+        public PlayerProjectile(float x, float y, float speed, int damage, bool isFireball = false)
+            : base(x, y, speed, 0f, damage, isFireball ? 3.0f : 2.5f)
         {
-            Width = 10;
-            Height = 6;
+            IsFireball = isFireball;
+            if (isFireball) { Width = 24; Height = 24; }
+            else { Width = 10; Height = 6; }
         }
     }
 }

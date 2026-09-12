@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using ElementalSpirit.Domain.Equipment;
+using ElementalSpirit.Domain.Player;
+using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
@@ -15,7 +17,18 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly GameTimer _gameTimer;
         private readonly ILocalizationService _localization = LocalizationManager.Instance;
 
-        private readonly Image? _playerImage = AssetLoader.Get("Player.png");
+        private readonly PlayerAnimationController _playerAnimController;
+        private readonly Image[]? _fireballFrames;
+        private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
+        private bool _attackHitFrameTriggered;
+        private bool _fireCastFrameTriggered;
+
+        private const int AttackHitFrameIndex = 3;
+        private const int FireCastFrameIndex = 5;
+        private const float BaseRenderScale = 0.9f;
+        private const int StandardFrameSize = 128;
+        private const int DeathFrameSize = 256;
+
         private string _loadedBackgroundName = "";
         private Image? _backgroundImage;
 
@@ -28,14 +41,15 @@ namespace ElementalSpirit.Presentation.Forms
             MaximizeBox = false;
             DoubleBuffered = true;
             KeyPreview = true;
-
-            SetStyle(ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.UserPaint |
-                     ControlStyles.OptimizedDoubleBuffer |
-                     ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
             _gameManager = new GameManager();
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
+
+            _playerAnimController = MageAnimationLoader.CreateController();
+            try { _fireballFrames = MageAnimationLoader.LoadFireballFrames(); }
+            catch { _fireballFrames = null; }
 
             _gameTimer = new GameTimer(targetFps: 60);
             _gameTimer.OnTick += OnGameTick;
@@ -51,27 +65,84 @@ namespace ElementalSpirit.Presentation.Forms
         private void OnGameTick(float deltaTime)
         {
             _gameManager.Update(deltaTime);
+            UpdatePlayerAnimation(deltaTime);
             Invalidate();
+        }
+
+        private void UpdatePlayerAnimation(float deltaTime)
+        {
+            var player = _gameManager.Player;
+            var desired = DetermineAnimationState(player);
+
+            if (desired != _lastAnimState)
+            {
+                _attackHitFrameTriggered = false;
+                _fireCastFrameTriggered = false;
+                _lastAnimState = desired;
+            }
+
+            _playerAnimController.Play(desired);
+            _playerAnimController.Update(deltaTime);
+
+            int currentFrame = _playerAnimController.CurrentFrameIndex;
+
+            if (desired == PlayerAnimationState.Attack &&
+                currentFrame >= AttackHitFrameIndex && !_attackHitFrameTriggered)
+            {
+                _attackHitFrameTriggered = true;
+                player.NotifyAttackHitFrame();
+            }
+
+            if (desired == PlayerAnimationState.Fire &&
+                currentFrame >= FireCastFrameIndex && !_fireCastFrameTriggered)
+            {
+                _fireCastFrameTriggered = true;
+                player.NotifyFireCastFrame();
+            }
+
+            if (_playerAnimController.IsCurrentCompleted)
+            {
+                switch (desired)
+                {
+                    case PlayerAnimationState.Attack:
+                    case PlayerAnimationState.WalkAttack:
+                    case PlayerAnimationState.RunAttack:
+                        player.NotifyAttackAnimationEnded(); break;
+                    case PlayerAnimationState.Fire:
+                        player.NotifyFireAnimationEnded(); break;
+                    case PlayerAnimationState.Hurt:
+                        player.NotifyHurtAnimationEnded(); break;
+                    case PlayerAnimationState.Death:
+                        player.NotifyDeathAnimationEnded(); break;
+                }
+            }
+        }
+
+        private PlayerAnimationState DetermineAnimationState(Player player)
+        {
+            if (player.IsDead) return PlayerAnimationState.Death;
+            if (player.IsHurt) return PlayerAnimationState.Hurt;
+            if (player.IsFiring) return PlayerAnimationState.Fire;
+            if (player.IsAttacking)
+            {
+                if (!player.IsGrounded) return PlayerAnimationState.Attack;
+                if (Math.Abs(player.VelocityX) > 1f)
+                    return player.WantsToRun ? PlayerAnimationState.RunAttack : PlayerAnimationState.WalkAttack;
+                return PlayerAnimationState.Attack;
+            }
+            if (!player.IsGrounded)
+                return player.VelocityY < -300f ? PlayerAnimationState.HighJump : PlayerAnimationState.Jump;
+            if (Math.Abs(player.VelocityX) > 1f)
+                return player.WantsToRun ? PlayerAnimationState.Run : PlayerAnimationState.Walk;
+            return PlayerAnimationState.Idle;
         }
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.B)
-            {
-                OpenShop();
-                return;
-            }
-
-            if (e.KeyCode == Keys.U)
-            {
-                OpenUpgrade();
-                return;
-            }
-
+            if (e.KeyCode == Keys.B) { OpenShop(); return; }
+            if (e.KeyCode == Keys.U) { OpenUpgrade(); return; }
             _gameManager.HandleKeyDown(e.KeyCode);
-
-            if (e.KeyCode == Keys.Escape)
-                Close();
+            if (e.KeyCode == Keys.Escape) Close();
         }
 
         private void OpenShop()
@@ -79,17 +150,11 @@ namespace ElementalSpirit.Presentation.Forms
             PauseGame();
             try
             {
-                using var shop = new ShopForm(
-                    _gameManager.Wallet,
-                    _gameManager.Inventory,
-                    _gameManager.Shop,
-                    onInventoryChanged: () => _gameManager.RefreshPlayerEquipmentStats());
+                using var shop = new ShopForm(_gameManager.Wallet, _gameManager.Inventory,
+                    _gameManager.Shop, onInventoryChanged: () => _gameManager.RefreshPlayerEquipmentStats());
                 shop.ShowDialog(this);
             }
-            finally
-            {
-                ResumeGame();
-            }
+            finally { ResumeGame(); }
         }
 
         private void OpenUpgrade()
@@ -97,16 +162,10 @@ namespace ElementalSpirit.Presentation.Forms
             PauseGame();
             try
             {
-                using var upgrade = new UpgradeForm(
-                    _gameManager.Spirits,
-                    _gameManager.Wallet,
-                    _gameManager.Upgrades);
+                using var upgrade = new UpgradeForm(_gameManager.Spirits, _gameManager.Wallet, _gameManager.Upgrades);
                 upgrade.ShowDialog(this);
             }
-            finally
-            {
-                ResumeGame();
-            }
+            finally { ResumeGame(); }
         }
 
         private void PauseGame()
@@ -124,21 +183,17 @@ namespace ElementalSpirit.Presentation.Forms
             Invalidate();
         }
 
-        private void OnKeyUp(object? sender, KeyEventArgs e)
-        {
-            _gameManager.HandleKeyUp(e.KeyCode);
-        }
-
-        private void OnFormResize(object? sender, EventArgs e)
-        {
-            _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
-        }
+        private void OnKeyUp(object? sender, KeyEventArgs e) => _gameManager.HandleKeyUp(e.KeyCode);
+        private void OnFormResize(object? sender, EventArgs e) => _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
 
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
             _gameTimer.Stop();
             _gameTimer.Dispose();
+            _playerAnimController.Dispose();
+            if (_fireballFrames != null) foreach (var img in _fireballFrames) img.Dispose();
             AssetLoader.DisposeAll();
+            MageAnimationLoader.DisposeAll();
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -147,7 +202,6 @@ namespace ElementalSpirit.Presentation.Forms
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.FromArgb(18, 22, 32));
-
             DrawBackground(g);
             DrawGround(g);
             DrawPlayer(g);
@@ -167,53 +221,45 @@ namespace ElementalSpirit.Presentation.Forms
                 _backgroundImage = AssetLoader.Get(bgName);
                 _loadedBackgroundName = bgName;
             }
-
             if (_backgroundImage != null)
-            {
                 g.DrawImage(_backgroundImage, new Rectangle(0, 0, ClientSize.Width, ClientSize.Height));
-            }
         }
 
-        private void DrawGround(Graphics g)
-        {
-            // Visual ground rendering is intentionally empty — the Earth Forest background
-            // already provides a beautiful ground/path artwork. GroundY is still used
-            // for physics collision; no extra visual overlay needed.
-        }
+        private void DrawGround(Graphics g) { }
 
         private void DrawPlayer(Graphics g)
         {
             var p = _gameManager.Player;
-            if (!p.IsAlive) return;
+            var currentImage = _playerAnimController.CurrentImage;
+            if (currentImage == null) return;
 
-            if (_playerImage != null)
+            bool isDeath = _playerAnimController.CurrentState == PlayerAnimationState.Death;
+            int frameSize = isDeath ? DeathFrameSize : StandardFrameSize;
+            float drawSize = frameSize * BaseRenderScale;
+
+            float feetX = p.X + p.Width / 2f;
+            float feetY = p.Y + p.Height;
+            float anchorRatioY = isDeath ? 0.95f : 0.85f;
+            float drawX = feetX - drawSize / 2f;
+            float drawY = feetY - drawSize * anchorRatioY;
+
+            var state = g.Save();
+            if (p.Facing == FacingDirection.Left)
             {
-                float drawWidth = p.Width * 3.2f;
-                float drawHeight = p.Height * 3.2f;
-                float centerX = p.X + p.Width / 2f;
-                float bottomY = p.Y + p.Height;
-                float drawX = centerX - drawWidth / 2f;
-                float drawY = bottomY - drawHeight;
-
-                var state = g.Save();
-                if (_gameManager.FacingDirection < 0)
-                {
-                    g.TranslateTransform(drawX + drawWidth, drawY);
-                    g.ScaleTransform(-1f, 1f);
-                    g.DrawImage(_playerImage, 0, 0, drawWidth, drawHeight);
-                }
-                else
-                {
-                    g.DrawImage(_playerImage, drawX, drawY, drawWidth, drawHeight);
-                }
-                g.Restore(state);
+                g.TranslateTransform(drawX + drawSize, drawY);
+                g.ScaleTransform(-1f, 1f);
+                g.DrawImage(currentImage, 0, 0, drawSize, drawSize);
             }
             else
             {
-                using var body = new SolidBrush(Color.FromArgb(90, 160, 255));
-                using var outline = new Pen(Color.FromArgb(40, 90, 180), 2f);
-                g.FillEllipse(body, p.Bounds);
-                g.DrawEllipse(outline, p.Bounds);
+                g.DrawImage(currentImage, drawX, drawY, drawSize, drawSize);
+            }
+            g.Restore(state);
+
+            if (p.IsHurt)
+            {
+                using var flashBrush = new SolidBrush(Color.FromArgb(80, 255, 80, 80));
+                g.FillRectangle(flashBrush, drawX, drawY, drawSize, drawSize);
             }
 
             if (p.ActiveShield)
@@ -243,8 +289,23 @@ namespace ElementalSpirit.Presentation.Forms
             foreach (var p in _gameManager.Projectiles.Projectiles)
             {
                 if (!p.IsAlive) continue;
-                using var brush = new SolidBrush(Color.FromArgb(255, 220, 80));
-                g.FillEllipse(brush, p.Bounds);
+                if (p is PlayerProjectile pp && pp.IsFireball && _fireballFrames != null && _fireballFrames.Length > 0)
+                {
+                    var fireImg = _fireballFrames[_fireballFrames.Length / 2];
+                    float scale = 1.4f;
+                    float drawW = fireImg.Width * scale;
+                    float drawH = fireImg.Height * scale;
+                    float drawX = p.X + p.Width / 2f - drawW / 2f;
+                    float drawY = p.Y + p.Height / 2f - drawH / 2f;
+                    g.DrawImage(fireImg, drawX, drawY, drawW, drawH);
+                }
+                else
+                {
+                    using var brush = new SolidBrush(Color.FromArgb(255, 220, 80));
+                    g.FillEllipse(brush, p.Bounds);
+                    using var glow = new SolidBrush(Color.FromArgb(120, 255, 200, 60));
+                    g.FillEllipse(glow, p.X - 2, p.Y - 2, p.Width + 4, p.Height + 4);
+                }
             }
         }
 
@@ -255,7 +316,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             foreach (var e in _gameManager.Enemies.Enemies)
             {
-                if (!e.IsAlive) continue;
+                if (!e.IsAlive && e.IsDeathAnimationComplete) continue;
 
                 if (e.Image != null)
                 {
@@ -264,13 +325,13 @@ namespace ElementalSpirit.Presentation.Forms
                     float drawHeight = e.Height * drawScale;
                     float drawX = e.X + (e.Width - drawWidth) / 2f;
                     float drawY = e.Y + (e.Height - drawHeight) / 2f;
-                    float enemyCenterX = e.X + e.Width / 2f;
+                    bool flipLeft = playerCenterX < e.X + e.Width / 2f;
+
                     var state = g.Save();
-                    if (playerCenterX < enemyCenterX)
+                    if (flipLeft)
                     {
                         g.TranslateTransform(drawX + drawWidth, drawY);
                         g.ScaleTransform(-1f, 1f);
-
                         g.DrawImage(e.Image, 0, 0, drawWidth, drawHeight);
                     }
                     else
@@ -278,6 +339,17 @@ namespace ElementalSpirit.Presentation.Forms
                         g.DrawImage(e.Image, drawX, drawY, drawWidth, drawHeight);
                     }
                     g.Restore(state);
+
+                    if (e.IsHurt)
+                    {
+                        using var flashBrush = new SolidBrush(Color.FromArgb(100, 255, 255, 255));
+                        g.FillRectangle(flashBrush, drawX, drawY, drawWidth, drawHeight);
+                    }
+                    if (e.IsDying)
+                    {
+                        using var fadeBrush = new SolidBrush(Color.FromArgb(140, 60, 60, 60));
+                        g.FillRectangle(fadeBrush, drawX, drawY, drawWidth, drawHeight);
+                    }
                 }
                 else
                 {
@@ -287,25 +359,27 @@ namespace ElementalSpirit.Presentation.Forms
                     g.DrawEllipse(outline, e.Bounds);
                 }
 
-                float hpPercent = (float)e.Health / e.MaxHealth;
-                using var hpBrush = new SolidBrush(Color.FromArgb(220, 60, 60));
-                g.FillRectangle(hpBrush, e.X, e.Y - 10, e.Width * hpPercent, 5);
+                if (e.IsAlive && !e.IsDying)
+                {
+                    float hpPercent = (float)e.Health / e.MaxHealth;
+                    using var bgBrush = new SolidBrush(Color.FromArgb(120, 40, 40, 40));
+                    g.FillRectangle(bgBrush, e.X, e.Y - 10, e.Width, 5);
+                    using var hpBrush = new SolidBrush(Color.FromArgb(220, 60, 60));
+                    g.FillRectangle(hpBrush, e.X, e.Y - 10, e.Width * hpPercent, 5);
+                }
             }
         }
 
         private void DrawSpiritHud(Graphics g)
         {
             var spirits = _gameManager.Spirits;
-            float startX = 12f;
-            float startY = ClientSize.Height - 78f;
-            float slotW = 210f;
-            float slotH = 58f;
+            float startX = 12f, startY = ClientSize.Height - 78f;
+            float slotW = 210f, slotH = 58f;
 
             for (int i = 0; i < SpiritManager.MaxEquipped; i++)
             {
                 var spirit = spirits.Equipped[i];
                 float x = startX + i * (slotW + 12);
-
                 using var bg = new SolidBrush(Color.FromArgb(180, 20, 24, 36));
                 using var border = new Pen(Color.FromArgb(100, 140, 180, 255), 1.5f);
                 g.FillRectangle(bg, x, startY, slotW, slotH);
@@ -337,23 +411,14 @@ namespace ElementalSpirit.Presentation.Forms
                 g.DrawString($"{spirit.Name}  Lv.{spirit.Level}", nameFont, nameBrush, x + 48, startY + 8);
 
                 using var statusFont = new Font("Consolas", 9f);
-                string status;
-                Color statusColor;
+                string status; Color statusColor;
                 if (spirit.IsActive)
-                {
-                    status = $"{_localization.Translate("hud.spirit.active")}  {spirit.ActiveRemaining:0.0}s";
-                    statusColor = Color.FromArgb(120, 255, 160);
-                }
+                { status = $"{_localization.Translate("hud.spirit.active")}  {spirit.ActiveRemaining:0.0}s"; statusColor = Color.FromArgb(120, 255, 160); }
                 else if (spirit.CooldownRemaining > 0)
-                {
-                    status = $"{_localization.Translate("hud.spirit.cd")}  {spirit.CooldownRemaining:0.0}s";
-                    statusColor = Color.FromArgb(255, 160, 100);
-                }
+                { status = $"{_localization.Translate("hud.spirit.cd")}  {spirit.CooldownRemaining:0.0}s"; statusColor = Color.FromArgb(255, 160, 100); }
                 else
-                {
-                    status = _localization.Translate("hud.spirit.ready");
-                    statusColor = Color.FromArgb(180, 220, 255);
-                }
+                { status = _localization.Translate("hud.spirit.ready"); statusColor = Color.FromArgb(180, 220, 255); }
+
                 using var statusBrush = new SolidBrush(statusColor);
                 g.DrawString(status, statusFont, statusBrush, x + 48, startY + 30);
 
@@ -370,10 +435,9 @@ namespace ElementalSpirit.Presentation.Forms
         private void DrawCurrencyHud(Graphics g)
         {
             var w = _gameManager.Wallet;
-            string text =
-                $"{_localization.Translate("hud.currency.gold")} {w.Gold}   " +
-                $"{_localization.Translate("hud.currency.shards")} {w.SpiritShards}   " +
-                $"{_localization.Translate("hud.currency.crystals")} {w.Crystals}";
+            string text = $"{_localization.Translate("hud.currency.gold")} {w.Gold}   " +
+                          $"{_localization.Translate("hud.currency.shards")} {w.SpiritShards}   " +
+                          $"{_localization.Translate("hud.currency.crystals")} {w.Crystals}";
             using var font = new Font("Consolas", 12f, FontStyle.Bold);
             using var brush = new SolidBrush(Color.FromArgb(255, 220, 140));
             var size = g.MeasureString(text, font);
@@ -392,8 +456,7 @@ namespace ElementalSpirit.Presentation.Forms
         private void DrawEquipmentHud(Graphics g)
         {
             var inv = _gameManager.Inventory;
-            float x = ClientSize.Width - 260;
-            float y = 60;
+            float x = ClientSize.Width - 260, y = 60;
             using var titleFont = new Font("Consolas", 10f, FontStyle.Bold);
             using var titleBrush = new SolidBrush(Color.FromArgb(180, 200, 230));
             g.DrawString(_localization.Translate("hud.equipped.title"), titleFont, titleBrush, x, y);
@@ -407,12 +470,10 @@ namespace ElementalSpirit.Presentation.Forms
             g.DrawString(string.Format(_localization.Translate("hud.owned"), inv.Items.Count), itemFont, itemBrush, x, y);
         }
 
-        private void DrawEquipLine(Graphics g, Font font, Brush brush, float x, ref float y,
-            string label, Equipment? item)
+        private void DrawEquipLine(Graphics g, Font font, Brush brush, float x, ref float y, string label, Equipment? item)
         {
             string name = item?.Name ?? _localization.Translate("hud.equip.none");
-            string bonus = item == null ? ""
-                : $" +{item.BonusDamage}DMG +{item.BonusMaxHp}HP +{item.BonusDefense}DEF";
+            string bonus = item == null ? "" : $" +{item.BonusDamage}DMG +{item.BonusMaxHp}HP +{item.BonusDefense}DEF";
             g.DrawString($"{label}: {name}{bonus}", font, brush, x, y);
             y += 16;
         }
@@ -421,6 +482,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             var p = _gameManager.Player;
             var waves = _gameManager.Waves;
+
             string stageStatus = _gameManager.IsStageCompleted
                 ? _localization.Translate("hud.stageClear.pressEsc")
                 : $"{_localization.Translate("hud.wave.label")} {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  {_localization.Translate("hud.state.label")} {waves.State}";
@@ -431,19 +493,28 @@ namespace ElementalSpirit.Presentation.Forms
             if (p.ActiveHealEffect) effects += " [HEAL]";
             if (p.ActiveWindBarrage) effects += $" [WIND +{p.ExtraProjectiles}]";
 
-            string groundedLabel = p.IsGrounded
-                ? _localization.Translate("hud.grounded")
-                : _localization.Translate("hud.air");
+            string groundedLabel = p.IsGrounded ? _localization.Translate("hud.grounded") : _localization.Translate("hud.air");
             string platState = p.IsGrounded
                 ? $"{groundedLabel} [{p.MovementState}]"
                 : $"{groundedLabel} [{p.MovementState}] VY={p.VelocityY:0}";
+
+            string animState = $"ANIM: {_playerAnimController.CurrentState}  frame {_playerAnimController.CurrentFrameIndex + 1}";
+            string facing = p.Facing == FacingDirection.Right ? "→ Right" : "← Left";
+            string speedMode = p.WantsToRun ? "RUN" : "WALK";
+            string combatFlags = "";
+            if (p.IsAttacking) combatFlags += " ATTACKING";
+            if (p.IsFiring) combatFlags += " FIRING";
+            if (p.IsHurt) combatFlags += " HURT";
+            if (p.IsDead) combatFlags += " DEAD";
+            if (p.IsInvulnerable) combatFlags += " INVULN";
 
             string info =
                 $"{_localization.Translate("hud.phase")}\n" +
                 $"{_localization.Translate("hud.stage.label")} {waves.StageName}\n" +
                 $"{stageStatus}\n" +
                 $"{_localization.Translate("hud.hp.label")} {p.CurrentHp}/{p.MaxHp}  {_localization.Translate("hud.dmg.label")} {p.Damage}  {_localization.Translate("hud.def.label")} {p.Defense}{effects}\n" +
-                $"{platState}\n" +
+                $"{platState}  {facing}  [{speedMode}]\n" +
+                $"{animState}{combatFlags}\n" +
                 $"{_localization.Translate("hud.enemies.label")} {_gameManager.Enemies.Enemies.Count}  {_localization.Translate("hud.projectiles.label")} {_gameManager.Projectiles.Projectiles.Count}\n" +
                 $"{_localization.Translate("hud.controls.line1")}\n" +
                 $"{_localization.Translate("hud.controls.line2")}";
@@ -458,8 +529,21 @@ namespace ElementalSpirit.Presentation.Forms
                 using var bigBrush = new SolidBrush(Color.FromArgb(100, 255, 150));
                 string msg = _localization.Translate("hud.stageClear.big");
                 var size = g.MeasureString(msg, bigFont);
-                g.DrawString(msg, bigFont, bigBrush,
-                    (ClientSize.Width - size.Width) / 2, ClientSize.Height / 2 - 40);
+                g.DrawString(msg, bigFont, bigBrush, (ClientSize.Width - size.Width) / 2, ClientSize.Height / 2 - 40);
+            }
+
+            if (p.IsDead)
+            {
+                using var deadFont = new Font("Consolas", 32f, FontStyle.Bold);
+                using var deadBrush = new SolidBrush(Color.FromArgb(200, 255, 60, 60));
+                string msg = "GAME OVER";
+                var size = g.MeasureString(msg, deadFont);
+                g.DrawString(msg, deadFont, deadBrush, (ClientSize.Width - size.Width) / 2, ClientSize.Height / 2 - 80);
+                using var hintFont = new Font("Consolas", 14f);
+                using var hintBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
+                string hint = "Press ESC to exit";
+                var hintSize = g.MeasureString(hint, hintFont);
+                g.DrawString(hint, hintFont, hintBrush, (ClientSize.Width - hintSize.Width) / 2, ClientSize.Height / 2 - 30);
             }
         }
     }
