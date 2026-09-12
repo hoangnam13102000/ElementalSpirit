@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Spirit;
 using ElementalSpirit.GameEngine;
+using ElementalSpirit.Localization;
 using ElementalSpirit.Services;
 
 namespace ElementalSpirit.Presentation.Forms
@@ -13,6 +14,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly SpiritManager _spirits;
         private readonly PlayerWallet _wallet;
         private readonly UpgradeService _upgrades;
+        private readonly ILocalizationService _localization = LocalizationManager.Instance;
 
         private readonly ListBox _spiritList;
         private readonly Label _detailLabel;
@@ -29,7 +31,7 @@ namespace ElementalSpirit.Presentation.Forms
             _wallet = wallet;
             _upgrades = upgrades;
 
-            Text = "Spirit Upgrade - Elemental Spirit";
+            Text = _localization.Translate("upgrade.title");
             ClientSize = new Size(520, 420);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -42,7 +44,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             var title = new Label
             {
-                Text = "SPIRIT UPGRADE",
+                Text = _localization.Translate("upgrade.heading"),
                 Font = new Font("Consolas", 14f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(160, 200, 255),
                 Location = new Point(16, 12),
@@ -86,7 +88,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             _upgradeButton = new Button
             {
-                Text = "Upgrade",
+                Text = _localization.Translate("upgrade.button.upgrade"),
                 Location = new Point(310, 230),
                 Size = new Size(190, 32),
                 FlatStyle = FlatStyle.Flat,
@@ -98,7 +100,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             _equip1Button = new Button
             {
-                Text = "Equip Slot 1",
+                Text = _localization.Translate("upgrade.button.equip1"),
                 Location = new Point(310, 270),
                 Size = new Size(90, 28),
                 FlatStyle = FlatStyle.Flat,
@@ -110,7 +112,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             _equip2Button = new Button
             {
-                Text = "Equip Slot 2",
+                Text = _localization.Translate("upgrade.button.equip2"),
                 Location = new Point(410, 270),
                 Size = new Size(90, 28),
                 FlatStyle = FlatStyle.Flat,
@@ -122,7 +124,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             _closeButton = new Button
             {
-                Text = "Close (Esc)",
+                Text = _localization.Translate("upgrade.button.close"),
                 Location = new Point(310, 308),
                 Size = new Size(190, 28),
                 FlatStyle = FlatStyle.Flat,
@@ -166,12 +168,12 @@ namespace ElementalSpirit.Presentation.Forms
             foreach (var spirit in _spirits.Unlocked)
             {
                 string eq = "";
-                if (_spirits.Equipped[0]?.Id == spirit.Id) eq = " [Slot1]";
-                if (_spirits.Equipped[1]?.Id == spirit.Id) eq = " [Slot2]";
+                if (_spirits.Equipped[0]?.Id == spirit.Id) eq = _localization.Translate("upgrade.list.slot1");
+                if (_spirits.Equipped[1]?.Id == spirit.Id) eq = _localization.Translate("upgrade.list.slot2");
 
                 string cost = spirit.Level >= 5
-                    ? "MAX"
-                    : $"{_upgrades.GetUpgradeCost(spirit)} shards";
+                    ? _localization.Translate("upgrade.list.max")
+                    : $"{_upgrades.GetUpgradeCost(spirit)}{_localization.Translate("upgrade.list.shardsSuffix")}";
 
                 _spiritList.Items.Add($"{spirit.Name}  Lv.{spirit.Level}  ({cost}){eq}");
             }
@@ -193,21 +195,22 @@ namespace ElementalSpirit.Presentation.Forms
             if (spirit == null) { _detailLabel.Text = ""; return; }
 
             string costText = spirit.Level >= 5
-                ? "MAX LEVEL"
-                : $"{_upgrades.GetUpgradeCost(spirit)} Spirit Shards";
+                ? _localization.Translate("upgrade.detail.maxLevel")
+                : $"{_upgrades.GetUpgradeCost(spirit)}{_localization.Translate("upgrade.detail.shardsSuffix")}";
 
             _detailLabel.Text =
                 $"{spirit.Name}\n" +
-                $"Element: {spirit.Element}\n" +
-                $"Level: {spirit.Level}/5\n" +
-                $"Cooldown: {spirit.CooldownDuration:0.#}s\n\n" +
-                $"Next upgrade:\n{costText}";
+                $"{_localization.Translate("upgrade.detail.element")} {spirit.Element}\n" +
+                $"{_localization.Translate("upgrade.detail.level")} {spirit.Level}/5\n" +
+                $"{_localization.Translate("upgrade.detail.cooldown")} {spirit.CooldownDuration:0.#}s\n\n" +
+                $"{_localization.Translate("upgrade.detail.nextUpgrade")}\n{costText}";
         }
 
         private void RefreshWallet()
         {
-            _walletLabel.Text =
-                $"Gold: {_wallet.Gold}   Shards: {_wallet.SpiritShards}   Crystals: {_wallet.Crystals}";
+            _walletLabel.Text = string.Format(
+                _localization.Translate("upgrade.wallet"),
+                _wallet.Gold, _wallet.SpiritShards, _wallet.Crystals);
         }
 
         private void UpgradeSelected()
@@ -217,7 +220,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             if (spirit.Level >= 5)
             {
-                _messageLabel.Text = $"{spirit.Name} is already max level.";
+                _messageLabel.Text = string.Format(_localization.Translate("upgrade.msg.alreadyMax"), spirit.Name);
                 _messageLabel.ForeColor = Color.FromArgb(255, 200, 120);
                 return;
             }
@@ -225,12 +228,14 @@ namespace ElementalSpirit.Presentation.Forms
             int cost = _upgrades.GetUpgradeCost(spirit);
             if (_upgrades.TryUpgrade(spirit, _wallet))
             {
-                _messageLabel.Text = $"{spirit.Name} → Lv.{spirit.Level} (-{cost} shards)";
+                _messageLabel.Text = string.Format(
+                    _localization.Translate("upgrade.msg.upgraded"), spirit.Name, spirit.Level, cost);
                 _messageLabel.ForeColor = Color.FromArgb(180, 255, 200);
             }
             else
             {
-                _messageLabel.Text = $"Need {cost} shards (have {_wallet.SpiritShards}).";
+                _messageLabel.Text = string.Format(
+                    _localization.Translate("upgrade.msg.needShards"), cost, _wallet.SpiritShards);
                 _messageLabel.ForeColor = Color.FromArgb(255, 120, 120);
             }
 
@@ -246,13 +251,14 @@ namespace ElementalSpirit.Presentation.Forms
 
             if (_spirits.Equip(slot, spirit))
             {
-                _messageLabel.Text = $"{spirit.Name} equipped to slot {slot + 1}";
+                _messageLabel.Text = string.Format(
+                    _localization.Translate("upgrade.msg.equipped"), spirit.Name, slot + 1);
                 _messageLabel.ForeColor = Color.FromArgb(180, 255, 200);
                 ReloadList();
             }
             else
             {
-                _messageLabel.Text = "Cannot equip (already in other slot?).";
+                _messageLabel.Text = _localization.Translate("upgrade.msg.cannotEquip");
                 _messageLabel.ForeColor = Color.FromArgb(255, 200, 120);
             }
         }

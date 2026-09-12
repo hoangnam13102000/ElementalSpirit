@@ -4,6 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.GameEngine;
+using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
 
 namespace ElementalSpirit.Presentation.Forms
@@ -12,6 +13,7 @@ namespace ElementalSpirit.Presentation.Forms
     {
         private readonly GameManager _gameManager;
         private readonly GameTimer _gameTimer;
+        private readonly ILocalizationService _localization = LocalizationManager.Instance;
 
         private readonly Image? _playerImage = AssetLoader.Get("Player.png");
         private string _loadedBackgroundName = "";
@@ -19,7 +21,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         public GameForm()
         {
-            Text = "Elemental Spirit - Phase 5 (Currency / Upgrade / Shop)";
+            Text = _localization.Translate("gameForm.windowTitle");
             ClientSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -168,8 +170,6 @@ namespace ElementalSpirit.Presentation.Forms
 
             if (_backgroundImage != null)
             {
-                // Stretch to fill the play area, cropping/letterboxing is skipped
-                // for simplicity since the window size is fixed.
                 g.DrawImage(_backgroundImage, new Rectangle(0, 0, ClientSize.Width, ClientSize.Height));
             }
         }
@@ -188,8 +188,6 @@ namespace ElementalSpirit.Presentation.Forms
 
             if (_playerImage != null)
             {
-                // The character artwork is drawn larger than the (small) collision box
-                // so it reads well on screen, centered on the actual hitbox.
                 float drawWidth = p.Width * 3.2f;
                 float drawHeight = p.Height * 3.2f;
                 float centerX = p.X + p.Width / 2f;
@@ -200,7 +198,6 @@ namespace ElementalSpirit.Presentation.Forms
                 var state = g.Save();
                 if (_gameManager.FacingDirection < 0)
                 {
-                    // Flip horizontally in place when facing left.
                     g.TranslateTransform(drawX + drawWidth, drawY);
                     g.ScaleTransform(-1f, 1f);
                     g.DrawImage(_playerImage, 0, 0, drawWidth, drawHeight);
@@ -322,7 +319,7 @@ namespace ElementalSpirit.Presentation.Forms
                 {
                     using var emptyFont = new Font("Consolas", 10f);
                     using var emptyBrush = new SolidBrush(Color.FromArgb(140, 150, 170));
-                    g.DrawString("Empty", emptyFont, emptyBrush, x + 50, startY + 20);
+                    g.DrawString(_localization.Translate("hud.spirit.empty"), emptyFont, emptyBrush, x + 50, startY + 20);
                     continue;
                 }
 
@@ -344,17 +341,17 @@ namespace ElementalSpirit.Presentation.Forms
                 Color statusColor;
                 if (spirit.IsActive)
                 {
-                    status = $"ACTIVE  {spirit.ActiveRemaining:0.0}s";
+                    status = $"{_localization.Translate("hud.spirit.active")}  {spirit.ActiveRemaining:0.0}s";
                     statusColor = Color.FromArgb(120, 255, 160);
                 }
                 else if (spirit.CooldownRemaining > 0)
                 {
-                    status = $"CD  {spirit.CooldownRemaining:0.0}s";
+                    status = $"{_localization.Translate("hud.spirit.cd")}  {spirit.CooldownRemaining:0.0}s";
                     statusColor = Color.FromArgb(255, 160, 100);
                 }
                 else
                 {
-                    status = "READY";
+                    status = _localization.Translate("hud.spirit.ready");
                     statusColor = Color.FromArgb(180, 220, 255);
                 }
                 using var statusBrush = new SolidBrush(statusColor);
@@ -373,7 +370,10 @@ namespace ElementalSpirit.Presentation.Forms
         private void DrawCurrencyHud(Graphics g)
         {
             var w = _gameManager.Wallet;
-            string text = $"Gold: {w.Gold}   Shards: {w.SpiritShards}   Crystals: {w.Crystals}";
+            string text =
+                $"{_localization.Translate("hud.currency.gold")} {w.Gold}   " +
+                $"{_localization.Translate("hud.currency.shards")} {w.SpiritShards}   " +
+                $"{_localization.Translate("hud.currency.crystals")} {w.Crystals}";
             using var font = new Font("Consolas", 12f, FontStyle.Bold);
             using var brush = new SolidBrush(Color.FromArgb(255, 220, 140));
             var size = g.MeasureString(text, font);
@@ -396,21 +396,21 @@ namespace ElementalSpirit.Presentation.Forms
             float y = 60;
             using var titleFont = new Font("Consolas", 10f, FontStyle.Bold);
             using var titleBrush = new SolidBrush(Color.FromArgb(180, 200, 230));
-            g.DrawString("EQUIPPED", titleFont, titleBrush, x, y);
+            g.DrawString(_localization.Translate("hud.equipped.title"), titleFont, titleBrush, x, y);
             y += 18;
             using var itemFont = new Font("Consolas", 9f);
             using var itemBrush = new SolidBrush(Color.FromArgb(200, 210, 230));
-            DrawEquipLine(g, itemFont, itemBrush, x, ref y, "WPN", inv.GetEquipped(EquipmentSlot.Weapon));
-            DrawEquipLine(g, itemFont, itemBrush, x, ref y, "ARM", inv.GetEquipped(EquipmentSlot.Armor));
-            DrawEquipLine(g, itemFont, itemBrush, x, ref y, "ACC", inv.GetEquipped(EquipmentSlot.Accessory));
+            DrawEquipLine(g, itemFont, itemBrush, x, ref y, _localization.Translate("hud.equip.weapon"), inv.GetEquipped(EquipmentSlot.Weapon));
+            DrawEquipLine(g, itemFont, itemBrush, x, ref y, _localization.Translate("hud.equip.armor"), inv.GetEquipped(EquipmentSlot.Armor));
+            DrawEquipLine(g, itemFont, itemBrush, x, ref y, _localization.Translate("hud.equip.accessory"), inv.GetEquipped(EquipmentSlot.Accessory));
             y += 8;
-            g.DrawString($"Owned: {inv.Items.Count} items", itemFont, itemBrush, x, y);
+            g.DrawString(string.Format(_localization.Translate("hud.owned"), inv.Items.Count), itemFont, itemBrush, x, y);
         }
 
-        private static void DrawEquipLine(Graphics g, Font font, Brush brush, float x, ref float y,
+        private void DrawEquipLine(Graphics g, Font font, Brush brush, float x, ref float y,
             string label, Equipment? item)
         {
-            string name = item?.Name ?? "(none)";
+            string name = item?.Name ?? _localization.Translate("hud.equip.none");
             string bonus = item == null ? ""
                 : $" +{item.BonusDamage}DMG +{item.BonusMaxHp}HP +{item.BonusDefense}DEF";
             g.DrawString($"{label}: {name}{bonus}", font, brush, x, y);
@@ -422,25 +422,31 @@ namespace ElementalSpirit.Presentation.Forms
             var p = _gameManager.Player;
             var waves = _gameManager.Waves;
             string stageStatus = _gameManager.IsStageCompleted
-                ? "STAGE CLEAR! (Press ESC)"
-                : $"Wave {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  State: {waves.State}";
+                ? _localization.Translate("hud.stageClear.pressEsc")
+                : $"{_localization.Translate("hud.wave.label")} {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  {_localization.Translate("hud.state.label")} {waves.State}";
 
             string effects = "";
             if (p.ActiveShield) effects += " [SHIELD]";
             if (p.ActiveFireBoost) effects += $" [FIRE DMG={p.Damage}]";
             if (p.ActiveHealEffect) effects += " [HEAL]";
             if (p.ActiveWindBarrage) effects += $" [WIND +{p.ExtraProjectiles}]";
-            string platState = p.IsGrounded ? $"GROUNDED [{p.MovementState}]" : $"AIR [{p.MovementState}] VY={p.VelocityY:0}";
+
+            string groundedLabel = p.IsGrounded
+                ? _localization.Translate("hud.grounded")
+                : _localization.Translate("hud.air");
+            string platState = p.IsGrounded
+                ? $"{groundedLabel} [{p.MovementState}]"
+                : $"{groundedLabel} [{p.MovementState}] VY={p.VelocityY:0}";
 
             string info =
-                $"Phase 5 – Currency / Upgrade / Shop\n" +
-                $"Stage: {waves.StageName}\n" +
+                $"{_localization.Translate("hud.phase")}\n" +
+                $"{_localization.Translate("hud.stage.label")} {waves.StageName}\n" +
                 $"{stageStatus}\n" +
-                $"HP: {p.CurrentHp}/{p.MaxHp}  DMG: {p.Damage}  DEF: {p.Defense}{effects}\n" +
+                $"{_localization.Translate("hud.hp.label")} {p.CurrentHp}/{p.MaxHp}  {_localization.Translate("hud.dmg.label")} {p.Damage}  {_localization.Translate("hud.def.label")} {p.Defense}{effects}\n" +
                 $"{platState}\n" +
-                $"Enemies: {_gameManager.Enemies.Enemies.Count}  Projectiles: {_gameManager.Projectiles.Projectiles.Count}\n" +
-                $"1/2 Spirit | 3/4 Loadout | B Shop (pause) | U Upgrade (pause) | G +Gold/Shards\n" +
-                $"A/D Move | W/Up Jump | Space Shoot | N Next Wave | ESC Exit";
+                $"{_localization.Translate("hud.enemies.label")} {_gameManager.Enemies.Enemies.Count}  {_localization.Translate("hud.projectiles.label")} {_gameManager.Projectiles.Projectiles.Count}\n" +
+                $"{_localization.Translate("hud.controls.line1")}\n" +
+                $"{_localization.Translate("hud.controls.line2")}";
 
             using var font = new Font("Consolas", 11f);
             using var brush = new SolidBrush(Color.FromArgb(200, 220, 255));
@@ -450,7 +456,7 @@ namespace ElementalSpirit.Presentation.Forms
             {
                 using var bigFont = new Font("Consolas", 28f, FontStyle.Bold);
                 using var bigBrush = new SolidBrush(Color.FromArgb(100, 255, 150));
-                string msg = "STAGE CLEAR!";
+                string msg = _localization.Translate("hud.stageClear.big");
                 var size = g.MeasureString(msg, bigFont);
                 g.DrawString(msg, bigFont, bigBrush,
                     (ClientSize.Width - size.Width) / 2, ClientSize.Height / 2 - 40);

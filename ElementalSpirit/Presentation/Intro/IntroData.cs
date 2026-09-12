@@ -39,9 +39,9 @@ namespace ElementalSpirit.Presentation.Intro
                 musicTrackName: MUSIC_MAIN,
                 lines: new List<DialogueLine>
                 {
-                    new DialogueLine(Speaker.OnScreenText, "", "Long before mankind..."),
-                    new DialogueLine(Speaker.Narrator, "Long before the first stone of civilization was laid, before kings drew borders on maps, before magic became a discipline studied in towers... a world was born from the harmony of four elements.", "This was Elaria."),
-                    new DialogueLine(Speaker.Narrator, "A world of ancient forests and endless oceans, of smoldering volcanoes and winds that carried songs across continents.")
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s1.l1.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s1.l2.text", "intro.s1.l2.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s1.l3.text")
                 });
         }
 
@@ -53,13 +53,13 @@ namespace ElementalSpirit.Presentation.Intro
                 musicTrackName: MUSIC_SPIRITS,
                 lines: new List<DialogueLine>
                 {
-                    new DialogueLine(Speaker.OnScreenText, "", "Four spirits guarded Elaria."),
-                    new DialogueLine(Speaker.Narrator, "They were not gods who demanded worship. They were not kings who demanded loyalty. They were the world's own breath made manifest — four Ancient Elemental Spirits, born from the essence of Elaria itself."),
-                    new DialogueLine(Speaker.Narrator, "Terra, whose hands shaped the mountains.", "Earth"),
-                    new DialogueLine(Speaker.Narrator, "Aqua, whose tears filled the oceans.", "Water"),
-                    new DialogueLine(Speaker.Narrator, "Ignis, whose fire warmed the cold earth.", "Fire"),
-                    new DialogueLine(Speaker.Narrator, "Zephyr, whose winds carried life across the world.", "Wind"),
-                    new DialogueLine(Speaker.Narrator, "Together, they wove a balance — four elements in eternal harmony.")
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s2.l1.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s2.l2.text"),
+                    new DialogueLine(Speaker.Narrator, "intro.s2.l3.text", "intro.s2.l3.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s2.l4.text", "intro.s2.l4.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s2.l5.text", "intro.s2.l5.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s2.l6.text", "intro.s2.l6.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s2.l7.text")
                 });
         }
 
@@ -71,12 +71,12 @@ namespace ElementalSpirit.Presentation.Intro
                 musicTrackName: MUSIC_CORRUPTION,
                 lines: new List<DialogueLine>
                 {
-                    new DialogueLine(Speaker.OnScreenText, "", "The balance was broken."),
-                    new DialogueLine(Speaker.Narrator, "One night, without warning... the Symbol cracked."),
-                    new DialogueLine(Speaker.Narrator, "The spirits vanished. Their power, no longer guided, began to corrupt the world."),
-                    new DialogueLine(Speaker.OnScreenText, "", "Something... awakened."),
-                    new DialogueLine(Speaker.Narrator, "Forests grew hostile. Rivers raged. Volcanoes awakened. And shadow creatures emerged from the corruption."),
-                    new DialogueLine(Speaker.Narrator, "No one knew what happened. The spirits were simply... gone.")
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s3.l1.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s3.l2.text"),
+                    new DialogueLine(Speaker.Narrator, "intro.s3.l3.text"),
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s3.l4.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s3.l5.text"),
+                    new DialogueLine(Speaker.Narrator, "intro.s3.l6.text")
                 });
         }
 
@@ -88,12 +88,12 @@ namespace ElementalSpirit.Presentation.Intro
                 musicTrackName: MUSIC_ARIN,
                 lines: new List<DialogueLine>
                 {
-                    new DialogueLine(Speaker.OnScreenText, "", "Arin — Elemental Mage Apprentice"),
-                    new DialogueLine(Speaker.VillageElder, "Arin, come inside. The forest tonight... it is not peaceful."),
-                    new DialogueLine(Speaker.Arin, "Elder... I hear something. A voice. From deep within the trees."),
-                    new DialogueLine(Speaker.VillageElder, "It is only the wind, child. Go home."),
-                    new DialogueLine(Speaker.Arin, "No... it is someone. Asking for help."),
-                    new DialogueLine(Speaker.OnScreenText, "", "The Spirit Bond awakens...")
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s4.l1.caption"),
+                    new DialogueLine(Speaker.VillageElder, "intro.s4.l2.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s4.l3.text"),
+                    new DialogueLine(Speaker.VillageElder, "intro.s4.l4.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s4.l5.text"),
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s4.l6.caption")
                 });
         }
 
@@ -105,19 +105,19 @@ namespace ElementalSpirit.Presentation.Intro
                 musicTrackName: MUSIC_TERRA,
                 lines: new List<DialogueLine>
                 {
-                    new DialogueLine(Speaker.OnScreenText, "", "Terra — Spirit of Earth"),
-                    new DialogueLine(Speaker.Terra, "Young mage... you hear me."),
-                    new DialogueLine(Speaker.Arin, "Who are you? Where am I?"),
-                    new DialogueLine(Speaker.Terra, "I am Terra. And this... is all that remains of me."),
-                    new DialogueLine(Speaker.Arin, "You are wounded. What happened?"),
-                    new DialogueLine(Speaker.Terra, "Something older than memory tore us apart. Our power now poisons this land."),
-                    new DialogueLine(Speaker.Arin, "How can I help?"),
-                    new DialogueLine(Speaker.Terra, "Enter the Earth Forest. Find my scattered essence. Prove your worth. Then... I may lend you strength."),
-                    new DialogueLine(Speaker.Arin, "I will come."),
-                    new DialogueLine(Speaker.Terra, "Be careful. The truth... is darker than you imagine. And the Primordial—"),
-                    new DialogueLine(Speaker.Arin, "Primordial? What is that?"),
-                    new DialogueLine(Speaker.Terra, "...you will know. In time."),
-                    new DialogueLine(Speaker.OnScreenText, "", "Something has been hidden...")
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s5.l1.caption"),
+                    new DialogueLine(Speaker.Terra, "intro.s5.l2.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s5.l3.text"),
+                    new DialogueLine(Speaker.Terra, "intro.s5.l4.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s5.l5.text"),
+                    new DialogueLine(Speaker.Terra, "intro.s5.l6.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s5.l7.text"),
+                    new DialogueLine(Speaker.Terra, "intro.s5.l8.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s5.l9.text"),
+                    new DialogueLine(Speaker.Terra, "intro.s5.l10.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s5.l11.text"),
+                    new DialogueLine(Speaker.Terra, "intro.s5.l12.text"),
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s5.l13.caption")
                 });
         }
 
@@ -129,13 +129,13 @@ namespace ElementalSpirit.Presentation.Intro
                 musicTrackName: MUSIC_JOURNEY,
                 lines: new List<DialogueLine>
                 {
-                    new DialogueLine(Speaker.Narrator, "Dawn broke pale and uncertain. Arin stood at the edge of the Earth Forest. Staff in hand. And a crystal that now glowed with faint green light."),
-                    new DialogueLine(Speaker.VillageElder, "You do not have to do this. You are still young."),
-                    new DialogueLine(Speaker.Arin, "I know. But if not me... then who?"),
-                    new DialogueLine(Speaker.Arin, "I am no chosen one. I am just... someone who will try."),
-                    new DialogueLine(Speaker.Narrator, "And so the first step was taken. Not by a prophesied hero. But by a young mage who refused to look away."),
-                    new DialogueLine(Speaker.OnScreenText, "", "Your journey begins..."),
-                    new DialogueLine(Speaker.Narrator, "LOCATION: Earth Forest\nOBJECTIVE: Find the source of corruption")
+                    new DialogueLine(Speaker.Narrator, "intro.s6.l1.text"),
+                    new DialogueLine(Speaker.VillageElder, "intro.s6.l2.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s6.l3.text"),
+                    new DialogueLine(Speaker.Arin, "intro.s6.l4.text"),
+                    new DialogueLine(Speaker.Narrator, "intro.s6.l5.text"),
+                    new DialogueLine(Speaker.OnScreenText, "", "intro.s6.l6.caption"),
+                    new DialogueLine(Speaker.Narrator, "intro.s6.l7.text")
                 });
         }
     }

@@ -1,4 +1,6 @@
-﻿namespace ElementalSpirit.Presentation.Intro
+﻿using ElementalSpirit.Localization;
+
+namespace ElementalSpirit.Presentation.Intro
 {
     public enum Speaker
     {
@@ -12,14 +14,20 @@
     public class DialogueLine
     {
         public Speaker Speaker { get; }
-        public string Text { get; }
-        public string? OnScreenCaption { get; }
+        private readonly string _textKey;
+        private readonly string? _captionKey;
 
-        public DialogueLine(Speaker speaker, string text, string? onScreenCaption = null)
+        public DialogueLine(Speaker speaker, string textKey, string? captionKey = null)
         {
             Speaker = speaker;
-            Text = text;
-            OnScreenCaption = onScreenCaption;
+            _textKey = textKey;
+            _captionKey = captionKey;
         }
+
+        public string Text =>
+            string.IsNullOrEmpty(_textKey) ? "" : LocalizationManager.Instance.Translate(_textKey);
+
+        public string? OnScreenCaption =>
+            _captionKey == null ? null : LocalizationManager.Instance.Translate(_captionKey);
     }
 }

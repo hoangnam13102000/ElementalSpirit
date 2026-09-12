@@ -12,10 +12,13 @@
 		<Content Include="Resources\Images\**\*.*">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+		<Content Include="Resources\Lang\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Resources\Images\Menu\" />
+		<Folder Include="Resources\Images\Menu\" />
 	</ItemGroup>
 
 </Project>

@@ -2,7 +2,9 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
+using ElementalSpirit.Presentation.Forms.Settings;
 
 namespace ElementalSpirit.Presentation.Forms
 {
@@ -13,9 +15,10 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly Button _btnExit;
         private Image? _menuBackground;
 
+        private readonly ILocalizationService _localization = LocalizationManager.Instance;
+
         public MainMenuForm()
         {
-            Text = "Elemental Spirit — Main Menu";
             ClientSize = new Size(1280, 720);
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
@@ -28,25 +31,38 @@ namespace ElementalSpirit.Presentation.Forms
             }
             catch { _menuBackground = null; }
 
-            _btnStart = CreateMenuButton("Start Game", 300);
+            _btnStart = CreateMenuButton(300);
             _btnStart.Click += BtnStart_Click;
 
-            _btnSettings = CreateMenuButton("Settings", 385);
+            _btnSettings = CreateMenuButton(385);
             _btnSettings.Click += BtnSettings_Click;
 
-            _btnExit = CreateMenuButton("Exit", 470);
+            _btnExit = CreateMenuButton(470);
             _btnExit.Click += (s, e) => Application.Exit();
 
             Controls.Add(_btnStart);
             Controls.Add(_btnSettings);
             Controls.Add(_btnExit);
+
+            // Khi ngôn ngữ đổi ở màn Settings (kể cả lần sau mở lại từ nơi khác),
+            // MainMenuForm tự cập nhật lại chữ trên UI.
+            _localization.LanguageChanged += (s, e) => ApplyTranslations();
+            ApplyTranslations();
         }
 
-        private Button CreateMenuButton(string text, int y)
+        private void ApplyTranslations()
+        {
+            Text = _localization.Translate("menu.windowTitle");
+            _btnStart.Text = _localization.Translate("menu.start");
+            _btnSettings.Text = _localization.Translate("menu.settings");
+            _btnExit.Text = _localization.Translate("menu.exit");
+            Invalidate(); // vẽ lại tiêu đề game trong OnPaint
+        }
+
+        private Button CreateMenuButton(int y)
         {
             var btn = new Button
             {
-                Text = text,
                 Bounds = new Rectangle(440, y, 400, 65),
                 Font = new Font("Georgia", 18f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(230, 220, 255),
@@ -78,11 +94,8 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
-            MessageBox.Show(
-                "Settings:\n\nResolution: 1280x720\nSound: On\nFullscreen: Off",
-                "Settings",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            using var settingsForm = new SettingsForm();
+            settingsForm.ShowDialog(this);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -106,7 +119,7 @@ namespace ElementalSpirit.Presentation.Forms
             using var titleFont = new Font("Georgia", 52f, FontStyle.Bold);
             using var titleBrush = new SolidBrush(Color.FromArgb(245, 235, 255));
 
-            string title = "ELEMENTAL SPIRIT";
+            string title = _localization.Translate("menu.gameTitle");
             var size = g.MeasureString(title, titleFont);
             float x = (ClientSize.Width - size.Width) / 2;
             float y = 70;
