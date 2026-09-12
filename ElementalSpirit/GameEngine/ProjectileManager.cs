@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using ElementalSpirit.Domain.Projectile;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.GameEngine
 {
-    public class ProjectileManager
+    public class ProjectileManager : IProjectileManager
     {
         private readonly List<Projectile> _projectiles = new();
 

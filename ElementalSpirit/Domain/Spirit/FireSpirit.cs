@@ -10,14 +10,12 @@
 
         protected override void ApplyEffect(PlayerEntity player)
         {
-            player.ActiveFireBoost = true;
-            player.ApplyDamageMultiplier(1f + _damageBonusPercent / 100f);
+            player.ActivateFireBoost(1f + _damageBonusPercent / 100f);
         }
 
         protected override void OnExpire(PlayerEntity player)
         {
-            player.ActiveFireBoost = false;
-            player.ResetDamageMultiplier();
+            player.DeactivateFireBoost();
         }
 
         protected override void OnLevelUp()

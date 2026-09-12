@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
+using ElementalSpirit.Domain.Enemy.NormalEnemy;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
@@ -32,8 +33,9 @@ namespace ElementalSpirit.Presentation.Forms
         private string _loadedBackgroundName = "";
         private Image? _backgroundImage;
 
-        public GameForm()
+        public GameForm(GameManager gameManager)
         {
+            _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             Text = _localization.Translate("gameForm.windowTitle");
             ClientSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
@@ -44,7 +46,6 @@ namespace ElementalSpirit.Presentation.Forms
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
-            _gameManager = new GameManager();
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
 
             _playerAnimController = MageAnimationLoader.CreateController();
@@ -318,7 +319,8 @@ namespace ElementalSpirit.Presentation.Forms
             {
                 if (!e.IsAlive && e.IsDeathAnimationComplete) continue;
 
-                if (e.Image != null)
+                Image? enemyImage = e is Slime ? AssetLoader.Get(Slime.AssetKey) : null;
+                if (enemyImage != null)
                 {
                     float drawScale = 1.2f;
                     float drawWidth = e.Width * drawScale;
@@ -332,11 +334,11 @@ namespace ElementalSpirit.Presentation.Forms
                     {
                         g.TranslateTransform(drawX + drawWidth, drawY);
                         g.ScaleTransform(-1f, 1f);
-                        g.DrawImage(e.Image, 0, 0, drawWidth, drawHeight);
+                        g.DrawImage(enemyImage, 0, 0, drawWidth, drawHeight);
                     }
                     else
                     {
-                        g.DrawImage(e.Image, drawX, drawY, drawWidth, drawHeight);
+                        g.DrawImage(enemyImage, drawX, drawY, drawWidth, drawHeight);
                     }
                     g.Restore(state);
 
@@ -376,7 +378,7 @@ namespace ElementalSpirit.Presentation.Forms
             float startX = 12f, startY = ClientSize.Height - 78f;
             float slotW = 210f, slotH = 58f;
 
-            for (int i = 0; i < SpiritManager.MaxEquipped; i++)
+            for (int i = 0; i < 2; i++)
             {
                 var spirit = spirits.Equipped[i];
                 float x = startX + i * (slotW + 12);

@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Drawing;
 using ElementalSpirit.Domain.Player;
-using ElementalSpirit.Presentation.Assets;
 
 namespace ElementalSpirit.Domain.Enemy.NormalEnemy
 {
     public class Slime : Enemy
     {
+        public const string AssetKey = "Slime.png";
         private readonly Random _random = new();
         private readonly float _speed = 70f;
         private float _dirX = 0f, _dirY = 0f;
@@ -17,7 +16,6 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
         public Slime(float x, float y) : base(x, y, maxHealth: 30, damage: 8)
         {
             Width = 40; Height = 32;
-            Image = AssetLoader.Get("Slime.png");
             ChooseNewDirection();
         }
 

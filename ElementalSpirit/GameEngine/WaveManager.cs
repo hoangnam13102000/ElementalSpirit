@@ -1,5 +1,6 @@
 ﻿using System;
 using ElementalSpirit.Domain.Stage;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.GameEngine
 {
@@ -11,10 +12,10 @@ namespace ElementalSpirit.GameEngine
         StageCompleted
     }
 
-    public class WaveManager
+    public class WaveManager : IWaveManager
     {
-        private readonly SpawnManager _spawnManager;
-        private readonly EnemyManager _enemyManager;
+        private readonly ISpawnManager _spawnManager;
+        private readonly IEnemyManager _enemyManager;
 
         private StageData? _currentStage;
         private int _currentWaveIndex = -1;
@@ -33,10 +34,10 @@ namespace ElementalSpirit.GameEngine
         public event Action? OnStageCompleted;
         public event Action<int>? OnWaveStarted;
 
-        public WaveManager(SpawnManager spawnManager, EnemyManager enemyManager)
+        public WaveManager(ISpawnManager spawnManager, IEnemyManager enemyManager)
         {
-            _spawnManager = spawnManager;
-            _enemyManager = enemyManager;
+            _spawnManager = spawnManager ?? throw new ArgumentNullException(nameof(spawnManager));
+            _enemyManager = enemyManager ?? throw new ArgumentNullException(nameof(enemyManager));
         }
 
         public void LoadStage(StageData stage)

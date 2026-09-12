@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Windows.Forms;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.GameEngine
 {
-    public class InputManager
+    public class InputManager : IInputManager
     {
         private readonly HashSet<Keys> _pressedKeys = new();
 

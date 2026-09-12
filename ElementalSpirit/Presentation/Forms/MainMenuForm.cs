@@ -84,7 +84,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             introForm.OnIntroFinished += () =>
             {
-                var gameForm = new GameForm();
+                var gameForm = new GameForm(Program.CreateGameManager());
                 gameForm.ShowDialog();
                 this.Close();
             };

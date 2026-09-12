@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using ElementalSpirit.Domain.Enemy;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.GameEngine
 {
-    public class EnemyManager
+    public class EnemyManager : IEnemyManager
     {
         private readonly List<Enemy> _enemies = new();
         public IReadOnlyList<Enemy> Enemies => _enemies;

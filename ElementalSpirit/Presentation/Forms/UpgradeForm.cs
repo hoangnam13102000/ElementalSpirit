@@ -6,14 +6,16 @@ using ElementalSpirit.Domain.Spirit;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Services;
+using ElementalSpirit.Services.Abstractions;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms
 {
     public class UpgradeForm : Form
     {
-        private readonly SpiritManager _spirits;
+        private readonly ISpiritManager _spirits;
         private readonly PlayerWallet _wallet;
-        private readonly UpgradeService _upgrades;
+        private readonly IUpgradeService _upgrades;
         private readonly ILocalizationService _localization = LocalizationManager.Instance;
 
         private readonly ListBox _spiritList;
@@ -25,7 +27,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly Button _equip2Button;
         private readonly Button _closeButton;
 
-        public UpgradeForm(SpiritManager spirits, PlayerWallet wallet, UpgradeService upgrades)
+        public UpgradeForm(ISpiritManager spirits, PlayerWallet wallet, IUpgradeService upgrades)
         {
             _spirits = spirits;
             _wallet = wallet;

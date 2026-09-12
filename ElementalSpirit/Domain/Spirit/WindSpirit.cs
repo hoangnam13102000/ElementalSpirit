@@ -10,14 +10,12 @@
 
         protected override void ApplyEffect(PlayerEntity player)
         {
-            player.ActiveWindBarrage = true;
-            player.ExtraProjectiles = _extraProjectiles;
+            player.ActivateWindBarrage(_extraProjectiles);
         }
 
         protected override void OnExpire(PlayerEntity player)
         {
-            player.ActiveWindBarrage = false;
-            player.ExtraProjectiles = 0;
+            player.DeactivateWindBarrage();
         }
 
         protected override void OnLevelUp()

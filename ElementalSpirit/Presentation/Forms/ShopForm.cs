@@ -6,6 +6,7 @@ using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Services;
+using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms
 {
@@ -13,7 +14,7 @@ namespace ElementalSpirit.Presentation.Forms
     {
         private readonly PlayerWallet _wallet;
         private readonly Inventory _inventory;
-        private readonly ShopService _shop;
+        private readonly IShopService _shop;
         private readonly Action? _onInventoryChanged;
 
         private readonly ListBox _itemList;
@@ -27,7 +28,7 @@ namespace ElementalSpirit.Presentation.Forms
         public ShopForm(
             PlayerWallet wallet,
             Inventory inventory,
-            ShopService shop,
+            IShopService shop,
             Action? onInventoryChanged = null)
         {
             _wallet = wallet;

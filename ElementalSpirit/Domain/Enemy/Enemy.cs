@@ -8,7 +8,6 @@ namespace ElementalSpirit.Domain.Enemy
     {
         public int MaxHealth => MaxHp;
         public int Health => HP;
-        public Image? Image { get; protected set; }
         public bool IsDying { get; protected set; }
         public bool IsDeathAnimationComplete { get; protected set; }
         public Domain.Player.FacingDirection Facing { get; protected set; } = Domain.Player.FacingDirection.Left;

@@ -8,6 +8,8 @@ using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Factories;
 using ElementalSpirit.Services;
+using ElementalSpirit.GameEngine.Abstractions;
+using ElementalSpirit.Services.Abstractions;
 using FacingEnum = ElementalSpirit.Domain.Player.FacingDirection;
 
 namespace ElementalSpirit.GameEngine
@@ -15,17 +17,17 @@ namespace ElementalSpirit.GameEngine
     public class GameManager
     {
         public Player Player { get; }
-        public InputManager Input { get; }
-        public ProjectileManager Projectiles { get; }
-        public EnemyManager Enemies { get; }
-        public CollisionManager Collision { get; }
-        public SpawnManager Spawn { get; }
-        public WaveManager Waves { get; }
-        public SpiritManager Spirits { get; }
+        public IInputManager Input { get; }
+        public IProjectileManager Projectiles { get; }
+        public IEnemyManager Enemies { get; }
+        public ICollisionManager Collision { get; }
+        public ISpawnManager Spawn { get; }
+        public IWaveManager Waves { get; }
+        public ISpiritManager Spirits { get; }
         public PlayerWallet Wallet { get; }
         public Inventory Inventory { get; }
-        public UpgradeService Upgrades { get; }
-        public ShopService Shop { get; }
+        public IUpgradeService Upgrades { get; }
+        public IShopService Shop { get; }
 
         public RectangleF PlayArea { get; private set; }
         public float GroundY { get; private set; }
@@ -42,19 +44,30 @@ namespace ElementalSpirit.GameEngine
         private bool _attackKeyWasPressed;
         private bool _fireKeyWasPressed;
 
-        public GameManager()
+        public GameManager(
+            IInputManager input,
+            IProjectileManager projectiles,
+            IEnemyManager enemies,
+            ICollisionManager collision,
+            ISpawnManager spawn,
+            IWaveManager waves,
+            ISpiritManager spirits,
+            IShopService shop,
+            IUpgradeService upgrades,
+            PlayerWallet wallet,
+            Inventory inventory)
         {
-            Input = new InputManager();
-            Projectiles = new ProjectileManager();
-            Enemies = new EnemyManager();
-            Collision = new CollisionManager();
-            Spawn = new SpawnManager(Enemies);
-            Waves = new WaveManager(Spawn, Enemies);
-            Spirits = new SpiritManager();
-            Wallet = new PlayerWallet(250, 20, 2);
-            Inventory = new Inventory();
-            Upgrades = new UpgradeService();
-            Shop = new ShopService();
+            Input = input ?? throw new ArgumentNullException(nameof(input));
+            Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+            Enemies = enemies ?? throw new ArgumentNullException(nameof(enemies));
+            Collision = collision ?? throw new ArgumentNullException(nameof(collision));
+            Spawn = spawn ?? throw new ArgumentNullException(nameof(spawn));
+            Waves = waves ?? throw new ArgumentNullException(nameof(waves));
+            Spirits = spirits ?? throw new ArgumentNullException(nameof(spirits));
+            Shop = shop ?? throw new ArgumentNullException(nameof(shop));
+            Upgrades = upgrades ?? throw new ArgumentNullException(nameof(upgrades));
+            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
 
             var starter = EquipmentCatalog.Find("wpn_basic_wand");
             if (starter != null)
@@ -63,7 +76,7 @@ namespace ElementalSpirit.GameEngine
                 Inventory.TryEquip(starter.Id);
             }
 
-            Player = new Player(180f, 360f);
+            Player = new Player(PlayerConstants.DefaultStartX, PlayerConstants.DefaultStartY);
             RefreshPlayerEquipmentStats();
 
             Player.OnAttackHitFrame += OnPlayerAttackHitFrame;
@@ -93,9 +106,9 @@ namespace ElementalSpirit.GameEngine
 
             var (dirX, _) = Input.GetMovementDirection();
 
-            Player.WantsToRun = Input.IsKeyDown(Keys.ShiftKey) ||
-                               Input.IsKeyDown(Keys.LShiftKey) ||
-                               Input.IsKeyDown(Keys.RShiftKey);
+            Player.SetWantsToRun(Input.IsKeyDown(Keys.ShiftKey) ||
+                                 Input.IsKeyDown(Keys.LShiftKey) ||
+                                 Input.IsKeyDown(Keys.RShiftKey));
 
             if (!Player.IsAttacking && !Player.IsFiring && !Player.IsHurt && !Player.IsDead)
             {
@@ -104,9 +117,9 @@ namespace ElementalSpirit.GameEngine
             else
             {
                 if (Player.IsAttacking || Player.IsFiring)
-                    Player.VelocityX *= 0.85f;
+                    Player.ApplyVelocityDamping(0.85f);
                 else if (Player.IsHurt)
-                    Player.VelocityX *= 0.9f;
+                    Player.ApplyVelocityDamping(0.9f);
             }
 
             bool jumpKeyNow = Input.IsJumpPressed();

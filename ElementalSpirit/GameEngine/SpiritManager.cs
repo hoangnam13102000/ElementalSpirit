@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
 using ElementalSpirit.Domain.Spirit;
 using ElementalSpirit.Factories;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.GameEngine
 {
     using PlayerEntity = ElementalSpirit.Domain.Player.Player;
 
-    public class SpiritManager
+    public class SpiritManager : ISpiritManager
     {
         public const int MaxEquipped = 2;
         private readonly List<ISpirit> _unlocked = new();

@@ -13,14 +13,14 @@ namespace ElementalSpirit.Domain.Player
 
     public class Player : Character
     {
-        public float VelocityX { get; set; }
+        public float VelocityX { get; private set; }
         public float VelocityY { get; private set; }
-        public float WalkSpeed { get; private set; } = 140f;
-        public float RunSpeed { get; private set; } = 280f;
+        public float WalkSpeed { get; private set; } = PlayerConstants.WalkSpeed;
+        public float RunSpeed { get; private set; } = PlayerConstants.RunSpeed;
         public float CurrentMoveSpeed { get; private set; }
-        public bool WantsToRun { get; set; }
-        public float JumpForce { get; private set; } = 560f;
-        public float Gravity { get; private set; } = 1500f;
+        public bool WantsToRun { get; private set; }
+        public float JumpForce { get; private set; } = PlayerConstants.JumpForce;
+        public float Gravity { get; private set; } = PlayerConstants.Gravity;
         public bool IsGrounded { get; private set; }
         public PlayerMovementState MovementState { get; private set; }
 
@@ -29,27 +29,27 @@ namespace ElementalSpirit.Domain.Player
         [Obsolete("Use WalkSpeed/RunSpeed instead.")]
         public float MoveSpeed { get; private set; } = 260f;
 
-        public FacingDirection Facing { get; set; } = FacingDirection.Right;
+        public FacingDirection Facing { get; private set; } = FacingDirection.Right;
 
-        public int BaseMaxHp { get; private set; } = 100;
+        public int BaseMaxHp { get; private set; } = PlayerConstants.BaseMaxHp;
         public int CurrentHp => HP;
-        public int CoreDamage { get; private set; } = 10;
-        public int BaseDamage { get; private set; } = 10;
-        public int Defense { get; private set; } = 0;
+        public int CoreDamage { get; private set; } = PlayerConstants.BaseDamage;
+        public int BaseDamage { get; private set; } = PlayerConstants.BaseDamage;
+        public int Defense { get; private set; } = PlayerConstants.BaseDefense;
         private float _damageMultiplier = 1f;
 
-        public bool IsInvulnerable { get; set; }
+        public bool IsInvulnerable { get; private set; }
         private float _invulnerabilityTimer;
-        public float InvulnerabilityDuration { get; private set; } = 0.8f;
+        public float InvulnerabilityDuration { get; private set; } = PlayerConstants.InvulnerabilityDuration;
 
-        public bool ActiveShield { get; set; }
-        public bool ActiveFireBoost { get; set; }
-        public bool ActiveHealEffect { get; set; }
-        public bool ActiveWindBarrage { get; set; }
-        public int ExtraProjectiles { get; set; }
+        public bool ActiveShield { get; private set; }
+        public bool ActiveFireBoost { get; private set; }
+        public bool ActiveHealEffect { get; private set; }
+        public bool ActiveWindBarrage { get; private set; }
+        public int ExtraProjectiles { get; private set; }
 
         public float AttackCooldown { get; private set; }
-        public float AttackInterval { get; private set; } = 0.45f;
+        public float AttackInterval { get; private set; } = PlayerConstants.AttackInterval;
 
         public bool IsAttacking { get; private set; }
         public bool IsFiring { get; private set; }
@@ -62,7 +62,8 @@ namespace ElementalSpirit.Domain.Player
         public event Action? OnDeathAnimationEnded;
 
         public Player(float startX, float startY)
-            : base(startX, startY, 32, 32, 100, 10)
+            : base(startX, startY, PlayerConstants.Width, PlayerConstants.Height,
+                  PlayerConstants.BaseMaxHp, PlayerConstants.BaseDamage)
         {
             VelocityX = 0f;
             VelocityY = 0f;
@@ -78,6 +79,60 @@ namespace ElementalSpirit.Domain.Player
             VelocityX = dirX * CurrentMoveSpeed;
             if (dirX > 0.1f) Facing = FacingDirection.Right;
             else if (dirX < -0.1f) Facing = FacingDirection.Left;
+        }
+
+        public void SetWantsToRun(bool wantsToRun) => WantsToRun = wantsToRun;
+
+        public void ApplyVelocityDamping(float factor) =>
+            VelocityX *= Math.Clamp(factor, 0f, 1f);
+
+        public void ActivateFireBoost(float damageMultiplier)
+        {
+            ActiveFireBoost = true;
+            ApplyDamageMultiplier(damageMultiplier);
+        }
+
+        public void DeactivateFireBoost()
+        {
+            ActiveFireBoost = false;
+            ResetDamageMultiplier();
+        }
+
+        public void ActivateShield()
+        {
+            ActiveShield = true;
+            IsInvulnerable = true;
+        }
+
+        public void DeactivateShield()
+        {
+            ActiveShield = false;
+            IsInvulnerable = false;
+        }
+
+        public void ActivateHeal(int instantAmount)
+        {
+            ActiveHealEffect = true;
+            Heal(instantAmount);
+        }
+
+        public void TickHeal(int amount)
+        {
+            if (amount > 0) Heal(amount);
+        }
+
+        public void DeactivateHeal() => ActiveHealEffect = false;
+
+        public void ActivateWindBarrage(int extraProjectiles)
+        {
+            ActiveWindBarrage = true;
+            ExtraProjectiles = Math.Max(0, extraProjectiles);
+        }
+
+        public void DeactivateWindBarrage()
+        {
+            ActiveWindBarrage = false;
+            ExtraProjectiles = 0;
         }
 
         public void TryJump()
@@ -98,14 +153,14 @@ namespace ElementalSpirit.Domain.Player
             if (IsDead)
             {
                 VelocityY += Gravity * deltaTime;
-                if (VelocityY > 1200f) VelocityY = 1200f;
+                if (VelocityY > PlayerConstants.MaxFallSpeed) VelocityY = PlayerConstants.MaxFallSpeed;
                 Y += VelocityY * deltaTime;
                 return;
             }
             if (!IsGrounded)
             {
                 VelocityY += Gravity * deltaTime;
-                if (VelocityY > 1200f) VelocityY = 1200f;
+                if (VelocityY > PlayerConstants.MaxFallSpeed) VelocityY = PlayerConstants.MaxFallSpeed;
             }
             X += VelocityX * deltaTime;
             Y += VelocityY * deltaTime;

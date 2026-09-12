@@ -8,14 +8,12 @@
 
         protected override void ApplyEffect(PlayerEntity player)
         {
-            player.ActiveShield = true;
-            player.IsInvulnerable = true;
+            player.ActivateShield();
         }
 
         protected override void OnExpire(PlayerEntity player)
         {
-            player.ActiveShield = false;
-            player.IsInvulnerable = false;
+            player.DeactivateShield();
         }
 
         protected override void OnLevelUp()

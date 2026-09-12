@@ -11,19 +11,18 @@
 
         protected override void ApplyEffect(PlayerEntity player)
         {
-            player.ActiveHealEffect = true;
-            player.Heal(_instantHeal);
+            player.ActivateHeal(_instantHeal);
         }
 
         protected override void OnActiveTick(PlayerEntity player, float deltaTime)
         {
             int amount = (int)(_regenPerSecond * deltaTime + 0.5f);
-            if (amount > 0) player.Heal(amount);
+            player.TickHeal(amount);
         }
 
         protected override void OnExpire(PlayerEntity player)
         {
-            player.ActiveHealEffect = false;
+            player.DeactivateHeal();
         }
 
         protected override void OnLevelUp()

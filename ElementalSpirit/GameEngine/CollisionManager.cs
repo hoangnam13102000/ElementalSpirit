@@ -1,11 +1,12 @@
 ﻿using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Projectile;
+using ElementalSpirit.GameEngine.Abstractions;
 
 namespace ElementalSpirit.GameEngine
 {
-    public class CollisionManager
+    public class CollisionManager : ICollisionManager
     {
-        public void CheckCollisions(ProjectileManager projectileManager, EnemyManager enemyManager)
+        public void CheckCollisions(IProjectileManager projectileManager, IEnemyManager enemyManager)
         {
             var projectiles = projectileManager.Projectiles;
             var enemies = enemyManager.Enemies;

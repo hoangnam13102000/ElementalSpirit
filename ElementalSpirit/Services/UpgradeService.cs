@@ -1,9 +1,10 @@
 ﻿using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Spirit;
+using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Services
 {
-    public class UpgradeService
+    public class UpgradeService : IUpgradeService
     {
         public int GetUpgradeCost(ISpirit spirit)
         {

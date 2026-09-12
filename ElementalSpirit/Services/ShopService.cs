@@ -1,6 +1,7 @@
 ﻿using ElementalSpirit.Data;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Inventory;
+using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Services
 {
@@ -12,7 +13,7 @@ namespace ElementalSpirit.Services
         NotEnoughGold
     }
 
-    public class ShopService
+    public class ShopService : IShopService
     {
         public PurchaseResult TryBuy(string itemId, PlayerWallet wallet, Inventory inventory)
         {
