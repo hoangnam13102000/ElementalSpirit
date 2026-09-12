@@ -18,10 +18,12 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
         private float _changeDirectionInterval = 0.8f;
 
         // Gioi han bien di chuyen (de khong bay lung tung qua xa)
+        // SUA: gioi han theo dai "nen dat" (con duong trong anh nen), khop voi GameManager.GroundTop/GroundBottom,
+        // de slime chi chay tren mat dat, khong bay len troi hay lot xuong vach da.
         private float _minX = 400f;
         private float _maxX = 1200f;
-        private float _minY = 80f;
-        private float _maxY = 620f;
+        private float _minY = 460f;
+        private float _maxY = 550f;
 
         public Slime(float x, float y)
             : base(x, y, maxHealth: 30, damage: 8)

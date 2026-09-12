@@ -21,9 +21,11 @@ namespace ElementalSpirit.GameEngine
 
         public void SetSpawnArea(float screenWidth, float screenHeight)
         {
-            _spawnX = screenWidth - 30f;          
-            _spawnMinY = 100f;
-            _spawnMaxY = screenHeight - 100f;
+            _spawnX = screenWidth - 30f;
+            // ===== SUA: Chi spawn enemy trong dai "nen dat" (duong di), khop voi GameManager.GroundTop/GroundBottom =====
+            _spawnMinY = screenHeight * 0.64f;
+            _spawnMaxY = screenHeight * 0.78f;
+            // ============================================================================================================
         }
 
         public void Spawn(SpawnData data)

@@ -22,14 +22,16 @@ namespace ElementalSpirit.GameEngine
         public (float dirX, float dirY) GetMovementDirection()
         {
             float x = 0f;
-            float y = 0f;
 
             if (IsKeyDown(Keys.A) || IsKeyDown(Keys.Left)) x -= 1f;
             if (IsKeyDown(Keys.D) || IsKeyDown(Keys.Right)) x += 1f;
-            if (IsKeyDown(Keys.W) || IsKeyDown(Keys.Up)) y -= 1f;
-            if (IsKeyDown(Keys.S) || IsKeyDown(Keys.Down)) y += 1f;
 
-            return (x, y);
+            return (x, 0f);
+        }
+
+        public bool IsJumpPressed()
+        {
+            return IsKeyDown(Keys.W) || IsKeyDown(Keys.Up);
         }
 
         public void Clear()

@@ -25,11 +25,17 @@ namespace ElementalSpirit.GameEngine
         public ShopService Shop { get; }
 
         public RectangleF PlayArea { get; private set; }
+        public float GroundY { get; private set; }
+
+        private const float GroundTopRatio = 0.78f;
+
         public float FacingDirection { get; private set; } = 1f;
         public bool IsStageCompleted { get; private set; }
         public bool IsPaused { get; set; }
         public string StatusMessage { get; private set; } = "";
         private float _statusMessageTimer;
+
+        private bool _jumpKeyWasPressed;
 
         public GameManager()
         {
@@ -62,7 +68,13 @@ namespace ElementalSpirit.GameEngine
         public void SetPlayArea(float width, float height)
         {
             PlayArea = new RectangleF(0, 0, width, height);
+            GroundY = PlayArea.Top + PlayArea.Height * GroundTopRatio;
             Spawn.SetSpawnArea(width, height);
+
+            if (Player.Y + Player.Height > GroundY)
+            {
+                Player.ResolveGroundCollision(GroundY);
+            }
         }
 
         public void Update(float deltaTime)
@@ -75,12 +87,26 @@ namespace ElementalSpirit.GameEngine
 
             if (IsPaused || IsStageCompleted) return;
 
-            var (dirX, dirY) = Input.GetMovementDirection();
-            if (dirX != 0) FacingDirection = dirX > 0 ? 1f : -1f;
-            if (dirX != 0 || dirY != 0) Player.Move(dirX, dirY, deltaTime);
+            // ===== Platformer movement flow =====
+            var (dirX, _) = Input.GetMovementDirection();
 
-            Player.ClampToBounds(PlayArea.Left, PlayArea.Top, PlayArea.Right, PlayArea.Bottom);
+            if (dirX != 0)
+                FacingDirection = dirX > 0 ? 1f : -1f;
+
+            Player.MoveHorizontal(dirX, deltaTime);
+
+            bool jumpKeyNow = Input.IsJumpPressed();
+            if (jumpKeyNow && !_jumpKeyWasPressed)
+            {
+                Player.TryJump();
+            }
+            _jumpKeyWasPressed = jumpKeyNow;
+
             Player.Update(deltaTime);
+            Player.ResolveGroundCollision(GroundY);
+            Player.ClampHorizontalBounds(PlayArea.Left, PlayArea.Right);
+
+            // ===== Combat & systems (unchanged) =====
             Spirits.Update(deltaTime, Player);
 
             if (Input.IsKeyDown(System.Windows.Forms.Keys.Space) && Player.CanAttack())

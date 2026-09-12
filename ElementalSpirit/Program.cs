@@ -4,7 +4,7 @@ using ElementalSpirit.Presentation.Forms;
 
 namespace ElementalSpirit
 {
-    internal static class Program
+    static class Program
     {
         [STAThread]
         static void Main()
@@ -12,7 +12,8 @@ namespace ElementalSpirit
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new GameForm());
+
+            Application.Run(new MainMenuForm());
         }
     }
 }

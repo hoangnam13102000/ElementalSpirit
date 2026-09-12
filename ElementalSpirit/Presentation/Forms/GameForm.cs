@@ -147,6 +147,7 @@ namespace ElementalSpirit.Presentation.Forms
             g.Clear(Color.FromArgb(18, 22, 32));
 
             DrawBackground(g);
+            DrawGround(g);
             DrawPlayer(g);
             DrawProjectiles(g);
             DrawEnemies(g);
@@ -171,6 +172,13 @@ namespace ElementalSpirit.Presentation.Forms
                 // for simplicity since the window size is fixed.
                 g.DrawImage(_backgroundImage, new Rectangle(0, 0, ClientSize.Width, ClientSize.Height));
             }
+        }
+
+        private void DrawGround(Graphics g)
+        {
+            // Visual ground rendering is intentionally empty — the Earth Forest background
+            // already provides a beautiful ground/path artwork. GroundY is still used
+            // for physics collision; no extra visual overlay needed.
         }
 
         private void DrawPlayer(Graphics g)
@@ -422,15 +430,17 @@ namespace ElementalSpirit.Presentation.Forms
             if (p.ActiveFireBoost) effects += $" [FIRE DMG={p.Damage}]";
             if (p.ActiveHealEffect) effects += " [HEAL]";
             if (p.ActiveWindBarrage) effects += $" [WIND +{p.ExtraProjectiles}]";
+            string platState = p.IsGrounded ? $"GROUNDED [{p.MovementState}]" : $"AIR [{p.MovementState}] VY={p.VelocityY:0}";
 
             string info =
                 $"Phase 5 – Currency / Upgrade / Shop\n" +
                 $"Stage: {waves.StageName}\n" +
                 $"{stageStatus}\n" +
                 $"HP: {p.CurrentHp}/{p.MaxHp}  DMG: {p.Damage}  DEF: {p.Defense}{effects}\n" +
+                $"{platState}\n" +
                 $"Enemies: {_gameManager.Enemies.Enemies.Count}  Projectiles: {_gameManager.Projectiles.Projectiles.Count}\n" +
                 $"1/2 Spirit | 3/4 Loadout | B Shop (pause) | U Upgrade (pause) | G +Gold/Shards\n" +
-                $"WASD Move | Space Shoot | N Next Wave | ESC Exit";
+                $"A/D Move | W/Up Jump | Space Shoot | N Next Wave | ESC Exit";
 
             using var font = new Font("Consolas", 11f);
             using var brush = new SolidBrush(Color.FromArgb(200, 220, 255));
