@@ -190,6 +190,7 @@ namespace ElementalSpirit.Presentation.Forms
             if (_fireballFrames != null) foreach (var img in _fireballFrames) img.Dispose();
             AssetLoader.DisposeAll();
             MageAnimationLoader.DisposeAll();
+            SlimeAnimationLoader.DisposeAll();
         }
 
         protected override void OnPaint(PaintEventArgs e)

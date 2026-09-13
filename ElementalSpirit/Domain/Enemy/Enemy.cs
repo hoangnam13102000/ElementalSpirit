@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using ElementalSpirit.Domain;
 
 namespace ElementalSpirit.Domain.Enemy
@@ -10,7 +9,8 @@ namespace ElementalSpirit.Domain.Enemy
         public int Health => HP;
         public bool IsDying { get; protected set; }
         public bool IsDeathAnimationComplete { get; protected set; }
-        public Domain.Player.FacingDirection Facing { get; protected set; } = Domain.Player.FacingDirection.Left;
+        public Domain.Player.FacingDirection Facing { get; protected set; } =
+            Domain.Player.FacingDirection.Left;
 
         private float _hurtTimer;
         private float _deathTimer;
@@ -23,6 +23,19 @@ namespace ElementalSpirit.Domain.Enemy
         }
 
         public abstract void Update(float deltaTime, float groundY);
+
+        public virtual void ResolveGroundCollision(float groundY)
+        {
+            float bottom = Y + Height;
+            if (bottom > groundY)
+                Y = groundY - Height;
+        }
+
+        public virtual void ClampHorizontalBounds(float minX, float maxX)
+        {
+            if (X < minX) X = minX;
+            if (X + Width > maxX) X = maxX - Width;
+        }
 
         protected void UpdateEffectTimers(float deltaTime)
         {
@@ -42,12 +55,32 @@ namespace ElementalSpirit.Domain.Enemy
         {
             if (!IsAlive) return;
             HP = Math.Max(0, HP - amount);
-            if (HP <= 0) { IsDying = true; IsDead = true; IsHurt = false; _deathTimer = DeathDuration; }
-            else { IsHurt = true; _hurtTimer = HurtDuration; }
+            if (HP <= 0)
+            {
+                IsDying = true;
+                IsDead = true;
+                IsHurt = false;
+                _deathTimer = DeathDuration;
+            }
+            else
+            {
+                IsHurt = true;
+                _hurtTimer = HurtDuration;
+            }
         }
 
-        public virtual void NotifyHurtAnimationEnded() { IsHurt = false; _hurtTimer = 0f; }
-        public virtual void NotifyDeathAnimationEnded() { IsDeathAnimationComplete = true; _deathTimer = 0f; }
+        public virtual void NotifyHurtAnimationEnded()
+        {
+            IsHurt = false;
+            _hurtTimer = 0f;
+        }
+
+        public virtual void NotifyDeathAnimationEnded()
+        {
+            IsDeathAnimationComplete = true;
+            _deathTimer = 0f;
+        }
+
         public virtual void OnDeath() { }
     }
 }

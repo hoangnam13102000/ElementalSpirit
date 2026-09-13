@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using ElementalSpirit.Data;
 using ElementalSpirit.Domain.Currency;
+using ElementalSpirit.Domain.Enemy.NormalEnemy;
 using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Stage;
@@ -82,6 +83,13 @@ namespace ElementalSpirit.GameEngine
             Waves.OnStageCompleted += () => IsStageCompleted = true;
         }
 
+        private void OnSlimeAttackHit(Slime slime)
+        {
+            if (Player.IsDead || Player.IsInvulnerable) return;
+            if (Player.Bounds.IntersectsWith(slime.Bounds))
+                Player.TakeDamage(slime.Damage);
+        }
+
         public void SetPlayArea(float width, float height)
         {
             PlayArea = new RectangleF(0, 0, width, height);
@@ -136,7 +144,24 @@ namespace ElementalSpirit.GameEngine
 
             Spirits.Update(deltaTime, Player);
             Projectiles.Update(deltaTime);
-            Enemies.Update(deltaTime, GroundY);
+
+            // Truyền vị trí player cho slime (để quyết định Attack)
+            float pcx = Player.X + Player.Width / 2f;
+float pcy = Player.Y + Player.Height / 2f;
+
+foreach (var e in Enemies.Enemies)
+{
+    if (e is Slime slime)
+    {
+        slime.SetCombatTarget(pcx, pcy);
+
+        // Subscribe 1 lần (tránh subscribe mỗi frame)
+        slime.OnAttackHit -= OnSlimeAttackHit;
+        slime.OnAttackHit += OnSlimeAttackHit;
+    }
+}
+
+Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right);
             Collision.CheckCollisions(Projectiles, Enemies);
             CheckPlayerEnemyCollision();
             Waves.Update(deltaTime);
@@ -190,9 +215,12 @@ namespace ElementalSpirit.GameEngine
         private void CheckPlayerEnemyCollision()
         {
             if (Player.IsDead || Player.IsInvulnerable) return;
+
             foreach (var e in Enemies.Enemies)
             {
                 if (!e.IsAlive) continue;
+                if (e is Slime) continue; 
+
                 if (Player.Bounds.IntersectsWith(e.Bounds))
                 {
                     Player.TakeDamage(e.Damage);

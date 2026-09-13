@@ -206,15 +206,26 @@ namespace ElementalSpirit.Presentation.Rendering
             {
                 if (!e.IsAlive && e.IsDeathAnimationComplete) continue;
 
-                Image? enemyImage = e is Slime ? AssetLoader.Get(Slime.AssetKey) : null;
+                Image? enemyImage = null;
+                if (e is Slime slime)
+                {
+                    // Prefer animated frame; fall back to legacy static sprite.
+                    enemyImage = slime.CurrentImage ?? AssetLoader.Get(Slime.AssetKey);
+                }
+
                 if (enemyImage != null)
                 {
-                    float drawScale = 1.2f;
-                    float drawWidth = e.Width * drawScale;
-                    float drawHeight = e.Height * drawScale;
-                    float drawX = e.X + (e.Width - drawWidth) / 2f;
-                    float drawY = e.Y + (e.Height - drawHeight) / 2f;
-                    bool flipLeft = playerCenterX < e.X + e.Width / 2f;
+                    // Animated frames are 128x128; scale to roughly match entity bounds.
+                    float targetSize = Math.Max(e.Width, e.Height) * 1.8f;
+                    float drawWidth = targetSize;
+                    float drawHeight = targetSize;
+                    float drawX = e.X + e.Width / 2f - drawWidth / 2f;
+                    float drawY = e.Y + e.Height - drawHeight * 0.85f; // feet-ish anchor
+
+                    // Use slime facing direction for consistent flip with movement.
+                    bool flipLeft = e is Slime s
+                        ? s.Facing == Domain.Player.FacingDirection.Left
+                        : playerCenterX < e.X + e.Width / 2f;
 
                     var state = g.Save();
                     if (flipLeft)
@@ -229,12 +240,13 @@ namespace ElementalSpirit.Presentation.Rendering
                     }
                     g.Restore(state);
 
-                    if (e.IsHurt)
+                    // Hurt flash only when not already playing dedicated Hurt anim frames
+                    if (e.IsHurt && e is Slime { CurrentAnimState: not SlimeAnimationState.Hurt })
                     {
                         using var flashBrush = new SolidBrush(Color.FromArgb(100, 255, 255, 255));
                         g.FillRectangle(flashBrush, drawX, drawY, drawWidth, drawHeight);
                     }
-                    if (e.IsDying)
+                    if (e.IsDying && e is Slime { CurrentAnimState: not SlimeAnimationState.Dead })
                     {
                         using var fadeBrush = new SolidBrush(Color.FromArgb(140, 60, 60, 60));
                         g.FillRectangle(fadeBrush, drawX, drawY, drawWidth, drawHeight);

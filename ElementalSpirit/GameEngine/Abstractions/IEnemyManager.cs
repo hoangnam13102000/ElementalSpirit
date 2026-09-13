@@ -7,7 +7,7 @@ namespace ElementalSpirit.GameEngine.Abstractions
     {
         IReadOnlyList<Enemy> Enemies { get; }
         void Add(Enemy enemy);
-        void Update(float deltaTime, float groundY = 0f);
+        void Update(float deltaTime, float groundY = 0f, float minX = 0f, float maxX = float.MaxValue);
         void Clear();
     }
 }
