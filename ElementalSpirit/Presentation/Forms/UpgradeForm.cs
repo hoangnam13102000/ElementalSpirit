@@ -16,7 +16,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly ISpiritManager _spirits;
         private readonly PlayerWallet _wallet;
         private readonly IUpgradeService _upgrades;
-        private readonly ILocalizationService _localization = LocalizationManager.Instance;
+        private readonly ILocalizationService _localization;
 
         private readonly ListBox _spiritList;
         private readonly Label _detailLabel;
@@ -27,11 +27,12 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly Button _equip2Button;
         private readonly Button _closeButton;
 
-        public UpgradeForm(ISpiritManager spirits, PlayerWallet wallet, IUpgradeService upgrades)
+        public UpgradeForm(ISpiritManager spirits, PlayerWallet wallet, IUpgradeService upgrades, ILocalizationService localization)
         {
             _spirits = spirits;
             _wallet = wallet;
             _upgrades = upgrades;
+            _localization = localization ?? throw new ArgumentNullException(nameof(localization));
 
             Text = _localization.Translate("upgrade.title");
             ClientSize = new Size(520, 420);

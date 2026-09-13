@@ -24,9 +24,6 @@ namespace ElementalSpirit.Domain.Enemy
 
         public abstract void Update(float deltaTime, float groundY);
 
-        [Obsolete("Use Update(float deltaTime, float groundY) instead.")]
-        public virtual void Update(float deltaTime) => Update(deltaTime, 0f);
-
         protected void UpdateEffectTimers(float deltaTime)
         {
             if (IsHurt)

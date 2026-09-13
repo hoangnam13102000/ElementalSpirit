@@ -15,10 +15,11 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly Button _btnExit;
         private Image? _menuBackground;
 
-        private readonly ILocalizationService _localization = LocalizationManager.Instance;
+        private readonly ILocalizationService _localization;
 
-        public MainMenuForm()
+        public MainMenuForm(ILocalizationService localization)
         {
+            _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             ClientSize = new Size(1280, 720);
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
@@ -79,12 +80,12 @@ namespace ElementalSpirit.Presentation.Forms
         {
             this.Hide();
 
-            var introForm = new IntroForm();
+            var introForm = new IntroForm(_localization);
             introForm.StartIntro();
 
             introForm.OnIntroFinished += () =>
             {
-                var gameForm = new GameForm(Program.CreateGameManager());
+                var gameForm = new GameForm(Program.CreateGameManager(), _localization);
                 gameForm.ShowDialog();
                 this.Close();
             };
@@ -94,7 +95,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
-            using var settingsForm = new SettingsForm();
+            using var settingsForm = new SettingsForm(_localization);
             settingsForm.ShowDialog(this);
         }
 

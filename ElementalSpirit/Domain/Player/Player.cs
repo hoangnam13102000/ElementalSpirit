@@ -24,11 +24,6 @@ namespace ElementalSpirit.Domain.Player
         public bool IsGrounded { get; private set; }
         public PlayerMovementState MovementState { get; private set; }
 
-        [Obsolete("Use WalkSpeed/RunSpeed instead.")]
-        public float Speed { get; private set; } = 220f;
-        [Obsolete("Use WalkSpeed/RunSpeed instead.")]
-        public float MoveSpeed { get; private set; } = 260f;
-
         public FacingDirection Facing { get; private set; } = FacingDirection.Right;
 
         public int BaseMaxHp { get; private set; } = PlayerConstants.BaseMaxHp;
@@ -187,12 +182,6 @@ namespace ElementalSpirit.Domain.Player
             if (X < minX) X = minX;
             if (X + Width > maxX) X = maxX - Width;
         }
-
-        [Obsolete("Use MoveHorizontal() and TryJump().")]
-        public void Move(float dirX, float dirY, float deltaTime) => MoveHorizontal(dirX, deltaTime);
-
-        [Obsolete("Use ClampHorizontalBounds().")]
-        public void ClampToBounds(float minX, float minY, float maxX, float maxY) => ClampHorizontalBounds(minX, maxX);
 
         public override void TakeDamage(int amount)
         {

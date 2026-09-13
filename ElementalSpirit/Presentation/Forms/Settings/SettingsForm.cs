@@ -18,7 +18,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         private readonly Button _btnSave;
         private readonly Button _btnCancel;
 
-        public SettingsForm()
+        public SettingsForm(ILocalizationService localization)
         {
             ClientSize = new Size(420, 340);
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -61,7 +61,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                 _btnSave, _btnCancel
             });
 
-            _ = new SettingsPresenter(this, LocalizationManager.Instance);
+            _ = new SettingsPresenter(this, localization ?? throw new ArgumentNullException(nameof(localization)));
         }
 
         [Browsable(false)]
@@ -104,8 +104,6 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         public void CloseView() => Close();
-
-        // ---------- Helpers ----------
 
         private static Label CreateLabel(int y, Font? font = null) => new()
         {

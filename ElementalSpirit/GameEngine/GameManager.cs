@@ -10,7 +10,6 @@ using ElementalSpirit.Factories;
 using ElementalSpirit.Services;
 using ElementalSpirit.GameEngine.Abstractions;
 using ElementalSpirit.Services.Abstractions;
-using FacingEnum = ElementalSpirit.Domain.Player.FacingDirection;
 
 namespace ElementalSpirit.GameEngine
 {
@@ -32,9 +31,6 @@ namespace ElementalSpirit.GameEngine
         public RectangleF PlayArea { get; private set; }
         public float GroundY { get; private set; }
         private const float GroundTopRatio = 0.78f;
-
-        [Obsolete("Use Player.Facing instead.")]
-        public float FacingDirection => Player.Facing == FacingEnum.Right ? 1f : -1f;
 
         public bool IsStageCompleted { get; private set; }
         public bool IsPaused { get; set; }
@@ -165,7 +161,7 @@ namespace ElementalSpirit.GameEngine
 
         private void SpawnPlayerProjectile()
         {
-            float dir = Player.Facing == FacingEnum.Right ? 1f : -1f;
+            float dir = Player.Facing == FacingDirection.Right ? 1f : -1f;
             float spawnX = Player.X + Player.Width / 2f + dir * 16f;
             float spawnY = Player.Y + Player.Height / 2f - 3f;
             Projectiles.Add(ProjectileFactory.CreatePlayerProjectile(spawnX, spawnY, dir, Player.Damage));
@@ -184,7 +180,7 @@ namespace ElementalSpirit.GameEngine
 
         private void SpawnFireballProjectile()
         {
-            float dir = Player.Facing == FacingEnum.Right ? 1f : -1f;
+            float dir = Player.Facing == FacingDirection.Right ? 1f : -1f;
             float spawnX = Player.X + Player.Width / 2f + dir * 20f;
             float spawnY = Player.Y + Player.Height / 2f - 8f;
             int damage = Player.ActiveFireBoost ? (int)(Player.Damage * 1.5f) : Player.Damage;
@@ -224,10 +220,12 @@ namespace ElementalSpirit.GameEngine
             Input.KeyDown(key);
             if (key is Keys.D1 or Keys.NumPad1) Spirits.TryActivate(0, Player);
             else if (key is Keys.D2 or Keys.NumPad2) Spirits.TryActivate(1, Player);
+#if DEBUG
             if (key == Keys.N) Waves.ForceNextWave();
             if (key == Keys.D3) { Spirits.Equip(0, Spirits.Unlocked[0]); Spirits.Equip(1, Spirits.Unlocked[1]); SetStatus("Equipped: Terra + Ignis"); }
             else if (key == Keys.D4) { Spirits.Equip(0, Spirits.Unlocked[2]); Spirits.Equip(1, Spirits.Unlocked[3]); SetStatus("Equipped: Aqua + Zephyr"); }
             if (key == Keys.G) { Wallet.AddGold(100); Wallet.AddSpiritShards(10); SetStatus("+100 Gold, +10 Spirit Shards"); }
+#endif
         }
 
         public void HandleKeyUp(Keys key) => Input.KeyUp(key);

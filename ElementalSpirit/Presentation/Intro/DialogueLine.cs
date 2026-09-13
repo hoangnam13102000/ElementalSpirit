@@ -1,4 +1,5 @@
-﻿using ElementalSpirit.Localization;
+﻿using System;
+using ElementalSpirit.Localization;
 
 namespace ElementalSpirit.Presentation.Intro
 {
@@ -14,20 +15,22 @@ namespace ElementalSpirit.Presentation.Intro
     public class DialogueLine
     {
         public Speaker Speaker { get; }
+        private readonly ILocalizationService _localization;
         private readonly string _textKey;
         private readonly string? _captionKey;
 
-        public DialogueLine(Speaker speaker, string textKey, string? captionKey = null)
+        public DialogueLine(ILocalizationService localization, Speaker speaker, string textKey, string? captionKey = null)
         {
+            _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             Speaker = speaker;
             _textKey = textKey;
             _captionKey = captionKey;
         }
 
         public string Text =>
-            string.IsNullOrEmpty(_textKey) ? "" : LocalizationManager.Instance.Translate(_textKey);
+            string.IsNullOrEmpty(_textKey) ? "" : _localization.Translate(_textKey);
 
         public string? OnScreenCaption =>
-            _captionKey == null ? null : LocalizationManager.Instance.Translate(_captionKey);
+            _captionKey == null ? null : _localization.Translate(_captionKey);
     }
 }

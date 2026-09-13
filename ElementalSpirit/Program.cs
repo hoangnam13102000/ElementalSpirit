@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.GameEngine;
+using ElementalSpirit.Localization;
 using ElementalSpirit.Services;
 using ElementalSpirit.Presentation.Forms;
 
@@ -36,7 +37,9 @@ namespace ElementalSpirit
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            Application.Run(new MainMenuForm());
+            ILocalizationService localization = LocalizationManager.Instance;
+
+            Application.Run(new MainMenuForm(localization));
         }
     }
 }

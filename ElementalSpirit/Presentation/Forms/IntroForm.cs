@@ -12,6 +12,7 @@ namespace ElementalSpirit.Presentation.Forms
 {
     public class IntroForm : Form
     {
+        private readonly ILocalizationService _localization;
         private readonly IntroManager _introManager;
         private Image? _currentBackground;
         private string _currentSpeakerName = "";
@@ -25,14 +26,15 @@ namespace ElementalSpirit.Presentation.Forms
 
         public event Action? OnIntroFinished;
 
-        public IntroForm()
+        public IntroForm(ILocalizationService localization)
         {
-            _introManager = new IntroManager();
+            _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _introManager = new IntroManager(_localization);
             _introManager.OnSceneChanged += HandleSceneChanged;
             _introManager.OnLineChanged += HandleLineChanged;
             _introManager.OnIntroCompleted += HandleIntroCompleted;
 
-            Text = LocalizationManager.Instance.Translate("intro.windowTitle");
+            Text = _localization.Translate("intro.windowTitle");
             ClientSize = new Size(1280, 720);
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
@@ -204,9 +206,6 @@ namespace ElementalSpirit.Presentation.Forms
             float boxW = ClientSize.Width - padding * 2;
             float textWidth = boxW - padding * 2;
 
-            // Đo chiều cao THẬT SỰ cần để hiển thị hết đoạn thoại theo đúng bề rộng
-            // sẽ render, thay vì dùng chiều cao cố định như trước — đây là nguyên
-            // nhân khiến câu tiếng Việt (dài hơn tiếng Anh) bị cắt mất phần cuối.
             var textSize = g.MeasureString(_currentText, textFont, (int)textWidth);
             float boxH = textSize.Height + topContentOffset;
             boxH = Math.Max(minBoxHeight, Math.Min(maxBoxHeight, boxH));
@@ -237,18 +236,18 @@ namespace ElementalSpirit.Presentation.Forms
             using var hintFont = new Font("Consolas", 9.5f);
             using var hintBrush = new SolidBrush(Color.FromArgb(130, 180, 210, 255));
 
-            string hint = LocalizationManager.Instance.Translate("intro.hint.controls");
+            string hint = _localization.Translate("intro.hint.controls");
             var size = g.MeasureString(hint, hintFont);
             g.DrawString(hint, hintFont, hintBrush, ClientSize.Width - size.Width - 24, ClientSize.Height - 24);
         }
 
-        private static string GetSpeakerDisplayName(Speaker speaker)
+        private string GetSpeakerDisplayName(Speaker speaker)
         {
             return speaker switch
             {
-                Speaker.Arin => LocalizationManager.Instance.Translate("speaker.arin"),
-                Speaker.Terra => LocalizationManager.Instance.Translate("speaker.terra"),
-                Speaker.VillageElder => LocalizationManager.Instance.Translate("speaker.villageElder"),
+                Speaker.Arin => _localization.Translate("speaker.arin"),
+                Speaker.Terra => _localization.Translate("speaker.terra"),
+                Speaker.VillageElder => _localization.Translate("speaker.villageElder"),
                 _ => ""
             };
         }

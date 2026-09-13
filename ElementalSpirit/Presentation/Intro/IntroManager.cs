@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using ElementalSpirit.Localization;
 
 namespace ElementalSpirit.Presentation.Intro
 {
@@ -17,9 +18,10 @@ namespace ElementalSpirit.Presentation.Intro
         public DialogueLine CurrentLine => CurrentScene.Lines[_currentLineIndex];
         public bool IsFinished => _currentSceneIndex >= _scenes.Count;
 
-        public IntroManager()
+        public IntroManager(ILocalizationService localization)
         {
-            _scenes = IntroData.CreateAllScenes();
+            if (localization == null) throw new ArgumentNullException(nameof(localization));
+            _scenes = IntroData.CreateAllScenes(localization);
             _currentSceneIndex = 0;
             _currentLineIndex = 0;
         }
