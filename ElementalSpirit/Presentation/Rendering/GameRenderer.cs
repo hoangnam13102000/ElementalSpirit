@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
@@ -11,11 +12,7 @@ using ElementalSpirit.Presentation.Assets;
 
 namespace ElementalSpirit.Presentation.Rendering
 {
-    /// <summary>
-    /// Chịu trách nhiệm duy nhất: vẽ trạng thái hiện tại của GameManager lên Graphics.
-    /// Được tách ra khỏi GameForm để GameForm chỉ còn giữ vai trò điều phối
-    /// game loop/input (single responsibility).
-    /// </summary>
+
     public class GameRenderer
     {
         private readonly GameManager _gameManager;
@@ -30,6 +27,8 @@ namespace ElementalSpirit.Presentation.Rendering
 
         private string _loadedBackgroundName = "";
         private Image? _backgroundImage;
+        private string _loadedIncomingBackgroundName = "";
+        private Image? _incomingBackgroundImage;
 
         public GameRenderer(
             GameManager gameManager,
@@ -67,6 +66,44 @@ namespace ElementalSpirit.Presentation.Rendering
             }
             if (_backgroundImage != null)
                 g.DrawImage(_backgroundImage, new Rectangle(0, 0, clientSize.Width, clientSize.Height));
+
+            // Trong lúc "Fading" (chuyển cảnh sang background kế tiếp), crossfade dần
+            // ảnh background mới đè lên ảnh hiện tại theo TransitionProgress (0..1).
+            string? incomingName = _gameManager.IncomingBackgroundImageName;
+            if (_gameManager.TransitionPhase == StageTransitionPhase.Fading && !string.IsNullOrEmpty(incomingName))
+            {
+                if (incomingName != _loadedIncomingBackgroundName)
+                {
+                    _incomingBackgroundImage = AssetLoader.Get(incomingName);
+                    _loadedIncomingBackgroundName = incomingName;
+                }
+
+                if (_incomingBackgroundImage != null)
+                {
+                    DrawImageWithOpacity(
+                        g,
+                        _incomingBackgroundImage,
+                        new Rectangle(0, 0, clientSize.Width, clientSize.Height),
+                        _gameManager.TransitionProgress);
+                }
+            }
+        }
+
+        private static void DrawImageWithOpacity(Graphics g, Image image, Rectangle destRect, float opacity)
+        {
+            opacity = Math.Clamp(opacity, 0f, 1f);
+            if (opacity <= 0f) return;
+
+            var colorMatrix = new ColorMatrix { Matrix33 = opacity };
+            using var attributes = new ImageAttributes();
+            attributes.SetColorMatrix(colorMatrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+
+            g.DrawImage(
+                image,
+                destRect,
+                0, 0, image.Width, image.Height,
+                GraphicsUnit.Pixel,
+                attributes);
         }
 
         private void DrawPlayer(Graphics g)
@@ -384,9 +421,19 @@ namespace ElementalSpirit.Presentation.Rendering
             var p = _gameManager.Player;
             var waves = _gameManager.Waves;
 
-            string stageStatus = _gameManager.IsStageCompleted
-                ? _localization.Translate("hud.stageClear.pressEsc")
-                : $"{_localization.Translate("hud.wave.label")} {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  {_localization.Translate("hud.state.label")} {waves.State}";
+            string stageStatus;
+            if (_gameManager.IsInStageTransition)
+            {
+                stageStatus = $"{_localization.Translate("hud.stageTransition")} ({_gameManager.TransitionPhase})";
+            }
+            else if (_gameManager.IsStageCompleted)
+            {
+                stageStatus = _localization.Translate("hud.stageClear.pressEsc");
+            }
+            else
+            {
+                stageStatus = $"{_localization.Translate("hud.wave.label")} {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  {_localization.Translate("hud.state.label")} {waves.State}";
+            }
 
             string effects = "";
             if (p.ActiveShield) effects += " [SHIELD]";

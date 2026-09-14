@@ -5,6 +5,7 @@ using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Services;
+using ElementalSpirit.Services.Abstractions;
 using ElementalSpirit.Presentation.Forms;
 
 namespace ElementalSpirit
@@ -38,8 +39,9 @@ namespace ElementalSpirit
             Application.SetCompatibleTextRenderingDefault(false);
 
             ILocalizationService localization = LocalizationManager.Instance;
+            ISaveGameService saveGameService = new SaveGameService();
 
-            Application.Run(new MainMenuForm(localization));
+            Application.Run(new MainMenuForm(localization, saveGameService));
         }
     }
 }

@@ -177,10 +177,19 @@ namespace ElementalSpirit.Domain.Player
             }
         }
 
+        public void LeaveGround() => IsGrounded = false;
+
         public void ClampHorizontalBounds(float minX, float maxX)
         {
             if (X < minX) X = minX;
             if (X + Width > maxX) X = maxX - Width;
+        }
+        public void ResetPosition(float x, float y)
+        {
+            X = x;
+            Y = y;
+            VelocityX = 0f;
+            VelocityY = 0f;
         }
 
         public override void TakeDamage(int amount)
@@ -193,6 +202,13 @@ namespace ElementalSpirit.Domain.Player
         }
 
         public void Heal(int amount) => HP = Math.Min(MaxHp, HP + amount);
+
+        public void RestoreHp(int hp)
+        {
+            HP = Math.Clamp(hp, 1, MaxHp);
+            IsDead = false;
+            IsHurt = false;
+        }
 
         public void ApplyEquipmentBonuses(int bonusDamage, int bonusMaxHp, int bonusDefense)
         {

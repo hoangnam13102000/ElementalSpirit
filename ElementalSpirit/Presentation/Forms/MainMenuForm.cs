@@ -5,21 +5,34 @@ using System.Windows.Forms;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
 using ElementalSpirit.Presentation.Forms.Settings;
+using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms
 {
     public class MainMenuForm : Form
     {
+        private const int ButtonSpacingY = 85;
+        private const int ButtonStartY = 300;
+
+        private readonly Button _btnContinue;
         private readonly Button _btnStart;
         private readonly Button _btnSettings;
         private readonly Button _btnExit;
         private Image? _menuBackground;
 
         private readonly ILocalizationService _localization;
+        private readonly ISaveGameService _saveGameService;
 
-        public MainMenuForm(ILocalizationService localization)
+        private static Image? LoadMenuBackground()
+        {
+            var source = AssetLoader.Get("Menu/MainMenu_Background.png");
+            return source == null ? null : new Bitmap(source);
+        }
+
+        public MainMenuForm(ILocalizationService localization, ISaveGameService saveGameService)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
             ClientSize = new Size(1280, 720);
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
@@ -28,43 +41,64 @@ namespace ElementalSpirit.Presentation.Forms
 
             try
             {
-                _menuBackground = AssetLoader.Get("Menu/MainMenu_Background.png");
+                _menuBackground = LoadMenuBackground();
             }
             catch { _menuBackground = null; }
 
-            _btnStart = CreateMenuButton(300);
+            _btnContinue = CreateMenuButton();
+            _btnContinue.Click += BtnContinue_Click;
+
+            _btnStart = CreateMenuButton();
             _btnStart.Click += BtnStart_Click;
 
-            _btnSettings = CreateMenuButton(385);
+            _btnSettings = CreateMenuButton();
             _btnSettings.Click += BtnSettings_Click;
 
-            _btnExit = CreateMenuButton(470);
+            _btnExit = CreateMenuButton();
             _btnExit.Click += (s, e) => Application.Exit();
 
+            Controls.Add(_btnContinue);
             Controls.Add(_btnStart);
             Controls.Add(_btnSettings);
             Controls.Add(_btnExit);
 
-            // Khi ngôn ngữ đổi ở màn Settings (kể cả lần sau mở lại từ nơi khác),
-            // MainMenuForm tự cập nhật lại chữ trên UI.
             _localization.LanguageChanged += (s, e) => ApplyTranslations();
+
             ApplyTranslations();
+            LayoutMenuButtons();
         }
 
         private void ApplyTranslations()
         {
             Text = _localization.Translate("menu.windowTitle");
+            _btnContinue.Text = _localization.Translate("menu.continue");
             _btnStart.Text = _localization.Translate("menu.start");
             _btnSettings.Text = _localization.Translate("menu.settings");
             _btnExit.Text = _localization.Translate("menu.exit");
             Invalidate(); // vẽ lại tiêu đề game trong OnPaint
         }
 
-        private Button CreateMenuButton(int y)
+        private void LayoutMenuButtons()
+        {
+            bool hasSave = _saveGameService.HasSavedGame;
+            _btnContinue.Visible = hasSave;
+
+            int y = ButtonStartY;
+            if (hasSave)
+            {
+                _btnContinue.Top = y;
+                y += ButtonSpacingY;
+            }
+            _btnStart.Top = y; y += ButtonSpacingY;
+            _btnSettings.Top = y; y += ButtonSpacingY;
+            _btnExit.Top = y;
+        }
+
+        private Button CreateMenuButton()
         {
             var btn = new Button
             {
-                Bounds = new Rectangle(440, y, 400, 65),
+                Bounds = new Rectangle(440, ButtonStartY, 400, 65),
                 Font = new Font("Georgia", 18f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(230, 220, 255),
                 BackColor = Color.FromArgb(70, 40, 80, 150),
@@ -85,18 +119,51 @@ namespace ElementalSpirit.Presentation.Forms
 
             introForm.OnIntroFinished += () =>
             {
-                var gameForm = new GameForm(Program.CreateGameManager(), _localization);
+                var gameForm = new GameForm(Program.CreateGameManager(), _localization, _saveGameService);
                 gameForm.ShowDialog();
-                this.Close();
+                ReturnToMenu();
             };
 
             introForm.ShowDialog();
         }
 
+        private void BtnContinue_Click(object? sender, EventArgs e)
+        {
+            var saveData = _saveGameService.Load();
+            if (saveData == null)
+            {
+                MessageBox.Show(
+                    this,
+                    _localization.Translate("menu.continue.noSave"),
+                    _localization.Translate("menu.windowTitle"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            this.Hide();
+
+            var gameManager = Program.CreateGameManager();
+            gameManager.ApplySaveData(saveData);
+
+            var gameForm = new GameForm(gameManager, _localization, _saveGameService);
+            gameForm.ShowDialog();
+            ReturnToMenu();
+        }
+
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
-            using var settingsForm = new SettingsForm(_localization);
+            using var settingsForm = new SettingsForm(_localization, _saveGameService);
             settingsForm.ShowDialog(this);
+        }
+
+        private void ReturnToMenu()
+        {
+            _menuBackground?.Dispose();
+            _menuBackground = LoadMenuBackground();
+            LayoutMenuButtons();
+            this.Show();
+            this.Activate();
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -104,6 +171,18 @@ namespace ElementalSpirit.Presentation.Forms
             base.OnPaint(e);
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            if (_menuBackground == null)
+            {
+                try
+                {
+                    _menuBackground = LoadMenuBackground();
+                }
+                catch
+                {
+                    _menuBackground = null;
+                }
+            }
 
             if (_menuBackground != null)
                 g.DrawImage(_menuBackground, 0, 0, ClientSize.Width, ClientSize.Height);

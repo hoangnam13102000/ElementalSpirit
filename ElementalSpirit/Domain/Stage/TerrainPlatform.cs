@@ -2,7 +2,6 @@
 
 namespace ElementalSpirit.Domain.Stage
 {
-
     public class TerrainPlatform
     {
         public string Name { get; }
@@ -20,7 +19,6 @@ namespace ElementalSpirit.Domain.Stage
             BottomRatio = bottomRatio;
         }
 
-        // Tra ve vi tri/kich thuoc thuc te (pixel) cua nen da, dua tren vung choi hien tai
         public RectangleF GetAbsoluteBounds(RectangleF playArea)
         {
             float x = playArea.Left + playArea.Width * MinXRatio;
@@ -28,6 +26,18 @@ namespace ElementalSpirit.Domain.Stage
             float y = playArea.Top + playArea.Height * TopRatio;
             float height = playArea.Height * (BottomRatio - TopRatio);
             return new RectangleF(x, y, width, height);
+        }
+
+        public float GetAbsoluteTopY(RectangleF playArea)
+        {
+            return playArea.Top + playArea.Height * TopRatio;
+        }
+
+        public bool ContainsAbsoluteX(RectangleF playArea, float worldX)
+        {
+            float minX = playArea.Left + playArea.Width * MinXRatio;
+            float maxX = playArea.Left + playArea.Width * MaxXRatio;
+            return worldX >= minX && worldX <= maxX;
         }
     }
     // =====================================================================

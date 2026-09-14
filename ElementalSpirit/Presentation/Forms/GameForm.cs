@@ -5,7 +5,9 @@ using ElementalSpirit.Domain.Player;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
+using ElementalSpirit.Presentation.Forms.Settings;
 using ElementalSpirit.Presentation.Rendering;
+using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms
 {
@@ -14,6 +16,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly GameManager _gameManager;
         private readonly GameTimer _gameTimer;
         private readonly ILocalizationService _localization;
+        private readonly ISaveGameService _saveGameService;
         private readonly GameRenderer _renderer;
 
         private readonly PlayerAnimationController _playerAnimController;
@@ -25,10 +28,11 @@ namespace ElementalSpirit.Presentation.Forms
         private const int AttackHitFrameIndex = 3;
         private const int FireCastFrameIndex = 5;
 
-        public GameForm(GameManager gameManager, ILocalizationService localization)
+        public GameForm(GameManager gameManager, ILocalizationService localization, ISaveGameService saveGameService)
         {
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
             Text = _localization.Translate("gameForm.windowTitle");
             ClientSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
@@ -137,8 +141,29 @@ namespace ElementalSpirit.Presentation.Forms
         {
             if (e.KeyCode == Keys.B) { OpenShop(); return; }
             if (e.KeyCode == Keys.U) { OpenUpgrade(); return; }
+            if (e.KeyCode == Keys.P) { OpenSettings(); return; }
             _gameManager.HandleKeyDown(e.KeyCode);
             if (e.KeyCode == Keys.Escape) Close();
+        }
+
+        private void OpenSettings()
+        {
+            PauseGame();
+
+            bool exitToMenu;
+            using (var settings = new SettingsForm(_localization, _saveGameService, _gameManager))
+            {
+                settings.ShowDialog(this);
+                exitToMenu = settings.ExitToMainMenuRequested;
+            }
+
+            if (exitToMenu)
+            {
+                Close();
+                return;
+            }
+
+            ResumeGame();
         }
 
         private void OpenShop()

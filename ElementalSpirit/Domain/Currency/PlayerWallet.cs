@@ -1,4 +1,6 @@
-﻿namespace ElementalSpirit.Domain.Currency
+﻿using System;
+
+namespace ElementalSpirit.Domain.Currency
 {
     public class PlayerWallet
     {
@@ -50,6 +52,13 @@
             if (amount <= 0 || Crystals < amount) return false;
             Crystals -= amount;
             return true;
+        }
+
+        public void LoadFrom(int gold, int spiritShards, int crystals)
+        {
+            Gold = Math.Max(0, gold);
+            SpiritShards = Math.Max(0, spiritShards);
+            Crystals = Math.Max(0, crystals);
         }
     }
 }
