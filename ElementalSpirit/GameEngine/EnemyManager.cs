@@ -84,6 +84,15 @@ namespace ElementalSpirit.GameEngine
                 return;
             }
 
+            // The final boss starts on an elevated platform. Let it step off
+            // that platform and land on the main ground instead of pinning it
+            // to the previous X position at the platform edge.
+            if (enemy is GorgonBoss)
+            {
+                enemy.ResolveGroundCollision(fallbackGroundY);
+                return;
+            }
+
             enemy.RestoreHorizontalPosition(previousX);
             footX = enemy.X + enemy.Width / 2f;
             currentFootY = enemy.Y + enemy.Height;

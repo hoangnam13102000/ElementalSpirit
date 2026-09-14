@@ -7,7 +7,8 @@ namespace ElementalSpirit.Factories
 {
     public enum EnemyType
     {
-        Slime
+        Slime,
+        Gorgon
     }
 
     public static class EnemyFactory
@@ -17,6 +18,7 @@ namespace ElementalSpirit.Factories
             return type switch
             {
                 EnemyType.Slime => CreateSlime(x, y),
+                EnemyType.Gorgon => CreateGorgon(x, y),
                 _ => throw new ArgumentException($"Unknown enemy type: {type}")
             };
         }
@@ -35,6 +37,21 @@ namespace ElementalSpirit.Factories
 
             var slime = new Slime(x, y, controller);
             return slime;
+        }
+
+        private static GorgonBoss CreateGorgon(float x, float y)
+        {
+            GorgonBossAnimationController? controller = null;
+            try
+            {
+                controller = GorgonAnimationLoader.CreateController();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[EnemyFactory] Gorgon anim: {ex.Message}");
+            }
+
+            return new GorgonBoss(x, y, controller);
         }
     }
 }

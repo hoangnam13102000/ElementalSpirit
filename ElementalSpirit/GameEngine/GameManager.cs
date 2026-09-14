@@ -5,10 +5,12 @@ using System.Linq;
 using System.Windows.Forms;
 using ElementalSpirit.Data;
 using ElementalSpirit.Domain.Currency;
+using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Enemy.NormalEnemy;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Domain.Player;
+using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.Domain.SaveData;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Domain.Skill;
@@ -287,6 +289,38 @@ namespace ElementalSpirit.GameEngine
                 Player.TakeDamage(slime.Damage);
         }
 
+        private void OnBossProjectileCast(GorgonBoss boss)
+        {
+            if (Player.IsDead || Player.IsInvulnerable) return;
+
+            float targetX = Player.X + Player.Width / 2f;
+            float targetY = Player.Y + Player.Height / 2f;
+
+            if (boss.CurrentSkill == GorgonBossSkill.NuclearExplosion)
+            {
+                float groundOriginX = boss.X + boss.Width / 2f;
+                float groundY = GroundY - 36f;
+                Projectiles.Add(BossProjectileFactory.CreateGorgonNuclearExplosion(
+                    groundOriginX,
+                    groundY,
+                    targetX,
+                    groundY,
+                    boss.Damage));
+                return;
+            }
+
+            float mouthX = boss.X + boss.Width * (boss.Facing == FacingDirection.Right ? 0.82f : 0.18f);
+            float mouthY = boss.Y + boss.Height * 0.38f;
+            foreach (var projectile in BossProjectileFactory.CreateGorgonSpread(
+                         mouthX,
+                         mouthY,
+                         targetX,
+                         targetY,
+                         boss.Damage))
+            {
+                Projectiles.Add(projectile);
+            }
+        }
 
         public void Update(float deltaTime)
         {
@@ -348,16 +382,22 @@ namespace ElementalSpirit.GameEngine
 
             foreach (var e in Enemies.Enemies)
             {
-                if (e is Slime slime)
+                switch (e)
                 {
-                    // Subscribe 1 lần (tránh subscribe mỗi frame)
-                    slime.OnAttackHit -= OnSlimeAttackHit;
-                    slime.OnAttackHit += OnSlimeAttackHit;
+                    case Slime slime:
+                        slime.OnAttackHit -= OnSlimeAttackHit;
+                        slime.OnAttackHit += OnSlimeAttackHit;
+                        break;
+                    case GorgonBoss boss:
+                        boss.OnBossProjectileCast -= OnBossProjectileCast;
+                        boss.OnBossProjectileCast += OnBossProjectileCast;
+                        break;
                 }
             }
 
             Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
             Collision.CheckCollisions(Projectiles, Enemies);
+            CheckEnemyProjectileCollision();
             CheckPlayerEnemyCollision();
             Waves.Update(deltaTime);
         }
@@ -420,6 +460,22 @@ namespace ElementalSpirit.GameEngine
                 if (Player.Bounds.IntersectsWith(e.Bounds))
                 {
                     Player.TakeDamage(e.Damage);
+                    break;
+                }
+            }
+        }
+
+        private void CheckEnemyProjectileCollision()
+        {
+            if (Player.IsDead || Player.IsInvulnerable) return;
+
+            foreach (var projectile in Projectiles.Projectiles)
+            {
+                if (!projectile.IsAlive || projectile is not EnemyProjectile) continue;
+                if (Player.Bounds.IntersectsWith(projectile.Bounds))
+                {
+                    Player.TakeDamage(projectile.Damage);
+                    projectile.Kill();
                     break;
                 }
             }

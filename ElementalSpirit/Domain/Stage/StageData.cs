@@ -75,18 +75,6 @@ namespace ElementalSpirit.Domain.Stage
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 6, 0.7f));
             stage.Waves.Add(wave1);
 
-            var wave2 = new WaveData(2);
-            wave2.Spawns.Add(new SpawnData(EnemyType.Slime, 8, 0.55f));
-            stage.Waves.Add(wave2);
-
-            var wave3 = new WaveData(3);
-            wave3.Spawns.Add(new SpawnData(EnemyType.Slime, 10, 0.45f));
-            stage.Waves.Add(wave3);
-
-            var wave4 = new WaveData(4);
-            wave4.Spawns.Add(new SpawnData(EnemyType.Slime, 12, 0.4f));
-            stage.Waves.Add(wave4);
-
             return stage;
         }
 
@@ -245,14 +233,6 @@ namespace ElementalSpirit.Domain.Stage
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 8, 0.55f));
             stage.Waves.Add(wave1);
 
-            var wave2 = new WaveData(2);
-            wave2.Spawns.Add(new SpawnData(EnemyType.Slime, 10, 0.45f));
-            stage.Waves.Add(wave2);
-
-            var wave3 = new WaveData(3);
-            wave3.Spawns.Add(new SpawnData(EnemyType.Slime, 12, 0.35f));
-            stage.Waves.Add(wave3);
-
             return stage;
         }
 
@@ -276,17 +256,28 @@ namespace ElementalSpirit.Domain.Stage
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 10, 0.45f));
             stage.Waves.Add(wave1);
 
-            var wave2 = new WaveData(2);
-            wave2.Spawns.Add(new SpawnData(EnemyType.Slime, 13, 0.35f));
-            stage.Waves.Add(wave2);
+            return stage;
+        }
 
-            var wave3 = new WaveData(3);
-            wave3.Spawns.Add(new SpawnData(EnemyType.Slime, 16, 0.3f));
-            stage.Waves.Add(wave3);
+        public static StageData CreateFinalForestBossStage()
+        {
+            var stage = new StageData
+            {
+                StageNumber = 4,
+                Name = "Final Forest - Gorgon Boss",
+                BackgroundImageName = "FinalForest.png"
+            };
 
-            var wave4 = new WaveData(4);
-            wave4.Spawns.Add(new SpawnData(EnemyType.Slime, 20, 0.25f));
-            stage.Waves.Add(wave4);
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "Ground",
+                minXRatio: 0.0f,
+                maxXRatio: 1.0f,
+                topRatio: 0.78f,
+                bottomRatio: 1.0f));
+
+            var wave1 = new WaveData(1);
+            wave1.Spawns.Add(new SpawnData(EnemyType.Gorgon, 1, 0.1f));
+            stage.Waves.Add(wave1);
 
             return stage;
         }
@@ -297,7 +288,8 @@ namespace ElementalSpirit.Domain.Stage
             {
                 CreateEarthForest(),
                 CreateEarthForest2(),
-                CreateEarthForest3()
+                CreateEarthForest3(),
+                CreateFinalForestBossStage()
             };
         }
     }

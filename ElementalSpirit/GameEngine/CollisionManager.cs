@@ -16,6 +16,11 @@ namespace ElementalSpirit.GameEngine
                 var p = projectiles[i];
                 if (!p.IsAlive) continue;
 
+                // Enemy projectiles are handled in the player collision pass.
+                // They must never damage allied enemies, especially the boss itself.
+                if (p is EnemyProjectile)
+                    continue;
+
                 for (int j = enemies.Count - 1; j >= 0; j--)
                 {
                     var e = enemies[j];

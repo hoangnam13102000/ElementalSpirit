@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
+using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Enemy.NormalEnemy;
 using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.GameEngine;
@@ -243,6 +244,62 @@ namespace ElementalSpirit.Presentation.Rendering
             foreach (var p in _gameManager.Projectiles.Projectiles)
             {
                 if (!p.IsAlive) continue;
+                if (p is EnemyProjectile enemyProjectile)
+                {
+                    if (enemyProjectile.Type == EnemyProjectileType.NuclearExplosion)
+                    {
+                        string[] nuclearFrames = Enumerable.Range(1, 10)
+                            .Select(index => $"Enemies/BossSkill/Nuclear_explosion/Nuclear_explosion{index}.png")
+                            .ToArray();
+                        int nuclearFrameIndex = (int)(Math.Abs(enemyProjectile.Lifetime * 12f)) % nuclearFrames.Length;
+                        var nuclearImage = AssetLoader.Get(nuclearFrames[nuclearFrameIndex]);
+                        const float nuclearVisualSize = 72f;
+                        float nuclearX = enemyProjectile.X + enemyProjectile.Width / 2f - nuclearVisualSize / 2f;
+                        float nuclearY = enemyProjectile.Y + enemyProjectile.Height - nuclearVisualSize;
+
+                        if (nuclearImage != null)
+                        {
+                            g.DrawImage(nuclearImage, nuclearX, nuclearY, nuclearVisualSize, nuclearVisualSize);
+                            continue;
+                        }
+                    }
+
+                    string[] bossSkillFrames =
+                    {
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle1.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle2.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle3.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle4.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle5.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle6.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle7.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle8.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle9.png",
+                        "Enemies/BossSkill/Explosion_blue_circle/Explosion_blue_circle10.png"
+                    };
+
+                    int frameIndex = (int)(Math.Abs(p.Lifetime * 10f)) % bossSkillFrames.Length;
+                    var bossSkillImage = AssetLoader.Get(bossSkillFrames[frameIndex]);
+                    float drawW = Math.Max(28f, p.Width * 2.2f);
+                    float drawH = drawW;
+                    float drawX = p.X + p.Width / 2f - drawW / 2f;
+                    float drawY = p.Y + p.Height / 2f - drawH / 2f;
+
+                    if (bossSkillImage != null)
+                    {
+                        g.DrawImage(bossSkillImage, drawX, drawY, drawW, drawH);
+                        continue;
+                    }
+
+                    using var glowBrush = new SolidBrush(Color.FromArgb(120, 120, 220, 255));
+                    g.FillEllipse(glowBrush, drawX - 6f, drawY - 6f, drawW + 12f, drawH + 12f);
+                    using var orbBrush = new SolidBrush(Color.FromArgb(220, 90, 200, 255));
+                    g.FillEllipse(orbBrush, drawX, drawY, drawW, drawH);
+                    using var innerPen = new Pen(Color.FromArgb(200, 230, 245, 255), 2f);
+                    g.DrawEllipse(innerPen, drawX + 5f, drawY + 5f, drawW - 10f, drawH - 10f);
+                    continue;
+                }
+
                 if (p is PlayerProjectile pp && pp.IsFireball && _fireballFrames != null && _fireballFrames.Length > 0)
                 {
                     var fireImg = _fireballFrames[_fireballFrames.Length / 2];
@@ -316,23 +373,28 @@ namespace ElementalSpirit.Presentation.Rendering
                 Image? enemyImage = null;
                 if (e is Slime slime)
                 {
-                    // Prefer animated frame; fall back to legacy static sprite.
                     enemyImage = slime.CurrentImage ?? AssetLoader.Get(Slime.AssetKey);
+                }
+                else if (e is GorgonBoss gorgon)
+                {
+                    enemyImage = gorgon.CurrentImage ?? AssetLoader.Get("Enemies/Boss/Gorgon_1/Idle.png")
+                        ?? AssetLoader.Get("Boss/Gorgon_1/Idle.png")
+                        ?? AssetLoader.Get("Gorgon_1/Idle.png");
                 }
 
                 if (enemyImage != null)
                 {
-                    // Animated frames are 128x128; scale to roughly match entity bounds.
                     float targetSize = Math.Max(e.Width, e.Height) * 1.8f;
                     float drawWidth = targetSize;
                     float drawHeight = targetSize;
                     float drawX = e.X + e.Width / 2f - drawWidth / 2f;
-                    float drawY = e.Y + e.Height - drawHeight * 0.85f; // feet-ish anchor
+                    float drawY = e.Y + e.Height - drawHeight * 0.85f;
 
-                    // Use slime facing direction for consistent flip with movement.
                     bool flipLeft = e is Slime s
                         ? s.Facing == Domain.Player.FacingDirection.Left
-                        : playerCenterX < e.X + e.Width / 2f;
+                        : e is GorgonBoss boss
+                            ? boss.Facing == Domain.Player.FacingDirection.Left
+                            : playerCenterX < e.X + e.Width / 2f;
 
                     var state = g.Save();
                     if (flipLeft)
@@ -369,11 +431,17 @@ namespace ElementalSpirit.Presentation.Rendering
 
                 if (e.IsAlive && !e.IsDying)
                 {
-                    float hpPercent = (float)e.Health / e.MaxHealth;
+                    float hpPercent = e.MaxHealth > 0 ? (float)e.Health / e.MaxHealth : 0f;
+                    float barWidth = e is GorgonBoss ? e.Width * 1.25f : e.Width;
+                    float barX = e.X + (e.Width - barWidth) / 2f;
+                    float barY = e.Y - 14f;
+
                     using var bgBrush = new SolidBrush(Color.FromArgb(120, 40, 40, 40));
-                    g.FillRectangle(bgBrush, e.X, e.Y - 10, e.Width, 5);
+                    g.FillRectangle(bgBrush, barX, barY, barWidth, 6);
                     using var hpBrush = new SolidBrush(Color.FromArgb(220, 60, 60));
-                    g.FillRectangle(hpBrush, e.X, e.Y - 10, e.Width * hpPercent, 5);
+                    g.FillRectangle(hpBrush, barX, barY, barWidth * hpPercent, 6);
+                    using var border = new Pen(Color.FromArgb(180, 240, 240, 240), 1f);
+                    g.DrawRectangle(border, barX, barY, barWidth, 6);
                 }
             }
         }

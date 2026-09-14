@@ -9,7 +9,6 @@ namespace ElementalSpirit.Presentation.Assets
     public static class AssetLoader
     {
         private static readonly Dictionary<string, Image> _cache = new();
-
         private static string ImagesFolder =>
             Path.Combine(AppContext.BaseDirectory, "Resources", "Images");
 
@@ -28,23 +27,29 @@ namespace ElementalSpirit.Presentation.Assets
 
             if (!File.Exists(path))
             {
-                // Not directly under Resources\Images — search subfolders
-                // (e.g. Characters\, Backgrounds\) for a matching file name.
+                // Tìm kiếm đệ quy CHỈ theo TÊN FILE (bỏ đường dẫn)
                 string? found = null;
                 if (Directory.Exists(ImagesFolder))
                 {
-                    var matches = Directory.GetFiles(ImagesFolder, fileName, SearchOption.AllDirectories);
+                    string searchFileName = Path.GetFileName(fileName);
+                    Debug.WriteLine($"[AssetLoader] Searching for: {searchFileName} in {ImagesFolder}");
+
+                    var matches = Directory.GetFiles(ImagesFolder, searchFileName, SearchOption.AllDirectories);
                     if (matches.Length > 0)
+                    {
                         found = matches[0];
+                        Debug.WriteLine($"[AssetLoader] FOUND at: {found}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[AssetLoader] NOT FOUND file: {searchFileName}");
+                    }
                 }
-
-                if (found == null)
-                {
-                    Debug.WriteLine($"[AssetLoader] NOT FOUND: '{path}' (BaseDirectory='{AppContext.BaseDirectory}')");
-                    return null;
-                }
-
-                path = found;
+                path = found ?? path;
+            }
+            else
+            {
+                Debug.WriteLine($"[AssetLoader] Direct load: '{path}'");
             }
 
             try
@@ -52,14 +57,13 @@ namespace ElementalSpirit.Presentation.Assets
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
                 using var raw = Image.FromStream(stream);
                 var image = new Bitmap(raw);
-
                 _cache[fileName] = image;
-                Debug.WriteLine($"[AssetLoader] LOADED OK: '{path}' ({image.Width}x{image.Height})");
+                Debug.WriteLine($"[AssetLoader] LOADED OK: {fileName} ({image.Width}x{image.Height})");
                 return image;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AssetLoader] EXCEPTION loading '{path}': {ex}");
+                Debug.WriteLine($"[AssetLoader] ERROR: {ex.GetType().Name} - {ex.Message}");
                 return null;
             }
         }
