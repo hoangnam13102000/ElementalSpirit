@@ -1,5 +1,6 @@
 ﻿using System;
 using ElementalSpirit.Domain;
+using ElementalSpirit.Domain.Enemy.AI;
 
 namespace ElementalSpirit.Domain.Enemy
 {
@@ -9,6 +10,7 @@ namespace ElementalSpirit.Domain.Enemy
         public int Health => HP;
         public bool IsDying { get; protected set; }
         public bool IsDeathAnimationComplete { get; protected set; }
+        public EnemyBehaviorState BehaviorState { get; protected set; } = EnemyBehaviorState.Idle;
         public Domain.Player.FacingDirection Facing { get; protected set; } =
             Domain.Player.FacingDirection.Left;
 
@@ -22,7 +24,7 @@ namespace ElementalSpirit.Domain.Enemy
         {
         }
 
-        public abstract void Update(float deltaTime, float groundY);
+        public abstract void Update(float deltaTime, float groundY, IEnemyTarget? target = null);
 
         public virtual void ResolveGroundCollision(float groundY)
         {
@@ -36,6 +38,8 @@ namespace ElementalSpirit.Domain.Enemy
             if (X < minX) X = minX;
             if (X + Width > maxX) X = maxX - Width;
         }
+
+        public void RestoreHorizontalPosition(float x) => X = x;
 
         protected void UpdateEffectTimers(float deltaTime)
         {

@@ -11,6 +11,7 @@ namespace ElementalSpirit.Domain.Stage
         public List<WaveData> Waves { get; set; } = new();
 
         public List<TerrainPlatform> Platforms { get; set; } = new();
+        public List<TerrainWall> Walls { get; set; } = new();
 
         public static StageData CreateEarthForest()
         {
@@ -27,6 +28,48 @@ namespace ElementalSpirit.Domain.Stage
                 maxXRatio: 1.0f,
                 topRatio: 0.78f,
                 bottomRatio: 1.0f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "LeftTowerTop",
+                minXRatio: 0.10f,
+                maxXRatio: 0.19f,
+                topRatio: 0.38f,
+                bottomRatio: 0.45f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "LeftLowerStone",
+                minXRatio: 0.15f,
+                maxXRatio: 0.21f,
+                topRatio: 0.62f,
+                bottomRatio: 0.69f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "LeftMiddleStone",
+                minXRatio: 0.19f,
+                maxXRatio: 0.27f,
+                topRatio: 0.57f,
+                bottomRatio: 0.64f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "LeftRightStone",
+                minXRatio: 0.27f,
+                maxXRatio: 0.34f,
+                topRatio: 0.63f,
+                bottomRatio: 0.70f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightLowerRock",
+                minXRatio: 0.87f,
+                maxXRatio: 1.0f,
+                topRatio: 0.56f,
+                bottomRatio: 0.64f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightTowerTop",
+                minXRatio: 0.93f,
+                maxXRatio: 1.0f,
+                topRatio: 0.35f,
+                bottomRatio: 0.43f));
 
             var wave1 = new WaveData(1);
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 6, 0.7f));
@@ -59,17 +102,18 @@ namespace ElementalSpirit.Domain.Stage
                 BackgroundImageName = "EarthForest2.png"
             };
 
-            // Nen duoc chia thanh nhieu tang bac thang khop voi hinh nen EarthForest2,
-            // do truc tiep tu anh nen (khong con dung 1 mat dat phang full-width nua):
-            // dat 2 ben vuc -> mo da vun (buoc dem) -> cau treo -> mo da phia phai.
-            // O giua (khoang nuoc/thac) khong co nen nao, nen nhan vat se roi xuong
-            // neu buoc vao do ma khong nhay len cac buoc dem/cau.
-            //
-            // Moi bac deu duoc dat cao hon bac truoc do ~90-95px (o do phan giai
-            // chuan) - nam trong tam nhay toi da cua Player hien tai (JumpForce=560,
-            // Gravity=1500 => tam nhay ly thuyet ~104px), nen luon nhay toi duoc.
+            stage.Walls.Add(new TerrainWall(
+                name: "LeftPitWall",
+                xRatio: 0.4583f,
+                topRatio: 0.78f,
+                bottomRatio: 1.0f));
 
-            // Rieng da ben trai, noi nhan vat xuat hien dau man.
+            stage.Walls.Add(new TerrainWall(
+                name: "RightPitWall",
+                xRatio: 0.6111f,
+                topRatio: 0.78f,
+                bottomRatio: 1.0f));
+
             stage.Platforms.Add(new TerrainPlatform(
                 name: "LeftGround",
                 minXRatio: 0.0f,
@@ -85,50 +129,111 @@ namespace ElementalSpirit.Domain.Stage
                 topRatio: 0.78f,
                 bottomRatio: 1.0f));
 
-            // Buoc dem: mo da vun ben trai (ngay duoi dau cau treo), giup nhan vat
-            // nhay len tu mat dat truoc khi nhay tiep len cau (thay vi nhay thang
-            // 1 buoc rat cao, khong kha thi voi tam nhay hien tai).
             stage.Platforms.Add(new TerrainPlatform(
-                name: "LeftRubbleStep",
-                minXRatio: 0.2488f,
-                maxXRatio: 0.34f,
-                topRatio: 0.64f,
-                bottomRatio: 0.78f));
+                name: "LeftRootStep",
+                minXRatio: 0.132f,
+                maxXRatio: 0.204f,
+                topRatio: 0.617f,
+                bottomRatio: 0.70f));
 
-            // Cau treo bac ngang khoang trong o giua. Dat theo dung do cao phan
-            // sagging (vong xuong) thap nhat cua day cau trong hinh nen - do la
-            // phan nhan vat thuc su dat chan len khi di qua cau (2 dau cau/cay
-            // cao hon nhieu nhung qua cao de nhay len, > tam nhay toi da).
             stage.Platforms.Add(new TerrainPlatform(
-                name: "CanopyBridge",
-                minXRatio: 0.3264f,
-                maxXRatio: 0.7778f,
-                topRatio: 0.50f,
+                name: "LeftRubbleUpperStep",
+                minXRatio: 0.1875f,
+                maxXRatio: 0.256f,
+                topRatio: 0.53f,
                 bottomRatio: 0.60f));
 
-            // Buoc dem: mo da noi thap ben phai, do lai chinh xac tu hinh nen
-            // (truoc do dat cao hon mat da ve ~30px, khien nhan vat nhu lo lung
-            // phia tren tang da). Thap hon cau 1 chut - buoc xuong tu cau de dang.
             stage.Platforms.Add(new TerrainPlatform(
-                name: "RightLowerStep",
-                minXRatio: 0.836f,
-                maxXRatio: 1.0f,
-                topRatio: 0.575f,
-                bottomRatio: 0.68f));
+                name: "LeftRubbleLowerStep",
+                minXRatio: 0.267f,
+                maxXRatio: 0.328f,
+                topRatio: 0.60f,
+                bottomRatio: 0.66f));
 
-            // Mo da noi cao ben phai (tuong duong cot da/mo trang tri phia tren cau) -
-            // buoc "thuong" tuy chon, nhay len duoc tu CanopyBridge.
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "LeftPillarTop",
+                minXRatio: 0.088f,
+                maxXRatio: 0.206f,
+                topRatio: 0.348f,
+                bottomRatio: 0.44f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "CanopyBridgeLeft",
+                minXRatio: 0.30f,
+                maxXRatio: 0.40f,
+                topRatio: 0.40f,
+                bottomRatio: 0.47f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "CanopyBridgeLeftSlope",
+                minXRatio: 0.40f,
+                maxXRatio: 0.50f,
+                topRatio: 0.43f,
+                bottomRatio: 0.50f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "CanopyBridgeCenter",
+                minXRatio: 0.50f,
+                maxXRatio: 0.60f,
+                topRatio: 0.46f,
+                bottomRatio: 0.53f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "CanopyBridgeRightSlope",
+                minXRatio: 0.60f,
+                maxXRatio: 0.70f,
+                topRatio: 0.43f,
+                bottomRatio: 0.50f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "CanopyBridgeRight",
+                minXRatio: 0.70f,
+                maxXRatio: 0.80f,
+                topRatio: 0.40f,
+                bottomRatio: 0.47f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightLowerStepLeft",
+                minXRatio: 0.836f,
+                maxXRatio: 0.89f,
+                topRatio: 0.56f,
+                bottomRatio: 0.63f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightLowerStepCenter",
+                minXRatio: 0.89f,
+                maxXRatio: 0.95f,
+                topRatio: 0.54f,
+                bottomRatio: 0.63f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightLowerStepRight",
+                minXRatio: 0.95f,
+                maxXRatio: 1.0f,
+                topRatio: 0.527f,
+                bottomRatio: 0.63f));
+
             stage.Platforms.Add(new TerrainPlatform(
                 name: "RightUpperStep",
                 minXRatio: 0.840f,
                 maxXRatio: 1.0f,
-                topRatio: 0.38f,
-                bottomRatio: 0.45f));
+                topRatio: 0.366f,
+                bottomRatio: 0.465f));
 
-            // Phien da vo (mau cau go cu) nam duoi day khe vuc, ngay canh thac
-            // nuoc - thap hon ca mat dat chinh (o day khe vuc). Nhan vat co the
-            // roi xuong day (khong can nhay) roi nhay nguoc len mat dat sau do
-            // (~88px, trong tam nhay toi da).
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightRockSmallStep",
+                minXRatio: 0.93f,
+                maxXRatio: 0.97f,
+                topRatio: 0.34f,
+                bottomRatio: 0.40f));
+
+            stage.Platforms.Add(new TerrainPlatform(
+                name: "RightRockSmallStepEdge",
+                minXRatio: 0.97f,
+                maxXRatio: 1.0f,
+                topRatio: 0.31f,
+                bottomRatio: 0.37f));
+
             stage.Platforms.Add(new TerrainPlatform(
                 name: "PitStone",
                 minXRatio: 0.457f,
@@ -151,9 +256,6 @@ namespace ElementalSpirit.Domain.Stage
             return stage;
         }
 
-        /// <summary>
-        /// Khu vực 3: khu vực cuối của Earth Forest. Màn khó nhất trong chuỗi 3 background.
-        /// </summary>
         public static StageData CreateEarthForest3()
         {
             var stage = new StageData

@@ -6,6 +6,7 @@ namespace ElementalSpirit.Domain.Projectile
     {
         public float VelocityX { get; protected set; }
         public float VelocityY { get; protected set; }
+        public float HorizontalDirection => Math.Sign(VelocityX);
         public int Damage { get; protected set; }
         public float Lifetime { get; protected set; }
         public bool IsAlive { get; protected set; } = true;

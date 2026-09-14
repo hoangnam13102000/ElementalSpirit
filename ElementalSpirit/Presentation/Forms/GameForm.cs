@@ -20,6 +20,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly GameRenderer _renderer;
 
         private readonly PlayerAnimationController _playerAnimController;
+        private readonly SkillAnimationController _skillAnimController;
         private readonly Image[]? _fireballFrames;
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
@@ -46,10 +47,16 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
 
             _playerAnimController = MageAnimationLoader.CreateController();
+            _skillAnimController = CreateWaterfallAnimationController();
             try { _fireballFrames = MageAnimationLoader.LoadFireballFrames(); }
             catch { _fireballFrames = null; }
 
-            _renderer = new GameRenderer(_gameManager, _playerAnimController, _fireballFrames, _localization);
+            _renderer = new GameRenderer(
+                _gameManager,
+                _playerAnimController,
+                _skillAnimController,
+                _fireballFrames,
+                _localization);
 
             _gameTimer = new GameTimer(targetFps: 60);
             _gameTimer.OnTick += OnGameTick;
@@ -66,7 +73,33 @@ namespace ElementalSpirit.Presentation.Forms
         {
             _gameManager.Update(deltaTime);
             UpdatePlayerAnimation(deltaTime);
+            UpdateSkillAnimation(deltaTime);
             Invalidate();
+        }
+
+        private void UpdateSkillAnimation(float deltaTime)
+        {
+            var state = _gameManager.Skills.CurrentAnimationState;
+            if (state == Domain.Skill.SkillAnimationState.Waterfall &&
+                _skillAnimController.IsCompleted)
+            {
+                _skillAnimController.Restart();
+            }
+
+            if (state == Domain.Skill.SkillAnimationState.Waterfall)
+                _skillAnimController.Update(deltaTime);
+        }
+
+        private static SkillAnimationController CreateWaterfallAnimationController()
+        {
+            var frames = new System.Collections.Generic.List<Image>();
+            for (int i = 0; i <= 12; i++)
+            {
+                var frame = AssetLoader.Get($"Characters/Skill/Watermagic/WaterFall/water600{i:00}.png");
+                if (frame != null) frames.Add(new Bitmap(frame));
+            }
+
+            return new SkillAnimationController(frames.ToArray(), 12f);
         }
 
         private void UpdatePlayerAnimation(float deltaTime)
@@ -94,6 +127,7 @@ namespace ElementalSpirit.Presentation.Forms
             }
 
             if (desired == PlayerAnimationState.Fire &&
+                !player.IsCastingSkill &&
                 currentFrame >= FireCastFrameIndex && !_fireCastFrameTriggered)
             {
                 _fireCastFrameTriggered = true;
@@ -109,7 +143,11 @@ namespace ElementalSpirit.Presentation.Forms
                     case PlayerAnimationState.RunAttack:
                         player.NotifyAttackAnimationEnded(); break;
                     case PlayerAnimationState.Fire:
-                        player.NotifyFireAnimationEnded(); break;
+                        if (player.IsCastingSkill)
+                            player.NotifySkillAnimationEnded();
+                        else
+                            player.NotifyFireAnimationEnded();
+                        break;
                     case PlayerAnimationState.Hurt:
                         player.NotifyHurtAnimationEnded(); break;
                     case PlayerAnimationState.Death:
@@ -122,6 +160,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             if (player.IsDead) return PlayerAnimationState.Death;
             if (player.IsHurt) return PlayerAnimationState.Hurt;
+            if (player.IsCastingSkill) return PlayerAnimationState.Fire;
             if (player.IsFiring) return PlayerAnimationState.Fire;
             if (player.IsAttacking)
             {
@@ -212,6 +251,7 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer.Stop();
             _gameTimer.Dispose();
             _playerAnimController.Dispose();
+            _skillAnimController.Dispose();
             if (_fireballFrames != null) foreach (var img in _fireballFrames) img.Dispose();
             AssetLoader.DisposeAll();
             MageAnimationLoader.DisposeAll();

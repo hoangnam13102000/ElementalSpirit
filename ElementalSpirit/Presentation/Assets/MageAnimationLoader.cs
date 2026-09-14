@@ -26,7 +26,7 @@ namespace ElementalSpirit.Presentation.Assets
             (folder: "Attack",      fps: 14f, looping: false),
             (folder: "Walk_Attack", fps: 12f, looping: false),
             (folder: "Run_Attack",  fps: 14f, looping: false),
-            (folder: "Fire_Extra",  fps: 12f, looping: false),
+            (folder: "Attack_Extra", fps: 12f, looping: false),
             (folder: "Fire_Extra",  fps: 12f, looping: false),
             (folder: "Hurt",        fps: 10f, looping: false),
             (folder: "Death",       fps: 10f, looping: false),

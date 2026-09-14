@@ -6,7 +6,7 @@ namespace ElementalSpirit.Domain.Stage
 
     public class TerrainCollisionResolver
     {
-        private const float GroundSnapTolerance = 4f;
+        private const float GroundSnapTolerance = 24f;
 
         public bool TryGetSupportingGroundY(
             IReadOnlyList<TerrainPlatform> platforms,

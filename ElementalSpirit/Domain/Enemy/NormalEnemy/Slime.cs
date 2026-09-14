@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using ElementalSpirit.Domain.Enemy.AI;
 using ElementalSpirit.Domain.Player;
 
 namespace ElementalSpirit.Domain.Enemy.NormalEnemy
@@ -8,21 +9,18 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
     {
         public const string AssetKey = "Slime.png";
 
-        private readonly Random _random = new();
         private readonly float _speed = 70f;
         private float _dirX;
-        private float _changeDirectionTimer;
-        private float _changeDirectionInterval = 0.8f;
 
         private const float AttackRange = 55f;
+        private const float DetectionRange = 280f;
         private const float AttackCooldownTime = 1.4f;
         private float _attackCooldown;
         private bool _isAttacking;
         private bool _attackHitRaised;
 
-        private float _targetX;
-        private float _targetY;
-        private bool _hasTarget;
+        private readonly IEnemyBehavior _behavior = new SimpleEnemyBehavior(DetectionRange, AttackRange);
+        private IEnemyTarget? _target;
 
         protected override float HurtDuration => 0.65f;
         protected override float DeathDuration => 0.55f;
@@ -37,29 +35,43 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
             _animController?.CurrentState ?? SlimeAnimationState.Idle;
         public bool IsAttacking => _isAttacking;
 
+        public bool CanHitTarget(IEnemyTarget target)
+        {
+            float slimeCenterX = X + Width / 2f;
+            float slimeCenterY = Y + Height / 2f;
+            float targetCenterX = target.X + target.Width / 2f;
+            float targetCenterY = target.Y + target.Height / 2f;
+            float deltaX = targetCenterX - slimeCenterX;
+            float deltaY = targetCenterY - slimeCenterY;
+            return deltaX * deltaX + deltaY * deltaY <= AttackRange * AttackRange;
+        }
+
         public Slime(float x, float y, SlimeAnimationController? animController = null)
             : base(x, y, maxHealth: 30, damage: 8)
         {
             Width = 40;
             Height = 32;
             _animController = animController;
-            ChooseNewDirection();
         }
 
         /// <summary>Inject mục tiêu combat (DIP: không hardcode Player).</summary>
         public void SetCombatTarget(float centerX, float centerY)
         {
-            _targetX = centerX;
-            _targetY = centerY;
-            _hasTarget = true;
+            _target = new CoordinateEnemyTarget(centerX, centerY);
         }
 
-        public override void Update(float deltaTime, float groundY)
+        public void SetCombatTarget(IEnemyTarget? target) => _target = target;
+
+        public override void Update(float deltaTime, float groundY, IEnemyTarget? target = null)
         {
             UpdateEffectTimers(deltaTime);
             UpdateAnimation(deltaTime);
 
-            if (IsDying) return;
+            if (IsDying)
+            {
+                BehaviorState = EnemyBehaviorState.Dead;
+                return;
+            }
 
             if (_attackCooldown > 0f)
                 _attackCooldown -= deltaTime;
@@ -70,17 +82,24 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
                 return;
             }
 
-            if (_hasTarget && _attackCooldown <= 0f && IsTargetInAttackRange())
+            if (target != null)
+                _target = target;
+
+            var decision = _behavior.Update(
+                deltaTime,
+                X + Width / 2f,
+                Y + Height / 2f,
+                _target);
+            BehaviorState = decision.State;
+
+            if (decision.State == EnemyBehaviorState.Attack && _attackCooldown <= 0f)
             {
                 StartAttack();
                 return;
             }
 
             float speedMultiplier = IsHurt ? 0.6f : 1f;
-            _changeDirectionTimer -= deltaTime;
-            if (_changeDirectionTimer <= 0f)
-                ChooseNewDirection();
-
+            _dirX = decision.DirectionX;
             X += _dirX * _speed * speedMultiplier * deltaTime;
 
             if (_dirX < -0.1f) Facing = FacingDirection.Left;
@@ -92,25 +111,18 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
             Y = groundY - Height;
         }
 
-        private bool IsTargetInAttackRange()
-        {
-            float cx = X + Width / 2f;
-            float cy = Y + Height / 2f;
-            float dx = _targetX - cx;
-            float dy = _targetY - cy;
-            return dx * dx + dy * dy <= AttackRange * AttackRange;
-        }
-
         private void StartAttack()
         {
             _isAttacking = true;
             _attackHitRaised = false;
             _dirX = 0f;
 
-            if (_hasTarget)
+            if (_target != null)
             {
                 float cx = X + Width / 2f;
-                Facing = _targetX < cx ? FacingDirection.Left : FacingDirection.Right;
+                Facing = _target.X + _target.Width / 2f < cx
+                    ? FacingDirection.Left
+                    : FacingDirection.Right;
             }
 
             _animController?.Play(SlimeAnimationState.Attack);
@@ -133,7 +145,6 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
         {
             _isAttacking = false;
             _attackCooldown = AttackCooldownTime;
-            ChooseNewDirection();
         }
 
         private void UpdateAnimation(float deltaTime)
@@ -169,25 +180,28 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
             return SlimeAnimationState.Walk;
         }
 
-        private void ChooseNewDirection()
-        {
-            int choice = _random.Next(0, 5);
-            _dirX = choice switch
-            {
-                0 or 1 => -1f,
-                2 or 3 => 1f,
-                _ => 0f
-            };
-
-            _changeDirectionInterval = 0.6f + (float)_random.NextDouble() * 0.8f;
-            _changeDirectionTimer = _changeDirectionInterval;
-        }
-
         public override void OnDeath()
         {
             OnAttackHit = null;
             _animController?.Dispose();
             base.OnDeath();
+        }
+
+        private sealed class CoordinateEnemyTarget : IEnemyTarget
+        {
+            public float X { get; }
+            public float Y { get; }
+            public int Width { get; }
+            public int Height { get; }
+            public bool IsAlive => true;
+
+            public CoordinateEnemyTarget(float centerX, float centerY)
+            {
+                X = centerX;
+                Y = centerY;
+                Width = 0;
+                Height = 0;
+            }
         }
     }
 }

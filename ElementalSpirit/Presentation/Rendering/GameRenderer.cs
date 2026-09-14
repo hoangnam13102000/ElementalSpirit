@@ -2,10 +2,12 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Collections.Generic;
 using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.Domain.Enemy.NormalEnemy;
+using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
@@ -17,8 +19,11 @@ namespace ElementalSpirit.Presentation.Rendering
     {
         private readonly GameManager _gameManager;
         private readonly PlayerAnimationController _playerAnimController;
+        private readonly SkillAnimationController _skillAnimController;
         private readonly Image[]? _fireballFrames;
         private readonly ILocalizationService _localization;
+        private readonly Dictionary<string, Rectangle> _visibleAssetBounds = new();
+        private readonly Dictionary<Image, Rectangle> _visibleImageBounds = new();
 
         private const float BaseRenderScale = 0.9f;
         private const int StandardFrameSize = 128;
@@ -33,11 +38,13 @@ namespace ElementalSpirit.Presentation.Rendering
         public GameRenderer(
             GameManager gameManager,
             PlayerAnimationController playerAnimController,
+            SkillAnimationController skillAnimController,
             Image[]? fireballFrames,
             ILocalizationService localization)
         {
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _playerAnimController = playerAnimController ?? throw new ArgumentNullException(nameof(playerAnimController));
+            _skillAnimController = skillAnimController ?? throw new ArgumentNullException(nameof(skillAnimController));
             _fireballFrames = fireballFrames;
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
         }
@@ -50,7 +57,7 @@ namespace ElementalSpirit.Presentation.Rendering
             DrawPlayer(g);
             DrawProjectiles(g);
             DrawEnemies(g);
-            DrawSpiritHud(g, clientSize);
+            DrawSkillHud(g, clientSize);
             DrawCurrencyHud(g, clientSize);
             DrawEquipmentHud(g, clientSize);
             DrawDebugInfo(g, clientSize);
@@ -161,6 +168,36 @@ namespace ElementalSpirit.Presentation.Rendering
                 using var windPen = new Pen(Color.FromArgb(150, 180, 255, 220), 2f);
                 g.DrawArc(windPen, p.X - 8, p.Y - 8, p.Width + 16, p.Height + 16, 0, 270);
             }
+            if (_gameManager.Skills.CurrentAnimationState == Domain.Skill.SkillAnimationState.Waterfall &&
+                _skillAnimController.CurrentImage != null)
+            {
+                var image = _skillAnimController.CurrentImage;
+                Rectangle sourceBounds = GetVisibleAssetBounds(image);
+                float direction = p.Facing == FacingDirection.Right ? 1f : -1f;
+                float baseX = p.X + p.Width / 2f + direction * WaterfallSkill.ColumnSpacing;
+                float columnWidth = WaterfallSkill.ColumnWidth;
+                float columnHeight = WaterfallSkill.ColumnHeight;
+                float columnY = p.Y + p.Height - columnHeight;
+                int activeColumnCount = _gameManager.Skills.ActiveWaterfall?.ActiveColumnCount
+                    ?? WaterfallSkill.ColumnCount;
+
+                for (int column = 0; column < activeColumnCount; column++)
+                {
+                    float centerX = baseX + direction * column * WaterfallSkill.ColumnSpacing;
+                    g.DrawImage(
+                        image,
+                        new Rectangle(
+                            (int)(centerX - columnWidth / 2f),
+                            (int)columnY,
+                            (int)columnWidth,
+                            (int)columnHeight),
+                        sourceBounds.X,
+                        sourceBounds.Y,
+                        sourceBounds.Width,
+                        sourceBounds.Height,
+                        GraphicsUnit.Pixel);
+                }
+            }
 
             DrawPlayerHealthBar(g, p);
         }
@@ -215,6 +252,39 @@ namespace ElementalSpirit.Presentation.Rendering
                     float drawX = p.X + p.Width / 2f - drawW / 2f;
                     float drawY = p.Y + p.Height / 2f - drawH / 2f;
                     g.DrawImage(fireImg, drawX, drawY, drawW, drawH);
+                }
+                else if (p is PlayerProjectile slash && slash.Type == ProjectileType.Slash)
+                {
+                    var slashImage = AssetLoader.Get(
+                        "Characters/Skill/Slash/WindSlash/Double Wind Slashes_Frame_01.png");
+                    if (slashImage != null)
+                    {
+                        Rectangle sourceBounds = GetVisibleAssetBounds(
+                            "Characters/Skill/Slash/WindSlash/Double Wind Slashes_Frame_01.png",
+                            slashImage);
+                        float drawW = 58f;
+                        float drawH = 58f;
+                        float centerX = slash.X + slash.Width / 2f;
+                        float centerY = slash.Y + slash.Height / 2f;
+                        var state = g.Save();
+                        g.TranslateTransform(centerX, centerY);
+                        if (slash.HorizontalDirection > 0f)
+                            g.ScaleTransform(-1f, 1f);
+                        g.RotateTransform(90f);
+                        g.DrawImage(
+                            slashImage,
+                            new Rectangle(
+                                (int)-drawW / 2,
+                                (int)-drawH / 2,
+                                (int)drawW,
+                                (int)drawH),
+                            sourceBounds.X,
+                            sourceBounds.Y,
+                            sourceBounds.Width,
+                            sourceBounds.Height,
+                            GraphicsUnit.Pixel);
+                        g.Restore(state);
+                    }
                 }
                 else
                 {
@@ -308,66 +378,187 @@ namespace ElementalSpirit.Presentation.Rendering
             }
         }
 
-        private void DrawSpiritHud(Graphics g, Size clientSize)
+        private void DrawSkillHud(Graphics g, Size clientSize)
         {
-            var spirits = _gameManager.Spirits;
-            float startX = 12f, startY = clientSize.Height - 78f;
-            float slotW = 210f, slotH = 58f;
+            var skills = _gameManager.Skills.Skills;
+            const int slotCount = 4;
+            const float slotSize = 72f;
+            const float slotGap = 8f;
+            float totalWidth = slotCount * slotSize + (slotCount - 1) * slotGap;
+            float startX = (clientSize.Width - totalWidth) / 2f;
+            float startY = clientSize.Height - slotSize - 16f;
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < slotCount; i++)
             {
-                var spirit = spirits.Equipped[i];
-                float x = startX + i * (slotW + 12);
-                using var bg = new SolidBrush(Color.FromArgb(180, 20, 24, 36));
-                using var border = new Pen(Color.FromArgb(100, 140, 180, 255), 1.5f);
-                g.FillRectangle(bg, x, startY, slotW, slotH);
-                g.DrawRectangle(border, x, startY, slotW, slotH);
+                float x = startX + i * (slotSize + slotGap);
+                var skill = i < skills.Count ? skills[i] : null;
+                using var bg = new SolidBrush(Color.FromArgb(210, 16, 20, 30));
+                using var border = new Pen(
+                    skill?.IsActive == true
+                        ? Color.FromArgb(255, 240, 210, 90)
+                        : Color.FromArgb(180, 110, 145, 190),
+                    skill?.IsActive == true ? 2f : 1.5f);
+                g.FillRectangle(bg, x, startY, slotSize, slotSize);
+                g.DrawRectangle(border, x, startY, slotSize, slotSize);
 
-                using var keyFont = new Font("Consolas", 14f, FontStyle.Bold);
-                using var keyBrush = new SolidBrush(Color.FromArgb(220, 230, 255));
-                g.DrawString($"[{i + 1}]", keyFont, keyBrush, x + 8, startY + 6);
-
-                if (spirit == null)
+                if (skill == null)
                 {
-                    using var emptyFont = new Font("Consolas", 10f);
-                    using var emptyBrush = new SolidBrush(Color.FromArgb(140, 150, 170));
-                    g.DrawString(_localization.Translate("hud.spirit.empty"), emptyFont, emptyBrush, x + 50, startY + 20);
+                    using var emptyBrush = new SolidBrush(Color.FromArgb(90, 100, 115));
+                    g.FillRectangle(emptyBrush, x + 12, startY + 12, slotSize - 24, slotSize - 24);
+                    DrawSkillKey(g, i + 1, x, startY);
                     continue;
                 }
 
-                Color elementColor = spirit.Element switch
+                var icon = AssetLoader.Get(skill.IconAssetKey);
+                if (icon != null)
                 {
-                    "Earth" => Color.FromArgb(120, 200, 100),
-                    "Fire" => Color.FromArgb(255, 140, 60),
-                    "Water" => Color.FromArgb(80, 180, 255),
-                    "Wind" => Color.FromArgb(180, 220, 255),
-                    _ => Color.White
-                };
-
-                using var nameFont = new Font("Consolas", 11f, FontStyle.Bold);
-                using var nameBrush = new SolidBrush(elementColor);
-                g.DrawString($"{spirit.Name}  Lv.{spirit.Level}", nameFont, nameBrush, x + 48, startY + 8);
-
-                using var statusFont = new Font("Consolas", 9f);
-                string status; Color statusColor;
-                if (spirit.IsActive)
-                { status = $"{_localization.Translate("hud.spirit.active")}  {spirit.ActiveRemaining:0.0}s"; statusColor = Color.FromArgb(120, 255, 160); }
-                else if (spirit.CooldownRemaining > 0)
-                { status = $"{_localization.Translate("hud.spirit.cd")}  {spirit.CooldownRemaining:0.0}s"; statusColor = Color.FromArgb(255, 160, 100); }
-                else
-                { status = _localization.Translate("hud.spirit.ready"); statusColor = Color.FromArgb(180, 220, 255); }
-
-                using var statusBrush = new SolidBrush(statusColor);
-                g.DrawString(status, statusFont, statusBrush, x + 48, startY + 30);
-
-                float cdRatio = spirit.CooldownDuration <= 0 ? 0
-                    : Math.Clamp(spirit.CooldownRemaining / spirit.CooldownDuration, 0f, 1f);
-                if (cdRatio > 0)
+                    Rectangle sourceBounds = GetVisibleAssetBounds(skill.IconAssetKey, icon);
+                    float iconSize = (slotSize - 8f) * Math.Clamp(skill.IconScale, 0.4f, 1f);
+                    float iconX = x + (slotSize - iconSize) / 2f;
+                    float iconY = startY + (slotSize - iconSize) / 2f;
+                    g.DrawImage(
+                        icon,
+                        new Rectangle(
+                            (int)iconX,
+                            (int)iconY,
+                            (int)iconSize,
+                            (int)iconSize),
+                        sourceBounds.X,
+                        sourceBounds.Y,
+                        sourceBounds.Width,
+                        sourceBounds.Height,
+                        GraphicsUnit.Pixel);
+                }
+                else if (string.IsNullOrEmpty(skill.IconAssetKey))
                 {
-                    using var cdBrush = new SolidBrush(Color.FromArgb(120, 255, 100, 60));
-                    g.FillRectangle(cdBrush, x + 2, startY + slotH - 6, (slotW - 4) * cdRatio, 4);
+                    DrawBasicProjectileIcon(g, x, startY, slotSize);
+                }
+
+                DrawSkillCooldown(g, skill, x, startY, slotSize);
+                DrawSkillKey(g, i + 1, x, startY);
+                using var nameFont = new Font("Consolas", 8f, FontStyle.Bold);
+                using var nameBrush = new SolidBrush(Color.White);
+                var nameSize = g.MeasureString(skill.Name, nameFont);
+                g.DrawString(skill.Name, nameFont, nameBrush,
+                    x + (slotSize - nameSize.Width) / 2f, startY + slotSize - 15f);
+            }
+        }
+
+        private static void DrawSkillKey(Graphics g, int key, float x, float y)
+        {
+            using var keyFont = new Font("Consolas", 10f, FontStyle.Bold);
+            using var keyBrush = new SolidBrush(Color.White);
+            g.DrawString(key.ToString(), keyFont, keyBrush, x + 5f, y + 4f);
+        }
+
+        private static void DrawBasicProjectileIcon(Graphics g, float x, float y, float slotSize)
+        {
+            float size = slotSize * 0.3f;
+            float centerX = x + slotSize / 2f;
+            float centerY = y + slotSize / 2f - 2f;
+            var bounds = new RectangleF(
+                centerX - size / 2f,
+                centerY - size / 2f,
+                size,
+                size);
+
+            using var glow = new SolidBrush(Color.FromArgb(120, 100, 220, 255));
+            g.FillEllipse(glow, bounds.X - 5f, bounds.Y - 5f, bounds.Width + 10f, bounds.Height + 10f);
+            using var core = new SolidBrush(Color.FromArgb(255, 90, 225, 255));
+            g.FillEllipse(core, bounds);
+            using var outline = new Pen(Color.FromArgb(255, 225, 250, 255), 2f);
+            g.DrawEllipse(outline, bounds);
+        }
+
+        private static void DrawSkillCooldown(
+            Graphics g,
+            Domain.Skill.ISkill skill,
+            float x,
+            float y,
+            float slotSize)
+        {
+            if (skill.CooldownRemaining <= 0f) return;
+
+            using var overlay = new SolidBrush(Color.FromArgb(125, 5, 8, 14));
+            g.FillRectangle(overlay, x, y, slotSize, slotSize);
+
+            using var clockPen = new Pen(Color.FromArgb(230, 220, 235, 255), 2f);
+            float clockSize = 28f;
+            float clockX = x + (slotSize - clockSize) / 2f;
+            float clockY = y + 10f;
+            g.DrawEllipse(clockPen, clockX, clockY, clockSize, clockSize);
+            g.DrawLine(
+                clockPen,
+                clockX + clockSize / 2f,
+                clockY + clockSize / 2f,
+                clockX + clockSize / 2f,
+                clockY + 6f);
+            g.DrawLine(
+                clockPen,
+                clockX + clockSize / 2f,
+                clockY + clockSize / 2f,
+                clockX + clockSize - 7f,
+                clockY + clockSize / 2f);
+
+            using var timeFont = new Font("Consolas", 10f, FontStyle.Bold);
+            using var timeBrush = new SolidBrush(Color.White);
+            string timeText = $"{skill.CooldownRemaining:0.0}s";
+            var timeSize = g.MeasureString(timeText, timeFont);
+            g.DrawString(
+                timeText,
+                timeFont,
+                timeBrush,
+                x + (slotSize - timeSize.Width) / 2f,
+                y + 43f);
+        }
+
+        private Rectangle GetVisibleAssetBounds(string assetKey, Image image)
+        {
+            if (_visibleAssetBounds.TryGetValue(assetKey, out var cached))
+                return cached;
+
+            if (image is not Bitmap bitmap)
+                return new Rectangle(0, 0, image.Width, image.Height);
+
+            var bounds = FindVisibleAssetBounds(bitmap);
+            _visibleAssetBounds[assetKey] = bounds;
+            return bounds;
+        }
+
+        private Rectangle GetVisibleAssetBounds(Image image)
+        {
+            if (_visibleImageBounds.TryGetValue(image, out var cached))
+                return cached;
+
+            var bounds = image is Bitmap bitmap
+                ? FindVisibleAssetBounds(bitmap)
+                : new Rectangle(0, 0, image.Width, image.Height);
+            _visibleImageBounds[image] = bounds;
+            return bounds;
+        }
+
+        private static Rectangle FindVisibleAssetBounds(Bitmap bitmap)
+        {
+            int minX = bitmap.Width;
+            int minY = bitmap.Height;
+            int maxX = -1;
+            int maxY = -1;
+
+            for (int y = 0; y < bitmap.Height; y++)
+            {
+                for (int x = 0; x < bitmap.Width; x++)
+                {
+                    if (bitmap.GetPixel(x, y).A < 16) continue;
+                    minX = Math.Min(minX, x);
+                    minY = Math.Min(minY, y);
+                    maxX = Math.Max(maxX, x);
+                    maxY = Math.Max(maxY, y);
                 }
             }
+
+            return maxX < 0
+                ? new Rectangle(0, 0, bitmap.Width, bitmap.Height)
+                : Rectangle.FromLTRB(minX, minY, maxX + 1, maxY + 1);
         }
 
         private void DrawCurrencyHud(Graphics g, Size clientSize)
@@ -435,36 +626,12 @@ namespace ElementalSpirit.Presentation.Rendering
                 stageStatus = $"{_localization.Translate("hud.wave.label")} {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  {_localization.Translate("hud.state.label")} {waves.State}";
             }
 
-            string effects = "";
-            if (p.ActiveShield) effects += " [SHIELD]";
-            if (p.ActiveFireBoost) effects += $" [FIRE DMG={p.Damage}]";
-            if (p.ActiveHealEffect) effects += " [HEAL]";
-            if (p.ActiveWindBarrage) effects += $" [WIND +{p.ExtraProjectiles}]";
-
-            string groundedLabel = p.IsGrounded ? _localization.Translate("hud.grounded") : _localization.Translate("hud.air");
-            string platState = p.IsGrounded
-                ? $"{groundedLabel} [{p.MovementState}]"
-                : $"{groundedLabel} [{p.MovementState}] VY={p.VelocityY:0}";
-
-            string animState = $"ANIM: {_playerAnimController.CurrentState}  frame {_playerAnimController.CurrentFrameIndex + 1}";
-            string facing = p.Facing == FacingDirection.Right ? "→ Right" : "← Left";
-            string speedMode = p.WantsToRun ? "RUN" : "WALK";
-            string combatFlags = "";
-            if (p.IsAttacking) combatFlags += " ATTACKING";
-            if (p.IsFiring) combatFlags += " FIRING";
-            if (p.IsHurt) combatFlags += " HURT";
-            if (p.IsDead) combatFlags += " DEAD";
-            if (p.IsInvulnerable) combatFlags += " INVULN";
-
             string info =
                 $"{_localization.Translate("hud.phase")}\n" +
                 $"{_localization.Translate("hud.stage.label")} {waves.StageName}\n" +
                 $"{stageStatus}\n" +
-                $"{_localization.Translate("hud.hp.label")} {p.CurrentHp}/{p.MaxHp}  {_localization.Translate("hud.dmg.label")} {p.Damage}  {_localization.Translate("hud.def.label")} {p.Defense}{effects}\n" +
-                $"{platState}  {facing}  [{speedMode}]\n" +
-                $"{animState}{combatFlags}\n" +
-                $"{_localization.Translate("hud.enemies.label")} {_gameManager.Enemies.Enemies.Count}  {_localization.Translate("hud.projectiles.label")} {_gameManager.Projectiles.Projectiles.Count}\n" +
-                $"{_localization.Translate("hud.controls.line1")}\n" +
+                $"{_localization.Translate("hud.hp.label")} {p.CurrentHp}/{p.MaxHp}\n" +
+                $"{_localization.Translate("hud.currency.gold")} {_gameManager.Wallet.Gold}\n" +
                 $"{_localization.Translate("hud.controls.line2")}";
 
             using var font = new Font("Consolas", 11f);

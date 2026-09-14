@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Inventory;
+using ElementalSpirit.Domain.Player;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Services;
@@ -21,13 +22,15 @@ namespace ElementalSpirit
             var spawn = new SpawnManager(enemies);
             var waves = new WaveManager(spawn, enemies);
             var spirits = new SpiritManager();
+            var player = new Player(PlayerConstants.DefaultStartX, PlayerConstants.DefaultStartY);
+            var skills = new SkillManager(player);
             var shop = new ShopService();
             var upgrades = new UpgradeService();
             var wallet = new PlayerWallet(250, 20, 2);
             var inventory = new Inventory();
 
             return new GameManager(
-                input, projectiles, enemies, collision, spawn, waves, spirits,
+                input, projectiles, enemies, collision, spawn, waves, spirits, player, skills,
                 shop, upgrades, wallet, inventory);
         }
 

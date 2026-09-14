@@ -45,7 +45,7 @@ namespace ElementalSpirit.GameEngine
             _currentStage = stage;
             _currentWaveIndex = -1;
             _state = WaveState.WaitingToStart;
-            _timer = 1.0f; // nghỉ 1 giây trước wave đầu
+            _timer = 0f;
         }
 
         public void Update(float deltaTime)

@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
 using ElementalSpirit.Presentation.Forms.Settings;
+using ElementalSpirit.Presentation.Dialogs;
 using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms
@@ -55,7 +56,7 @@ namespace ElementalSpirit.Presentation.Forms
             _btnSettings.Click += BtnSettings_Click;
 
             _btnExit = CreateMenuButton();
-            _btnExit.Click += (s, e) => Application.Exit();
+            _btnExit.Click += BtnExit_Click;
 
             Controls.Add(_btnContinue);
             Controls.Add(_btnStart);
@@ -132,12 +133,11 @@ namespace ElementalSpirit.Presentation.Forms
             var saveData = _saveGameService.Load();
             if (saveData == null)
             {
-                MessageBox.Show(
-                    this,
-                    _localization.Translate("menu.continue.noSave"),
+                using var dialog = new InformationDialog(
                     _localization.Translate("menu.windowTitle"),
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    _localization.Translate("menu.continue.noSave"),
+                    _localization.Translate("dialog.ok"));
+                dialog.ShowDialog(this);
                 return;
             }
 
@@ -149,6 +149,17 @@ namespace ElementalSpirit.Presentation.Forms
             var gameForm = new GameForm(gameManager, _localization, _saveGameService);
             gameForm.ShowDialog();
             ReturnToMenu();
+        }
+
+        private void BtnExit_Click(object? sender, EventArgs e)
+        {
+            using var dialog = new ConfirmationDialog(
+                _localization.Translate("settings.exitgame.confirm.title"),
+                _localization.Translate("settings.exitgame.confirm.message"),
+                _localization.Translate("dialog.yes"),
+                _localization.Translate("dialog.no"));
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+                Application.Exit();
         }
 
         private void BtnSettings_Click(object? sender, EventArgs e)

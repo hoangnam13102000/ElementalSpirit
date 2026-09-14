@@ -11,6 +11,7 @@ using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.SaveData;
 using ElementalSpirit.Domain.Stage;
+using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.Factories;
 using ElementalSpirit.Services;
 using ElementalSpirit.GameEngine.Abstractions;
@@ -40,6 +41,7 @@ namespace ElementalSpirit.GameEngine
         public ISpawnManager Spawn { get; }
         public IWaveManager Waves { get; }
         public ISpiritManager Spirits { get; }
+        public ISkillManager Skills { get; }
         public PlayerWallet Wallet { get; }
         public Inventory Inventory { get; }
         public IUpgradeService Upgrades { get; }
@@ -90,6 +92,8 @@ namespace ElementalSpirit.GameEngine
             ISpawnManager spawn,
             IWaveManager waves,
             ISpiritManager spirits,
+            Player player,
+            ISkillManager skills,
             IShopService shop,
             IUpgradeService upgrades,
             PlayerWallet wallet,
@@ -102,6 +106,8 @@ namespace ElementalSpirit.GameEngine
             Spawn = spawn ?? throw new ArgumentNullException(nameof(spawn));
             Waves = waves ?? throw new ArgumentNullException(nameof(waves));
             Spirits = spirits ?? throw new ArgumentNullException(nameof(spirits));
+            Player = player ?? throw new ArgumentNullException(nameof(player));
+            Skills = skills ?? throw new ArgumentNullException(nameof(skills));
             Shop = shop ?? throw new ArgumentNullException(nameof(shop));
             Upgrades = upgrades ?? throw new ArgumentNullException(nameof(upgrades));
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -114,7 +120,6 @@ namespace ElementalSpirit.GameEngine
                 Inventory.TryEquip(starter.Id);
             }
 
-            Player = new Player(PlayerConstants.DefaultStartX, PlayerConstants.DefaultStartY);
             RefreshPlayerEquipmentStats();
 
             Player.OnAttackHitFrame += OnPlayerAttackHitFrame;
@@ -199,6 +204,10 @@ namespace ElementalSpirit.GameEngine
                             TransitionProgress = 0f;
                             IncomingBackgroundImageName = null;
                         }
+                        else
+                        {
+                            Waves.Update(deltaTime);
+                        }
                         break;
                     }
             }
@@ -212,6 +221,10 @@ namespace ElementalSpirit.GameEngine
             Enemies.Clear();
             Projectiles.Clear();
             Waves.LoadStage(nextStage);
+            Spawn.SetTerrain(nextStage.Platforms, PlayArea);
+            Spawn.SetSpawnSafetyTarget(Player, 220f);
+            Enemies.SetTerrain(nextStage.Platforms, PlayArea);
+            Enemies.SetWalls(nextStage.Walls, PlayArea);
 
             // Nhân vật xuất hiện ở mép trái của background mới, tiếp tục chạy vào giữa màn.
             Player.ResetPosition(PlayArea.Left + 8f, Player.Y);
@@ -222,6 +235,10 @@ namespace ElementalSpirit.GameEngine
             PlayArea = new RectangleF(0, 0, width, height);
             GroundY = PlayArea.Top + PlayArea.Height * GroundTopRatio;
             Spawn.SetSpawnArea(width, height);
+            Spawn.SetTerrain(_stageSequence[_stageIndex].Platforms, PlayArea);
+            Spawn.SetSpawnSafetyTarget(Player, 220f);
+            Enemies.SetTerrain(_stageSequence[_stageIndex].Platforms, PlayArea);
+            Enemies.SetWalls(_stageSequence[_stageIndex].Walls, PlayArea);
             if (Player.Y + Player.Height > GroundY)
                 Player.ResolveGroundCollision(GroundY);
         }
@@ -266,7 +283,7 @@ namespace ElementalSpirit.GameEngine
         private void OnSlimeAttackHit(Slime slime)
         {
             if (Player.IsDead || Player.IsInvulnerable) return;
-            if (Player.Bounds.IntersectsWith(slime.Bounds))
+            if (slime.CanHitTarget(Player))
                 Player.TakeDamage(slime.Damage);
         }
 
@@ -326,25 +343,20 @@ namespace ElementalSpirit.GameEngine
             HandlePlayerFallRecovery();
 
             Spirits.Update(deltaTime, Player);
+            Skills.Update(deltaTime);
             Projectiles.Update(deltaTime);
-
-            // Truyền vị trí player cho slime (để quyết định Attack)
-            float pcx = Player.X + Player.Width / 2f;
-            float pcy = Player.Y + Player.Height / 2f;
 
             foreach (var e in Enemies.Enemies)
             {
                 if (e is Slime slime)
                 {
-                    slime.SetCombatTarget(pcx, pcy);
-
                     // Subscribe 1 lần (tránh subscribe mỗi frame)
                     slime.OnAttackHit -= OnSlimeAttackHit;
                     slime.OnAttackHit += OnSlimeAttackHit;
                 }
             }
 
-            Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right);
+            Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
             Collision.CheckCollisions(Projectiles, Enemies);
             CheckPlayerEnemyCollision();
             Waves.Update(deltaTime);
@@ -372,7 +384,8 @@ namespace ElementalSpirit.GameEngine
             float dir = Player.Facing == FacingDirection.Right ? 1f : -1f;
             float spawnX = Player.X + Player.Width / 2f + dir * 16f;
             float spawnY = Player.Y + Player.Height / 2f - 3f;
-            Projectiles.Add(ProjectileFactory.CreatePlayerProjectile(spawnX, spawnY, dir, Player.Damage));
+            Projectiles.Add(ProjectileFactory.CreatePlayerProjectile(
+                spawnX, spawnY, dir, Player.Damage, Player.CurrentProjectileType));
 
             if (Player.ActiveWindBarrage && Player.ExtraProjectiles > 0)
             {
@@ -530,8 +543,13 @@ namespace ElementalSpirit.GameEngine
         public void HandleKeyDown(Keys key)
         {
             Input.KeyDown(key);
-            if (key is Keys.D1 or Keys.NumPad1) Spirits.TryActivate(0, Player);
-            else if (key is Keys.D2 or Keys.NumPad2) Spirits.TryActivate(1, Player);
+            if (key is Keys.D1 or Keys.NumPad1)
+                ActivateSkill("slash");
+            else if (key is Keys.D2 or Keys.NumPad2)
+            {
+                if (ActivateSkill("waterfall"))
+                    ApplySkillDamage();
+            }
 #if DEBUG
             if (key == Keys.N) Waves.ForceNextWave();
             if (key == Keys.D3) { Spirits.Equip(0, Spirits.Unlocked[0]); Spirits.Equip(1, Spirits.Unlocked[1]); SetStatus("Equipped: Terra + Ignis"); }
@@ -541,5 +559,38 @@ namespace ElementalSpirit.GameEngine
         }
 
         public void HandleKeyUp(Keys key) => Input.KeyUp(key);
+
+        private bool ActivateSkill(string skillId)
+        {
+            if (!Skills.TryActivate(skillId)) return false;
+            Player.StartSkillCast();
+            return true;
+        }
+
+        private void ApplySkillDamage()
+        {
+            float direction = Player.Facing == FacingDirection.Right ? 1f : -1f;
+            float originX = Player.X + Player.Width / 2f;
+            float originY = Player.Y + Player.Height;
+            var damageAreas = Skills.CreateDamageAreas(
+                originX,
+                originY,
+                direction,
+                Player.Damage);
+
+            foreach (var enemy in Enemies.Enemies)
+            {
+                if (!enemy.IsAlive) continue;
+
+                foreach (var damageArea in damageAreas)
+                {
+                    if (damageArea.Bounds.IntersectsWith(enemy.Bounds))
+                    {
+                        enemy.TakeDamage(damageArea.Damage);
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

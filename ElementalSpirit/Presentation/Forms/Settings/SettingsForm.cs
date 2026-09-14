@@ -5,12 +5,14 @@ using System.Windows.Forms;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Presenters;
+using ElementalSpirit.Presentation.Dialogs;
 using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms.Settings
 {
     public class SettingsForm : Form, ISettingsView
     {
+        private readonly ILocalizationService _localization;
         private readonly Label _lblTitle;
         private readonly Label _lblLanguage;
         private readonly ComboBox _cmbLanguage;
@@ -28,6 +30,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             ISaveGameService saveGameService,
             GameManager? activeGame = null)
         {
+            _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             ClientSize = new Size(420, 450);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
@@ -81,7 +84,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
             _ = new SettingsPresenter(
                 this,
-                localization ?? throw new ArgumentNullException(nameof(localization)),
+                _localization,
                 saveGameService ?? throw new ArgumentNullException(nameof(saveGameService)),
                 activeGame);
         }
@@ -127,12 +130,24 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _btnExitGame.Text = translate("settings.button.exitgame");
         }
 
-        public void ShowInfo(string message, string title) =>
-            MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        public void ShowInfo(string message, string title)
+        {
+            using var dialog = new InformationDialog(
+                title,
+                message,
+                _localization.Translate("dialog.ok"));
+            dialog.ShowDialog(this);
+        }
 
-        public bool Confirm(string message, string title) =>
-            MessageBox.Show(this, message, title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
-                == DialogResult.Yes;
+        public bool Confirm(string message, string title)
+        {
+            using var dialog = new ConfirmationDialog(
+                title,
+                message,
+                _localization.Translate("dialog.yes"),
+                _localization.Translate("dialog.no"));
+            return dialog.ShowDialog(this) == DialogResult.OK;
+        }
 
         public void SetSaveGameAvailable(bool available)
         {

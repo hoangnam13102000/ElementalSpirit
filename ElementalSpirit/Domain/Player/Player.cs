@@ -1,5 +1,8 @@
 ﻿using System;
 using ElementalSpirit.Domain;
+using ElementalSpirit.Domain.Enemy.AI;
+using ElementalSpirit.Domain.Projectile;
+using ElementalSpirit.Domain.Skill;
 
 namespace ElementalSpirit.Domain.Player
 {
@@ -11,7 +14,7 @@ namespace ElementalSpirit.Domain.Player
         Falling
     }
 
-    public class Player : Character
+    public class Player : Character, IEnemyTarget, IProjectileLoadout
     {
         public float VelocityX { get; private set; }
         public float VelocityY { get; private set; }
@@ -48,6 +51,8 @@ namespace ElementalSpirit.Domain.Player
 
         public bool IsAttacking { get; private set; }
         public bool IsFiring { get; private set; }
+        public bool IsCastingSkill { get; private set; }
+        public ProjectileType CurrentProjectileType { get; private set; } = ProjectileType.Basic;
 
         public event Action? OnAttackHitFrame;
         public event Action? OnFireCastFrame;
@@ -184,6 +189,8 @@ namespace ElementalSpirit.Domain.Player
             if (X < minX) X = minX;
             if (X + Width > maxX) X = maxX - Width;
         }
+
+        public void RestoreHorizontalPosition(float x) => X = x;
         public void ResetPosition(float x, float y)
         {
             X = x;
@@ -232,12 +239,16 @@ namespace ElementalSpirit.Domain.Player
             Damage = BaseDamage;
         }
 
+        public void SetProjectileType(ProjectileType projectileType) =>
+            CurrentProjectileType = projectileType;
+
         public bool CanAttack() => AttackCooldown <= 0 && !IsAttacking && !IsFiring && !IsHurt && !IsDead;
         public bool CanFire() => AttackCooldown <= 0 && !IsAttacking && !IsFiring && !IsHurt && !IsDead;
         public void ResetAttackCooldown() => AttackCooldown = AttackInterval;
 
         public void StartAttack() { if (!IsDead) IsAttacking = true; }
         public void StartFire() { if (!IsDead) IsFiring = true; }
+        public void StartSkillCast() { if (!IsDead) IsCastingSkill = true; }
 
         private void StartHurt()
         {
@@ -251,6 +262,7 @@ namespace ElementalSpirit.Domain.Player
             IsDead = true;
             IsAttacking = false;
             IsFiring = false;
+            IsCastingSkill = false;
             IsHurt = false;
             VelocityX = 0f;
         }
@@ -259,6 +271,7 @@ namespace ElementalSpirit.Domain.Player
         public void NotifyFireCastFrame() => OnFireCastFrame?.Invoke();
         public void NotifyAttackAnimationEnded() { IsAttacking = false; OnAttackAnimationEnded?.Invoke(); }
         public void NotifyFireAnimationEnded() { IsFiring = false; OnFireAnimationEnded?.Invoke(); }
+        public void NotifySkillAnimationEnded() => IsCastingSkill = false;
         public void NotifyHurtAnimationEnded() { IsHurt = false; OnHurtAnimationEnded?.Invoke(); }
         public void NotifyDeathAnimationEnded() => OnDeathAnimationEnded?.Invoke();
 

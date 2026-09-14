@@ -4,7 +4,7 @@ namespace ElementalSpirit.Domain.Player
     {
         public const float WalkSpeed = 140f;
         public const float RunSpeed = 280f;
-        public const float JumpForce = 560f;
+        public const float JumpForce = 760f;
         public const float Gravity = 1500f;
         public const float MaxFallSpeed = 1200f;
         public const int BaseMaxHp = 100;
