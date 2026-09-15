@@ -276,7 +276,6 @@ namespace ElementalSpirit.Domain.Stage
                 bottomRatio: 1.0f));
 
             var wave1 = new WaveData(1);
-            wave1.Spawns.Add(new SpawnData(EnemyType.Gorgon, 1, 0.1f));
             stage.Waves.Add(wave1);
 
             return stage;

@@ -19,8 +19,16 @@ public class BossStageTests
         var stages = StageData.CreateEarthForestCampaign();
 
         Assert.Contains(stages, s => s.Name.Contains("Final Forest", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void FinalBossStage_DoesNotSpawnGorgonInWaveList()
+    {
+        var stages = StageData.CreateEarthForestCampaign();
         var finalStage = stages.Last();
-        Assert.Equal(EnemyType.Gorgon, finalStage.Waves[0].Spawns[0].EnemyType);
+
+        Assert.All(finalStage.Waves.SelectMany(w => w.Spawns), spawn =>
+            Assert.NotEqual(EnemyType.Gorgon, spawn.EnemyType));
     }
 
     [Fact]

@@ -12,6 +12,7 @@ using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
+using ElementalSpirit.Presentation.BossEncounter;
 
 namespace ElementalSpirit.Presentation.Rendering
 {
@@ -55,18 +56,28 @@ namespace ElementalSpirit.Presentation.Rendering
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.FromArgb(18, 22, 32));
             DrawBackground(g, clientSize);
-            DrawPlayer(g);
-            DrawProjectiles(g);
-            DrawEnemies(g);
-            DrawSkillHud(g, clientSize);
-            DrawCurrencyHud(g, clientSize);
-            DrawEquipmentHud(g, clientSize);
-            DrawDebugInfo(g, clientSize);
+
+            if (!_gameManager.BossEncounter.IsIntroDialogue)
+            {
+                DrawPlayer(g);
+                DrawProjectiles(g);
+                DrawEnemies(g);
+                DrawSkillHud(g, clientSize);
+                DrawCurrencyHud(g, clientSize);
+                DrawEquipmentHud(g, clientSize);
+                DrawDebugInfo(g, clientSize);
+            }
+
+            if (_gameManager.BossEncounter.IsIntroDialogue)
+                DrawIntroNarratorText(g);
+            else
+                DrawBossSpeechBubbles(g);
         }
 
         private void DrawBackground(Graphics g, Size clientSize)
         {
-            string bgName = _gameManager.Waves.StageBackgroundImageName;
+            string bgName = _gameManager.BossEncounter.ActiveBackgroundImageName ??
+                            _gameManager.Waves.StageBackgroundImageName;
             if (bgName != _loadedBackgroundName)
             {
                 _backgroundImage = AssetLoader.Get(bgName);
@@ -114,6 +125,166 @@ namespace ElementalSpirit.Presentation.Rendering
                 attributes);
         }
 
+        private void DrawBossSpeechBubbles(Graphics g)
+        {
+            var bubble = _gameManager.BossEncounter.ActiveSpeechBubble;
+            if (bubble.IsVisible)
+            {
+                DrawSpeechBubble(g, bubble, isBoss: !bubble.IsPlayerBubble);
+            }
+
+            var playerBubble = _gameManager.BossEncounter.PlayerSpeechBubble;
+            if (playerBubble.IsVisible)
+            {
+                DrawSpeechBubble(g, playerBubble, isBoss: false);
+            }
+        }
+
+        private void DrawIntroNarratorText(Graphics g)
+        {
+            var bubble = _gameManager.BossEncounter.ActiveSpeechBubble;
+            if (!bubble.IsVisible || string.IsNullOrWhiteSpace(bubble.Text)) return;
+
+            using var textFont = new Font("Georgia", 28f, FontStyle.Italic);
+            using var shadowBrush = new SolidBrush(Color.FromArgb(150, 0, 0, 0));
+            using var textBrush = new SolidBrush(Color.FromArgb(240, 255, 240, 200));
+            using var format = new StringFormat
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+
+            var textRect = new RectangleF(90f, 145f, 1100f, 250f);
+            var shadowRect = textRect;
+            shadowRect.Offset(3f, 3f);
+
+            g.DrawString(bubble.Text, textFont, shadowBrush, shadowRect, format);
+            g.DrawString(bubble.Text, textFont, textBrush, textRect, format);
+
+            using var hintFont = new Font("Consolas", 9.5f);
+            using var hintBrush = new SolidBrush(Color.FromArgb(160, 180, 210, 255));
+            const string hint = "Nhấn Space để xem tiếp";
+            var hintSize = g.MeasureString(hint, hintFont);
+            g.DrawString(
+                hint,
+                hintFont,
+                hintBrush,
+                (g.VisibleClipBounds.Width - hintSize.Width) / 2f,
+                g.VisibleClipBounds.Height - 30f);
+        }
+
+        private void DrawSpeechBubble(Graphics g, BossSpeechBubble bubble, bool isBoss)
+        {
+            const float paddingX = 14f;
+            const float paddingY = 12f;
+            const float lineSpacing = 3f;
+
+            using var nameFont = new Font("Segoe UI", 11f, FontStyle.Bold);
+            using var textFont = new Font("Segoe UI", 10f, FontStyle.Regular);
+            using var hintFont = new Font("Segoe UI", 8f, FontStyle.Italic);
+            using var nameBrush = new SolidBrush(isBoss ? Color.FromArgb(255, 255, 90, 90) : Color.FromArgb(255, 120, 200, 255));
+            using var textBrush = new SolidBrush(Color.White);
+            using var hintBrush = new SolidBrush(Color.FromArgb(180, 220, 220, 220));
+            using var backgroundBrush = new SolidBrush(Color.FromArgb(220, 20, 20, 20));
+            using var borderPen = new Pen(isBoss ? Color.FromArgb(255, 120, 40, 40) : Color.FromArgb(255, 80, 110, 160), 2.5f);
+            using var format = new StringFormat(StringFormatFlags.NoWrap)
+            {
+                Alignment = StringAlignment.Near,
+                LineAlignment = StringAlignment.Near
+            };
+
+            string displayText = bubble.Text.Trim();
+            string[] lines = WrapTextForMeasure(displayText, 32);
+            string hint = "Nhấn Space để xem tiếp";
+
+            float nameHeight = !string.IsNullOrEmpty(bubble.Speaker) ? nameFont.GetHeight() + 8f : 0f;
+            float textHeight = 0f;
+            foreach (string line in lines)
+            {
+                textHeight += textFont.GetHeight() + lineSpacing;
+            }
+            float hintHeight = hintFont.GetHeight() + 4f;
+            float width = Math.Max(240f, MeasureLongestLine(lines, textFont) + paddingX * 2f);
+            float height = paddingY + nameHeight + textHeight + hintHeight + 8f;
+
+            var rect = new RectangleF(bubble.X, bubble.Y, width, height);
+            using var roundedPath = CreateRoundedRectangle(rect, 8f);
+
+            g.FillPath(backgroundBrush, roundedPath);
+            g.DrawPath(borderPen, roundedPath);
+
+            float currentY = rect.Y + paddingY;
+            if (!string.IsNullOrEmpty(bubble.Speaker))
+            {
+                g.DrawString(bubble.Speaker, nameFont, nameBrush, rect.X + paddingX, currentY, format);
+                currentY += nameFont.GetHeight() + 6f;
+            }
+
+            foreach (string line in lines)
+            {
+                g.DrawString(line, textFont, textBrush, rect.X + paddingX, currentY, format);
+                currentY += textFont.GetHeight() + lineSpacing;
+            }
+
+            g.DrawString(hint, hintFont, hintBrush, rect.X + paddingX, currentY + 2f, format);
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
+        {
+            var path = new GraphicsPath();
+            float diameter = radius * 2f;
+            var arcRect = new RectangleF(rect.X, rect.Y, diameter, diameter);
+            path.AddArc(arcRect, 180, 90);
+            path.AddArc(new RectangleF(rect.Right - diameter, rect.Y, diameter, diameter), 270, 90);
+            path.AddArc(new RectangleF(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter), 0, 90);
+            path.AddArc(new RectangleF(rect.X, rect.Bottom - diameter, diameter, diameter), 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        private static string[] WrapTextForMeasure(string text, int maxCharsPerLine)
+        {
+            if (string.IsNullOrEmpty(text)) return new[] { "" };
+
+            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var lines = new List<string>();
+            string current = string.Empty;
+
+            foreach (var word in words)
+            {
+                string candidate = string.IsNullOrEmpty(current) ? word : current + " " + word;
+                if (candidate.Length <= maxCharsPerLine)
+                {
+                    current = candidate;
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(current))
+                        lines.Add(current);
+                    current = word;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(current))
+                lines.Add(current);
+
+            return lines.Count == 0 ? new[] { text } : lines.ToArray();
+        }
+
+        private static float MeasureLongestLine(string[] lines, Font font)
+        {
+            using var g = Graphics.FromHwnd(IntPtr.Zero);
+            float longest = 0f;
+            foreach (string line in lines)
+            {
+                var size = g.MeasureString(line, font);
+                if (size.Width > longest)
+                    longest = size.Width;
+            }
+
+            return longest;
+        }
+
         private void DrawPlayer(Graphics g)
         {
             var p = _gameManager.Player;
@@ -127,6 +298,16 @@ namespace ElementalSpirit.Presentation.Rendering
             float feetX = p.X + p.Width / 2f;
             float feetY = p.Y + p.Height;
             float anchorRatioY = isDeath ? 0.95f : 0.85f;
+
+            // The gameplay hitbox is intentionally small, while the animation
+            // frame is larger. Keep the visible feet on the same ground line.
+            bool bossDialogueActive = _gameManager.BossEncounter.CurrentState ==
+                                      Domain.BossEncounter.BossEncounterState.PreBossDialogue;
+            if (bossDialogueActive || p.IsGrounded)
+            {
+                feetY = _gameManager.GroundY;
+                anchorRatioY = 1f;
+            }
             float drawX = feetX - drawSize / 2f;
             float drawY = feetY - drawSize * anchorRatioY;
 

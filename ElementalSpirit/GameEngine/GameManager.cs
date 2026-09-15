@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using ElementalSpirit.Data;
+using ElementalSpirit.Domain.BossEncounter;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Enemy.NormalEnemy;
@@ -48,14 +49,17 @@ namespace ElementalSpirit.GameEngine
         public Inventory Inventory { get; }
         public IUpgradeService Upgrades { get; }
         public IShopService Shop { get; }
+        public IBossEncounterManager BossEncounter { get; }
 
         public RectangleF PlayArea { get; private set; }
         public float GroundY { get; private set; }
+
         private const float GroundTopRatio = 0.78f;
 
         // Xu ly va cham nen nhieu tang (da, cau treo, khoang trong ...) cho Player,
         // dua tren TerrainPlatform cua stage hien tai thay vi 1 duong GroundY phang.
         private readonly TerrainCollisionResolver _terrainResolver = new();
+
         // Neu Player roi qua khoi day man hinh (vd: rot xuong nuoc giua khe vuc)
         // thi dua ve vi tri an toan thay vi roi mai mai ra ngoai tam nhin.
         private const float FallRecoveryMargin = 40f;
@@ -63,25 +67,31 @@ namespace ElementalSpirit.GameEngine
         public bool IsStageCompleted { get; private set; }
         public bool IsPaused { get; set; }
         public string StatusMessage { get; private set; } = "";
+
         private float _statusMessageTimer;
         private bool _jumpKeyWasPressed;
         private bool _attackKeyWasPressed;
         private bool _fireKeyWasPressed;
 
+        // Flag đánh dấu stage boss cuối đã kích hoạt encounter
+        private bool _bossEncounterTriggered;
+
         // ---- Chuyển cảnh giữa các background (EarthForest -> EarthForest2 -> EarthForest3) ----
         private readonly List<StageData> _stageSequence;
         private int _stageIndex;
         private float _transitionTimer;
-
         private const float RunOutDuration = 0.6f;   // thời gian tối đa chạy ra mép phải
         private const float FadeDuration = 0.55f;    // thời gian crossfade giữa 2 background
         private const float RunInDuration = 0.6f;    // thời gian chạy vào từ mép trái
 
         public StageTransitionPhase TransitionPhase { get; private set; } = StageTransitionPhase.None;
+
         /// <summary>0..1 - dùng để renderer crossfade sang background kế tiếp.</summary>
         public float TransitionProgress { get; private set; }
+
         /// <summary>Tên file background sắp tới, chỉ có giá trị trong lúc Fading.</summary>
         public string? IncomingBackgroundImageName { get; private set; }
+
         public bool IsInStageTransition => TransitionPhase != StageTransitionPhase.None;
         public int StageIndex => _stageIndex;
         public int TotalStagesInCampaign => _stageSequence.Count;
@@ -99,7 +109,8 @@ namespace ElementalSpirit.GameEngine
             IShopService shop,
             IUpgradeService upgrades,
             PlayerWallet wallet,
-            Inventory inventory)
+            Inventory inventory,
+            IBossEncounterManager bossEncounter)
         {
             Input = input ?? throw new ArgumentNullException(nameof(input));
             Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
@@ -114,6 +125,7 @@ namespace ElementalSpirit.GameEngine
             Upgrades = upgrades ?? throw new ArgumentNullException(nameof(upgrades));
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+            BossEncounter = bossEncounter ?? throw new ArgumentNullException(nameof(bossEncounter));
 
             var starter = EquipmentCatalog.Find("wpn_basic_wand");
             if (starter != null)
@@ -131,6 +143,10 @@ namespace ElementalSpirit.GameEngine
             _stageIndex = 0;
             Waves.LoadStage(_stageSequence[_stageIndex]);
             Waves.OnStageCompleted += HandleStageCompleted;
+
+            // Đăng ký lắng nghe sự kiện boss encounter
+            BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
+            BossEncounter.OnBossEncounterCompleted += OnBossEncounterCompleted;
         }
 
         /// <summary>
@@ -163,7 +179,6 @@ namespace ElementalSpirit.GameEngine
                         Player.MoveHorizontal(1f, deltaTime);
                         Player.Update(deltaTime);
                         Player.ResolveGroundCollision(GroundY);
-
                         _transitionTimer += deltaTime;
                         bool reachedEdge = Player.X + Player.Width >= PlayArea.Right - 2f;
                         if (reachedEdge || _transitionTimer >= RunOutDuration)
@@ -175,7 +190,6 @@ namespace ElementalSpirit.GameEngine
                         }
                         break;
                     }
-
                 case StageTransitionPhase.Fading:
                     {
                         _transitionTimer += deltaTime;
@@ -188,14 +202,12 @@ namespace ElementalSpirit.GameEngine
                         }
                         break;
                     }
-
                 case StageTransitionPhase.RunningIn:
                     {
                         Player.MoveHorizontal(1f, deltaTime);
                         Player.Update(deltaTime);
                         Player.ResolveGroundCollision(GroundY);
                         Player.ClampHorizontalBounds(PlayArea.Left, PlayArea.Right);
-
                         _transitionTimer += deltaTime;
                         bool reachedRestSpot = Player.X >= PlayerConstants.DefaultStartX;
                         if (reachedRestSpot || _transitionTimer >= RunInDuration)
@@ -208,7 +220,12 @@ namespace ElementalSpirit.GameEngine
                         }
                         else
                         {
-                            Waves.Update(deltaTime);
+                            // ✅ SỬA: Không cập nhật Waves cho stage cuối (tránh spawn boss sớm)
+                            bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
+                            if (!isLastStage)
+                            {
+                                Waves.Update(deltaTime);
+                            }
                         }
                         break;
                     }
@@ -219,7 +236,6 @@ namespace ElementalSpirit.GameEngine
         {
             _stageIndex++;
             var nextStage = _stageSequence[_stageIndex];
-
             Enemies.Clear();
             Projectiles.Clear();
             Waves.LoadStage(nextStage);
@@ -229,7 +245,18 @@ namespace ElementalSpirit.GameEngine
             Enemies.SetWalls(nextStage.Walls, PlayArea);
 
             // Nhân vật xuất hiện ở mép trái của background mới, tiếp tục chạy vào giữa màn.
-            Player.ResetPosition(PlayArea.Left + 8f, Player.Y);
+            Player.ResetPosition(PlayArea.Left + 8f, GroundY - Player.Height);
+            Player.ResolveGroundCollision(GroundY);
+
+            // ✅ THÊM: Nếu vừa chuyển sang stage cuối, kích hoạt boss encounter luôn
+            bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
+            if (isLastStage && !_bossEncounterTriggered)
+            {
+                _bossEncounterTriggered = true;
+                Enemies.Clear();
+                Projectiles.Clear();
+                BossEncounter.StartEncounter();
+            }
         }
 
         public void SetPlayArea(float width, float height)
@@ -241,9 +268,11 @@ namespace ElementalSpirit.GameEngine
             Spawn.SetSpawnSafetyTarget(Player, 220f);
             Enemies.SetTerrain(_stageSequence[_stageIndex].Platforms, PlayArea);
             Enemies.SetWalls(_stageSequence[_stageIndex].Walls, PlayArea);
+
             if (Player.Y + Player.Height > GroundY)
                 Player.ResolveGroundCollision(GroundY);
         }
+
         /// <summary>
         /// Xac dinh nen (TerrainPlatform) phu hop ben duoi Player dua tren danh sach
         /// nen cua stage hien tai (co the co nhieu tang do cao va khoang trong),
@@ -311,6 +340,7 @@ namespace ElementalSpirit.GameEngine
 
             float mouthX = boss.X + boss.Width * (boss.Facing == FacingDirection.Right ? 0.82f : 0.18f);
             float mouthY = boss.Y + boss.Height * 0.38f;
+
             foreach (var projectile in BossProjectileFactory.CreateGorgonSpread(
                          mouthX,
                          mouthY,
@@ -329,6 +359,7 @@ namespace ElementalSpirit.GameEngine
                 _statusMessageTimer -= deltaTime;
                 if (_statusMessageTimer <= 0f) StatusMessage = "";
             }
+
             if (IsPaused) return;
 
             if (IsInStageTransition)
@@ -340,66 +371,108 @@ namespace ElementalSpirit.GameEngine
 
             if (IsStageCompleted) return;
 
-            var (dirX, _) = Input.GetMovementDirection();
+            // Kiểm tra kích hoạt màn boss - đưa lên đầu trước khi cập nhật bất cứ thứ gì
+            TryTriggerBossEncounter();
 
-            Player.SetWantsToRun(Input.IsKeyDown(Keys.ShiftKey) ||
-                                 Input.IsKeyDown(Keys.LShiftKey) ||
-                                 Input.IsKeyDown(Keys.RShiftKey));
+            // Nếu đang trong đoạn thoại boss, không cập nhật Waves
+            bool inBossDialogue = BossEncounter.CurrentState == BossEncounterState.PreBossDialogue ||
+                                  BossEncounter.CurrentState == BossEncounterState.PostBossDialogue ||
+                                  BossEncounter.CurrentState == BossEncounterState.SpiritRescue;
 
-            if (!Player.IsAttacking && !Player.IsFiring && !Player.IsHurt && !Player.IsDead)
+            bool combatEnabled = BossEncounter.CurrentState == BossEncounterState.NotStarted ||
+                                 BossEncounter.CurrentState == BossEncounterState.BossFight;
+
+            if (combatEnabled)
             {
-                Player.MoveHorizontal(dirX, deltaTime);
+                var (dirX, _) = Input.GetMovementDirection();
+                Player.SetWantsToRun(Input.IsKeyDown(Keys.ShiftKey) ||
+                                     Input.IsKeyDown(Keys.LShiftKey) ||
+                                     Input.IsKeyDown(Keys.RShiftKey));
+
+                if (!Player.IsAttacking && !Player.IsFiring && !Player.IsHurt && !Player.IsDead)
+                {
+                    Player.MoveHorizontal(dirX, deltaTime);
+                }
+                else
+                {
+                    if (Player.IsAttacking || Player.IsFiring)
+                        Player.ApplyVelocityDamping(0.85f);
+                    else if (Player.IsHurt)
+                        Player.ApplyVelocityDamping(0.9f);
+                }
+
+                bool jumpKeyNow = Input.IsJumpPressed();
+                if (jumpKeyNow && !_jumpKeyWasPressed) Player.TryJump();
+                _jumpKeyWasPressed = jumpKeyNow;
+
+                bool attackKeyNow = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
+                if (attackKeyNow && !_attackKeyWasPressed) TryStartAttack();
+                _attackKeyWasPressed = attackKeyNow;
+
+                bool fireKeyNow = Input.IsKeyDown(Keys.F) || Input.IsKeyDown(Keys.K);
+                if (fireKeyNow && !_fireKeyWasPressed) TryStartFire();
+                _fireKeyWasPressed = fireKeyNow;
+
+                float previousFootY = Player.Y + Player.Height;
+                Player.Update(deltaTime);
+                ResolvePlayerTerrain(previousFootY);
+                Player.ClampHorizontalBounds(PlayArea.Left, PlayArea.Right);
+                HandlePlayerFallRecovery();
+
+                Spirits.Update(deltaTime, Player);
+                Skills.Update(deltaTime);
+                Projectiles.Update(deltaTime);
+
+                foreach (var e in Enemies.Enemies)
+                {
+                    switch (e)
+                    {
+                        case Slime slime:
+                            slime.OnAttackHit -= OnSlimeAttackHit;
+                            slime.OnAttackHit += OnSlimeAttackHit;
+                            break;
+                        case GorgonBoss boss:
+                            boss.OnBossProjectileCast -= OnBossProjectileCast;
+                            boss.OnBossProjectileCast += OnBossProjectileCast;
+                            break;
+                    }
+                }
+
+                Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
+                Collision.CheckCollisions(Projectiles, Enemies);
+                CheckEnemyProjectileCollision();
+                CheckPlayerEnemyCollision();
+
+                // Chỉ cập nhật Waves khi không đang trong đoạn thoại boss
+                if (!inBossDialogue)
+                {
+                    Waves.Update(deltaTime);
+                }
             }
             else
             {
-                if (Player.IsAttacking || Player.IsFiring)
-                    Player.ApplyVelocityDamping(0.85f);
-                else if (Player.IsHurt)
-                    Player.ApplyVelocityDamping(0.9f);
+                // Không để phím dùng để kết thúc thoại tự động kích hoạt kỹ năng/đòn đánh.
+                _jumpKeyWasPressed = Input.IsJumpPressed();
+                _attackKeyWasPressed = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
+                _fireKeyWasPressed = Input.IsKeyDown(Keys.F) || Input.IsKeyDown(Keys.K);
             }
 
-            bool jumpKeyNow = Input.IsJumpPressed();
-            if (jumpKeyNow && !_jumpKeyWasPressed) Player.TryJump();
-            _jumpKeyWasPressed = jumpKeyNow;
+            // Cập nhật BossEncounterManager
+            BossEncounter.Update(deltaTime);
 
-            bool attackKeyNow = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
-            if (attackKeyNow && !_attackKeyWasPressed) TryStartAttack();
-            _attackKeyWasPressed = attackKeyNow;
-
-            bool fireKeyNow = Input.IsKeyDown(Keys.F) || Input.IsKeyDown(Keys.K);
-            if (fireKeyNow && !_fireKeyWasPressed) TryStartFire();
-            _fireKeyWasPressed = fireKeyNow;
-
-            float previousFootY = Player.Y + Player.Height;
-            Player.Update(deltaTime);
-            ResolvePlayerTerrain(previousFootY);
-            Player.ClampHorizontalBounds(PlayArea.Left, PlayArea.Right);
-            HandlePlayerFallRecovery();
-
-            Spirits.Update(deltaTime, Player);
-            Skills.Update(deltaTime);
-            Projectiles.Update(deltaTime);
-
-            foreach (var e in Enemies.Enemies)
+            if (BossEncounter.ActiveSpeechBubble.IsVisible && BossEncounter.CurrentBoss != null)
             {
-                switch (e)
-                {
-                    case Slime slime:
-                        slime.OnAttackHit -= OnSlimeAttackHit;
-                        slime.OnAttackHit += OnSlimeAttackHit;
-                        break;
-                    case GorgonBoss boss:
-                        boss.OnBossProjectileCast -= OnBossProjectileCast;
-                        boss.OnBossProjectileCast += OnBossProjectileCast;
-                        break;
-                }
+                float bossCenterX = BossEncounter.CurrentBoss.X + BossEncounter.CurrentBoss.Width / 2f;
+                float bossCenterY = BossEncounter.CurrentBoss.Y;
+                BossEncounter.ActiveSpeechBubble.SetPositionFromAnchor(bossCenterX, bossCenterY);
             }
 
-            Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
-            Collision.CheckCollisions(Projectiles, Enemies);
-            CheckEnemyProjectileCollision();
-            CheckPlayerEnemyCollision();
-            Waves.Update(deltaTime);
+            if (BossEncounter.PlayerSpeechBubble.IsVisible)
+            {
+                float playerCenterX = Player.X + Player.Width / 2f;
+                float playerCenterY = Player.Y;
+                BossEncounter.PlayerSpeechBubble.SetPositionFromAnchor(playerCenterX, playerCenterY);
+            }
         }
 
         private void TryStartAttack()
@@ -424,6 +497,7 @@ namespace ElementalSpirit.GameEngine
             float dir = Player.Facing == FacingDirection.Right ? 1f : -1f;
             float spawnX = Player.X + Player.Width / 2f + dir * 16f;
             float spawnY = Player.Y + Player.Height / 2f - 3f;
+
             Projectiles.Add(ProjectileFactory.CreatePlayerProjectile(
                 spawnX, spawnY, dir, Player.Damage, Player.CurrentProjectileType));
 
@@ -472,6 +546,7 @@ namespace ElementalSpirit.GameEngine
             foreach (var projectile in Projectiles.Projectiles)
             {
                 if (!projectile.IsAlive || projectile is not EnemyProjectile) continue;
+
                 if (Player.Bounds.IntersectsWith(projectile.Bounds))
                 {
                     Player.TakeDamage(projectile.Damage);
@@ -554,8 +629,8 @@ namespace ElementalSpirit.GameEngine
             if (data.EquippedWeaponId != null) Inventory.TryEquip(data.EquippedWeaponId);
             if (data.EquippedArmorId != null) Inventory.TryEquip(data.EquippedArmorId);
             if (data.EquippedAccessoryId != null) Inventory.TryEquip(data.EquippedAccessoryId);
-            RefreshPlayerEquipmentStats();
 
+            RefreshPlayerEquipmentStats();
             Wallet.LoadFrom(data.Gold, data.SpiritShards, data.Crystals);
 
             foreach (var savedSpirit in data.Spirits)
@@ -563,15 +638,11 @@ namespace ElementalSpirit.GameEngine
                 var spirit = Spirits.Unlocked.FirstOrDefault(s => s.Id == savedSpirit.Id);
                 if (spirit == null) continue;
 
-                // Goi Upgrade() nhieu lan qua dung API cong khai san co thay vi gan
-                // thang Level (dang co protected set). Dung vong lap co kiem tra tien
-                // trien de tranh treo vo han neu file save bi sua tay voi Level vuot
-                // qua muc toi da noi bo cua SpiritBase.
                 while (spirit.Level < savedSpirit.Level)
                 {
                     int levelBefore = spirit.Level;
                     spirit.Upgrade();
-                    if (spirit.Level == levelBefore) break; // da dat cap toi da, khong the nang them
+                    if (spirit.Level == levelBefore) break;
                 }
             }
 
@@ -580,6 +651,7 @@ namespace ElementalSpirit.GameEngine
                 var slot1 = Spirits.Unlocked.FirstOrDefault(s => s.Id == data.EquippedSpiritSlot1Id);
                 if (slot1 != null) Spirits.Equip(0, slot1);
             }
+
             if (data.EquippedSpiritSlot2Id != null)
             {
                 var slot2 = Spirits.Unlocked.FirstOrDefault(s => s.Id == data.EquippedSpiritSlot2Id);
@@ -599,6 +671,33 @@ namespace ElementalSpirit.GameEngine
         public void HandleKeyDown(Keys key)
         {
             Input.KeyDown(key);
+
+            if (key is Keys.Space or Keys.Enter)
+            {
+                if (BossEncounter.CurrentState == BossEncounterState.PreBossDialogue ||
+                    BossEncounter.CurrentState == BossEncounterState.PostBossDialogue ||
+                    BossEncounter.CurrentState == BossEncounterState.SpiritRescue)
+                {
+                    BossEncounter.AdvanceDialogue();
+                    return;
+                }
+
+                if (IsBossDialogueActive()) return;
+            }
+
+            if (key == Keys.Escape)
+            {
+                if (BossEncounter.CurrentState == BossEncounterState.PreBossDialogue ||
+                    BossEncounter.CurrentState == BossEncounterState.PostBossDialogue ||
+                    BossEncounter.CurrentState == BossEncounterState.SpiritRescue)
+                {
+                    BossEncounter.SkipDialogue();
+                    return;
+                }
+            }
+
+            if (IsBossDialogueActive()) return;
+
             if (key is Keys.D1 or Keys.NumPad1)
                 ActivateSkill("slash");
             else if (key is Keys.D2 or Keys.NumPad2)
@@ -606,6 +705,7 @@ namespace ElementalSpirit.GameEngine
                 if (ActivateSkill("waterfall"))
                     ApplySkillDamage();
             }
+
 #if DEBUG
             if (key == Keys.N) Waves.ForceNextWave();
             if (key == Keys.D3) { Spirits.Equip(0, Spirits.Unlocked[0]); Spirits.Equip(1, Spirits.Unlocked[1]); SetStatus("Equipped: Terra + Ignis"); }
@@ -628,6 +728,7 @@ namespace ElementalSpirit.GameEngine
             float direction = Player.Facing == FacingDirection.Right ? 1f : -1f;
             float originX = Player.X + Player.Width / 2f;
             float originY = Player.Y + Player.Height;
+
             var damageAreas = Skills.CreateDamageAreas(
                 originX,
                 originY,
@@ -646,6 +747,66 @@ namespace ElementalSpirit.GameEngine
                         break;
                     }
                 }
+            }
+        }
+
+        private void OnPreBossDialogueStarted(BossDialogueScene _)
+        {
+            // Boss phải xuất hiện cùng người chơi trong lúc đọc thoại,
+            // nhưng chưa được cập nhật cho đến khi chuyển sang BossFight.
+            Player.ResetPosition(Player.X, GroundY - Player.Height);
+            Player.ResolveGroundCollision(GroundY);
+
+            foreach (var enemy in Enemies.Enemies)
+            {
+                if (enemy is GorgonBoss) return;
+            }
+
+            var boss = Spawn.SpawnSingle(
+                EnemyType.Gorgon,
+                PlayArea.Right - 250f,
+                GroundY - 170f);
+
+            if (boss is GorgonBoss gorgon)
+            {
+                BossEncounter.RegisterBoss(gorgon);
+            }
+        }
+
+        private bool IsBossDialogueActive()
+        {
+            return BossEncounter.CurrentState == BossEncounterState.PreBossDialogue ||
+                   BossEncounter.CurrentState == BossEncounterState.PostBossDialogue ||
+                   BossEncounter.CurrentState == BossEncounterState.SpiritRescue;
+        }
+
+        /// <summary>
+        /// Khi hoàn thành màn boss: đánh dấu stage hoàn thành.
+        /// </summary>
+        private void OnBossEncounterCompleted()
+        {
+            IsStageCompleted = true;
+        }
+
+        /// <summary>
+        /// Kiểm tra và kích hoạt cuộc gặp boss nếu đang ở stage cuối.
+        /// Phương pháp phòng thủ: kích hoạt sớm, kết hợp với kiểm tra trong
+        /// AdvanceToNextStage() và chặn Waves.Update() trong UpdateStageTransition().
+        /// </summary>
+        private void TryTriggerBossEncounter()
+        {
+            if (_bossEncounterTriggered) return;
+            if (BossEncounter.CurrentState != BossEncounterState.NotStarted) return;
+
+            bool isBossStage = _stageIndex == _stageSequence.Count - 1;
+            bool waveReadyToStart = Waves.State == WaveState.WaitingToStart;
+
+            if (isBossStage && waveReadyToStart)
+            {
+                _bossEncounterTriggered = true;
+                Enemies.Clear();
+                Projectiles.Clear();
+                BossEncounter.StartEncounter();
             }
         }
     }

@@ -29,9 +29,14 @@ namespace ElementalSpirit
             var wallet = new PlayerWallet(250, 20, 2);
             var inventory = new Inventory();
 
+            // Tạo BossEncounterManager
+            ILocalizationService localization = LocalizationManager.Instance;
+            var bossEncounter = new BossEncounterManager(localization);
+
             return new GameManager(
                 input, projectiles, enemies, collision, spawn, waves, spirits, player, skills,
-                shop, upgrades, wallet, inventory);
+                shop, upgrades, wallet, inventory,
+                bossEncounter);
         }
 
         [STAThread]

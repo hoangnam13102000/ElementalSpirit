@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using ElementalSpirit.Domain.BossEncounter;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
+using ElementalSpirit.Presentation.BossEncounter;
 using ElementalSpirit.Presentation.Forms.Settings;
 using ElementalSpirit.Presentation.Rendering;
 using ElementalSpirit.Services.Abstractions;
@@ -18,14 +20,13 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly ILocalizationService _localization;
         private readonly ISaveGameService _saveGameService;
         private readonly GameRenderer _renderer;
-
         private readonly PlayerAnimationController _playerAnimController;
         private readonly SkillAnimationController _skillAnimController;
         private readonly Image[]? _fireballFrames;
+
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
         private bool _fireCastFrameTriggered;
-
         private const int AttackHitFrameIndex = 3;
         private const int FireCastFrameIndex = 5;
 
@@ -34,6 +35,7 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
+
             Text = _localization.Translate("gameForm.windowTitle");
             ClientSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
@@ -41,6 +43,7 @@ namespace ElementalSpirit.Presentation.Forms
             MaximizeBox = false;
             DoubleBuffered = true;
             KeyPreview = true;
+
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
@@ -48,6 +51,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             _playerAnimController = MageAnimationLoader.CreateController();
             _skillAnimController = CreateWaterfallAnimationController();
+
             try { _fireballFrames = MageAnimationLoader.LoadFireballFrames(); }
             catch { _fireballFrames = null; }
 
@@ -98,7 +102,6 @@ namespace ElementalSpirit.Presentation.Forms
                 var frame = AssetLoader.Get($"Characters/Skill/Watermagic/WaterFall/water600{i:00}.png");
                 if (frame != null) frames.Add(new Bitmap(frame));
             }
-
             return new SkillAnimationController(frames.ToArray(), 12f);
         }
 
@@ -162,6 +165,7 @@ namespace ElementalSpirit.Presentation.Forms
             if (player.IsHurt) return PlayerAnimationState.Hurt;
             if (player.IsCastingSkill) return PlayerAnimationState.Fire;
             if (player.IsFiring) return PlayerAnimationState.Fire;
+
             if (player.IsAttacking)
             {
                 if (!player.IsGrounded) return PlayerAnimationState.Attack;
@@ -169,10 +173,13 @@ namespace ElementalSpirit.Presentation.Forms
                     return player.WantsToRun ? PlayerAnimationState.RunAttack : PlayerAnimationState.WalkAttack;
                 return PlayerAnimationState.Attack;
             }
+
             if (!player.IsGrounded)
                 return player.VelocityY < -300f ? PlayerAnimationState.HighJump : PlayerAnimationState.Jump;
+
             if (Math.Abs(player.VelocityX) > 1f)
                 return player.WantsToRun ? PlayerAnimationState.Run : PlayerAnimationState.Walk;
+
             return PlayerAnimationState.Idle;
         }
 
@@ -181,15 +188,17 @@ namespace ElementalSpirit.Presentation.Forms
             if (e.KeyCode == Keys.B) { OpenShop(); return; }
             if (e.KeyCode == Keys.U) { OpenUpgrade(); return; }
             if (e.KeyCode == Keys.P) { OpenSettings(); return; }
+
             _gameManager.HandleKeyDown(e.KeyCode);
+
             if (e.KeyCode == Keys.Escape) Close();
         }
 
         private void OpenSettings()
         {
             PauseGame();
-
             bool exitToMenu;
+
             using (var settings = new SettingsForm(_localization, _saveGameService, _gameManager))
             {
                 settings.ShowDialog(this);
@@ -252,10 +261,13 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer.Dispose();
             _playerAnimController.Dispose();
             _skillAnimController.Dispose();
+
             if (_fireballFrames != null) foreach (var img in _fireballFrames) img.Dispose();
+
             AssetLoader.DisposeAll();
             MageAnimationLoader.DisposeAll();
             SlimeAnimationLoader.DisposeAll();
+
         }
 
         protected override void OnPaint(PaintEventArgs e)
