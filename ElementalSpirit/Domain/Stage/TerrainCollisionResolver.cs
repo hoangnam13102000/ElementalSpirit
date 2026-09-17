@@ -7,6 +7,7 @@ namespace ElementalSpirit.Domain.Stage
     public class TerrainCollisionResolver
     {
         private const float GroundSnapTolerance = 24f;
+        private const float SurfaceEpsilon = 0.5f;
 
         public bool TryGetSupportingGroundY(
             IReadOnlyList<TerrainPlatform> platforms,
@@ -26,7 +27,7 @@ namespace ElementalSpirit.Domain.Stage
                 float topY = platform.GetAbsoluteTopY(playArea);
 
                 bool wasAboveOrAtSurface = previousFootY <= topY + GroundSnapTolerance;
-                bool nowAtOrBelowSurface = currentFootY >= topY;
+                bool nowAtOrBelowSurface = currentFootY >= topY - SurfaceEpsilon;
                 if (!wasAboveOrAtSurface || !nowAtOrBelowSurface) continue;
 
                 if (!found || topY < groundY)
