@@ -301,13 +301,13 @@ namespace ElementalSpirit.Presentation.Rendering
 
             // The gameplay hitbox is intentionally small, while the animation
             // frame is larger. Keep the visible feet on the same ground line.
-            bool bossDialogueActive = _gameManager.BossEncounter.CurrentState ==
+            /*bool bossDialogueActive = _gameManager.BossEncounter.CurrentState ==
                                       Domain.BossEncounter.BossEncounterState.PreBossDialogue;
             if (bossDialogueActive || p.IsGrounded)
             {
                 feetY = _gameManager.GroundY;
                 anchorRatioY = 1f;
-            }
+            }*/
             float drawX = feetX - drawSize / 2f;
             float drawY = feetY - drawSize * anchorRatioY;
 
@@ -381,7 +381,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 }
             }
 
-            DrawPlayerHealthBar(g, p);
+            DrawPlayerHealthBar(g, p, drawY);
         }
 
         private const float HealthBarWidth = 46f;
@@ -394,14 +394,14 @@ namespace ElementalSpirit.Presentation.Rendering
         // sign with the sprite's mirrored facing.
         private const float HealthBarVisualOffsetX = 16f;
 
-        private void DrawPlayerHealthBar(Graphics g, Player p)
+        private void DrawPlayerHealthBar(Graphics g, Player p, float visualTopY)
         {
             if (p.IsDead) return;
 
             float centerX = p.X + p.Width / 2f;
             centerX += p.Facing == FacingDirection.Left ? HealthBarVisualOffsetX : -HealthBarVisualOffsetX;
             float barX = centerX - HealthBarWidth / 2f;
-            float barY = p.Y - HealthBarVerticalGap;
+            float barY = visualTopY - HealthBarVerticalGap;
 
             float hpPercent = p.MaxHp > 0 ? Math.Clamp((float)p.CurrentHp / p.MaxHp, 0f, 1f) : 0f;
 
