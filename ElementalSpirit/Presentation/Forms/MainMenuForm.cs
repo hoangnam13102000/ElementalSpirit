@@ -113,6 +113,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnStart_Click(object? sender, EventArgs e)
         {
+            _btnStart.Enabled = false;
             this.Hide();
 
             var introForm = new IntroForm(_localization);
@@ -123,6 +124,7 @@ namespace ElementalSpirit.Presentation.Forms
                 var gameForm = new GameForm(Program.CreateGameManager(), _localization, _saveGameService);
                 gameForm.ShowDialog();
                 ReturnToMenu();
+                _btnStart.Enabled = true;
             };
 
             introForm.ShowDialog();
