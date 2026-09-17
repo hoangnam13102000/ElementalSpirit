@@ -97,12 +97,13 @@ namespace ElementalSpirit.Presentation.Forms
             _currentCaption = line.OnScreenCaption ?? "";
             Invalidate();
         }
-
+        
         private void HandleIntroCompleted()
         {
             _fadeTimer.Stop();
             _currentBackground?.Dispose();
 
+            this.Hide();
             OnIntroFinished?.Invoke();
             Close();
         }
