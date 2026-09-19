@@ -30,13 +30,15 @@ namespace ElementalSpirit
             var inventory = new Inventory();
             var localization = LocalizationManager.Instance;
             var bossEncounter = new BossEncounterManager(localization);
-            var portals = new PortalManager();  // ✅ THÊM
+            var portals = new PortalManager();
+            var audio = new GameAudioService();
 
             return new GameManager(
                 input, projectiles, enemies, collision, spawn, waves, spirits, player, skills,
                 shop, upgrades, wallet, inventory,
                 bossEncounter,
-                portals);  
+                portals,
+                audio);
         }
 
         [STAThread]

@@ -261,6 +261,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
+            _gameManager.Dispose();
             _gameTimer.Stop();
             _gameTimer.Dispose();
             _playerAnimController.Dispose();

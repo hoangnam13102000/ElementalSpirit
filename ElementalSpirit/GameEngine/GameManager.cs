@@ -51,6 +51,7 @@ namespace ElementalSpirit.GameEngine
         public IShopService Shop { get; }
         public IBossEncounterManager BossEncounter { get; }
         public IPortalManager Portals { get; }
+        public IAudioService Audio { get; }
 
         public RectangleF PlayArea { get; private set; }
         public float GroundY { get; private set; }
@@ -113,7 +114,8 @@ namespace ElementalSpirit.GameEngine
             PlayerWallet wallet,
             Inventory inventory,
             IBossEncounterManager bossEncounter,
-            IPortalManager portals)
+            IPortalManager portals,
+            IAudioService audio)
         {
             Input = input ?? throw new ArgumentNullException(nameof(input));
             Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
@@ -130,6 +132,7 @@ namespace ElementalSpirit.GameEngine
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             BossEncounter = bossEncounter ?? throw new ArgumentNullException(nameof(bossEncounter));
             Portals = portals ?? throw new ArgumentNullException(nameof(portals));
+            Audio = audio ?? throw new ArgumentNullException(nameof(audio));
 
             var starter = EquipmentCatalog.Find("wpn_basic_wand");
             if (starter != null)
@@ -154,6 +157,18 @@ namespace ElementalSpirit.GameEngine
 
             // Đăng ký lắng nghe sự kiện cổng di chuyển
             Portals.OnPortalTriggered += OnPortalTriggered;
+
+            PlayCurrentStageTheme();
+        }
+
+        public void Dispose()
+        {
+            Audio.Dispose();
+        }
+
+        private void PlayCurrentStageTheme()
+        {
+            Audio.PlayStageTheme(_stageIndex + 1);
         }
 
         private void HandleStageCompleted()
@@ -279,6 +294,7 @@ namespace ElementalSpirit.GameEngine
 
             _stageIndex = targetStageIndex;
             var targetStage = _stageSequence[_stageIndex];
+            PlayCurrentStageTheme();
 
             Enemies.Clear();
             Projectiles.Clear();
