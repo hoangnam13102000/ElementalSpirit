@@ -11,7 +11,9 @@ namespace ElementalSpirit.Domain.Skill
         public string Name => _variant.Name;
         public string IconAssetKey =>
             _projectileLoadout.CurrentProjectileType == _variant.ProjectileType
-                ? _variant.AlternateIconAssetKey
+                ? (_variant.AlternateIconAssetKey.Length > 0
+                    ? _variant.AlternateIconAssetKey
+                    : _variant.IconAssetKey)
                 : _variant.IconAssetKey;
         public float IconScale => _variant.IconScale;
         public bool IsActive => false;
@@ -27,10 +29,7 @@ namespace ElementalSpirit.Domain.Skill
 
         public bool Activate(SkillContext context)
         {
-            context.ProjectileLoadout.SetProjectileType(
-                context.ProjectileLoadout.CurrentProjectileType == _variant.ProjectileType
-                    ? ProjectileType.Basic
-                    : _variant.ProjectileType);
+            context.ProjectileLoadout.SetProjectileType(_variant.ProjectileType);
             return true;
         }
 

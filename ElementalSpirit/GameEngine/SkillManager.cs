@@ -32,11 +32,14 @@ namespace ElementalSpirit.GameEngine
 
         public bool TryActivate(string skillId)
         {
-            var skill = _skills.FirstOrDefault(
-                candidate => string.Equals(candidate.Id, skillId, StringComparison.OrdinalIgnoreCase)
-                    || candidate.Id.StartsWith(
-                        skillId + ".",
-                        StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(skillId)) return false;
+
+            var normalizedId = skillId.Trim();
+            var skill = _skills.FirstOrDefault(candidate =>
+                string.Equals(candidate.Id, normalizedId, StringComparison.OrdinalIgnoreCase)
+                || candidate.Id.StartsWith(normalizedId + ".", StringComparison.OrdinalIgnoreCase)
+                || (normalizedId == "slash" && candidate.Id.StartsWith("slash.", StringComparison.OrdinalIgnoreCase))
+                || (normalizedId == "waterfall" && candidate.Id.StartsWith("waterfall", StringComparison.OrdinalIgnoreCase)));
             if (skill == null) return false;
 
             return skill.Activate(_context);

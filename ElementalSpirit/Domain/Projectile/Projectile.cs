@@ -9,6 +9,8 @@ namespace ElementalSpirit.Domain.Projectile
         public float HorizontalDirection => Math.Sign(VelocityX);
         public int Damage { get; protected set; }
         public float Lifetime { get; protected set; }
+        public float InitialLifetime { get; private set; }
+        public float Age => Math.Max(0f, InitialLifetime - Lifetime);
         public bool IsAlive { get; protected set; } = true;
         protected Projectile(float x, float y, float vx, float vy, int damage, float lifetime = 2.5f)
             : base(x, y, 8, 8)
@@ -18,6 +20,7 @@ namespace ElementalSpirit.Domain.Projectile
             VelocityX = vx;
             VelocityY = vy;
             Damage = damage;
+            InitialLifetime = lifetime;
             Lifetime = lifetime;
         }
 

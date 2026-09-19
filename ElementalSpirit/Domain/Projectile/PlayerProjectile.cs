@@ -18,6 +18,7 @@ namespace ElementalSpirit.Domain.Projectile
         private const int SlashHeight = 44;
 
         public ProjectileType Type { get; }
+        public ProjectileType ProjectileType => Type;
         public bool IsFireball => Type == ProjectileType.Fireball;
 
         public PlayerProjectile(

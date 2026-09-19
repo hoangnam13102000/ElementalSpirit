@@ -31,6 +31,7 @@ namespace ElementalSpirit.Domain.Enemy.NormalEnemy
         public event Action<Slime>? OnAttackHit;
 
         public Image? CurrentImage => _animController?.CurrentImage;
+        public SlimeAnimationController? AnimationController => _animController;
         public SlimeAnimationState CurrentAnimState =>
             _animController?.CurrentState ?? SlimeAnimationState.Idle;
         public bool IsAttacking => _isAttacking;

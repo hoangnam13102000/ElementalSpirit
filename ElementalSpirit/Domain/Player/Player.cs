@@ -28,6 +28,7 @@ namespace ElementalSpirit.Domain.Player
         public PlayerMovementState MovementState { get; private set; }
 
         public FacingDirection Facing { get; private set; } = FacingDirection.Right;
+        public void SetFacing(FacingDirection facing) => Facing = facing;
 
         public int BaseMaxHp { get; private set; } = PlayerConstants.BaseMaxHp;
         public int CurrentHp => HP;

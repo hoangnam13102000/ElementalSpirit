@@ -50,6 +50,7 @@ namespace ElementalSpirit.GameEngine
         public IUpgradeService Upgrades { get; }
         public IShopService Shop { get; }
         public IBossEncounterManager BossEncounter { get; }
+        public IPortalManager Portals { get; }
 
         public RectangleF PlayArea { get; private set; }
         public float GroundY { get; private set; }
@@ -78,6 +79,7 @@ namespace ElementalSpirit.GameEngine
 
         // ---- Chuyển cảnh giữa các background (EarthForest -> EarthForest2 -> EarthForest3) ----
         private readonly List<StageData> _stageSequence;
+        private readonly HashSet<int> _clearedStages = new();
         private int _stageIndex;
         private float _transitionTimer;
         private const float RunOutDuration = 0.6f;   // thời gian tối đa chạy ra mép phải
@@ -110,7 +112,8 @@ namespace ElementalSpirit.GameEngine
             IUpgradeService upgrades,
             PlayerWallet wallet,
             Inventory inventory,
-            IBossEncounterManager bossEncounter)
+            IBossEncounterManager bossEncounter,
+            IPortalManager portals)
         {
             Input = input ?? throw new ArgumentNullException(nameof(input));
             Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
@@ -126,6 +129,7 @@ namespace ElementalSpirit.GameEngine
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             BossEncounter = bossEncounter ?? throw new ArgumentNullException(nameof(bossEncounter));
+            Portals = portals ?? throw new ArgumentNullException(nameof(portals));
 
             var starter = EquipmentCatalog.Find("wpn_basic_wand");
             if (starter != null)
@@ -147,15 +151,15 @@ namespace ElementalSpirit.GameEngine
             // Đăng ký lắng nghe sự kiện boss encounter
             BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
             BossEncounter.OnBossEncounterCompleted += OnBossEncounterCompleted;
+
+            // Đăng ký lắng nghe sự kiện cổng di chuyển
+            Portals.OnPortalTriggered += OnPortalTriggered;
         }
 
-        /// <summary>
-        /// Được gọi khi WaveManager báo hết wave của background hiện tại.
-        /// Nếu còn background tiếp theo trong chuỗi -> bắt đầu animation chuyển cảnh.
-        /// Nếu đây là background cuối cùng -> coi như hoàn thành toàn bộ campaign.
-        /// </summary>
         private void HandleStageCompleted()
         {
+            _clearedStages.Add(_stageIndex);
+
             bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
             if (isLastStage)
             {
@@ -163,15 +167,17 @@ namespace ElementalSpirit.GameEngine
                 return;
             }
 
-            TransitionPhase = StageTransitionPhase.RunningOut;
-            TransitionProgress = 0f;
-            _transitionTimer = 0f;
-            IncomingBackgroundImageName = _stageSequence[_stageIndex + 1].BackgroundImageName;
-            Player.SetWantsToRun(true);
+            // Không tự động chuyển cảnh nữa.
+            // Cổng ForwardPortal sẽ được Portals.UpdatePortalVisibility() hiện ra
+            // khi stage này đã từng clear, kể cả khi người chơi quay lại màn cũ.
+            SetStatus("Đã tiêu diệt hết quái! Cổng di chuyển đã mở.");
         }
 
         private void UpdateStageTransition(float deltaTime)
         {
+            // Ẩn cổng trong lúc chuyển cảnh
+            Portals.HideAll();
+
             switch (TransitionPhase)
             {
                 case StageTransitionPhase.RunningOut:
@@ -217,10 +223,16 @@ namespace ElementalSpirit.GameEngine
                             TransitionPhase = StageTransitionPhase.None;
                             TransitionProgress = 0f;
                             IncomingBackgroundImageName = null;
+
+                            // Khôi phục hiển thị cổng sau khi chuyển cảnh xong
+                            bool allCleared = Enemies.Enemies.Count == 0 &&
+                                              Waves.State == WaveState.WaitingForClear;
+                            bool stagePreviouslyCleared = _clearedStages.Contains(_stageIndex);
+                            Portals.UpdatePortalVisibility(allCleared || stagePreviouslyCleared, Player.Bounds, Player.Facing);
                         }
                         else
                         {
-                            // ✅ SỬA: Không cập nhật Waves cho stage cuối (tránh spawn boss sớm)
+                            // Không cập nhật Waves cho stage cuối (tránh spawn boss sớm)
                             bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
                             if (!isLastStage)
                             {
@@ -234,29 +246,89 @@ namespace ElementalSpirit.GameEngine
 
         private void AdvanceToNextStage()
         {
-            _stageIndex++;
-            var nextStage = _stageSequence[_stageIndex];
+            TransitionToStage(_stageIndex + 1, PortalType.ForwardPortal);
+        }
+
+        /// <summary>
+        /// Xử lý khi người chơi đi vào cổng di chuyển.
+        /// Dựa vào loại cổng và stage đích để thực hiện chuyển stage.
+        /// </summary>
+        private void OnPortalTriggered(Portal portal)
+        {
+            if (IsInStageTransition) return;
+            if (IsStageCompleted) return;
+            if (portal.TargetStageIndex < 0 || portal.TargetStageIndex >= _stageSequence.Count) return;
+
+            // Cổng forward chỉ mở khi stage đã clear hoặc đã từng clear trước đó, dù người chơi đã quay lại màn cũ.
+            bool currentStageCleared = Enemies.Enemies.Count == 0 &&
+                (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted);
+            bool stageWasPreviouslyCleared = _clearedStages.Contains(_stageIndex);
+            if (portal.Type == PortalType.ForwardPortal && !currentStageCleared && !stageWasPreviouslyCleared) return;
+
+            TransitionToStage(portal.TargetStageIndex, portal.Type);
+        }
+
+        /// <summary>
+        /// Chuyển sang stage chỉ định và đặt vị trí người chơi phù hợp.
+        /// - BackPortal: xuất hiện ở mép phải, hướng sang trái
+        /// - ForwardPortal: xuất hiện ở mép trái, hướng sang phải
+        /// </summary>
+        private void TransitionToStage(int targetStageIndex, PortalType portalType)
+        {
+            if (targetStageIndex < 0 || targetStageIndex >= _stageSequence.Count) return;
+
+            _stageIndex = targetStageIndex;
+            var targetStage = _stageSequence[_stageIndex];
+
             Enemies.Clear();
             Projectiles.Clear();
-            Waves.LoadStage(nextStage);
-            Spawn.SetTerrain(nextStage.Platforms, PlayArea);
+            Waves.LoadStage(targetStage);
+            Spawn.SetTerrain(targetStage.Platforms, PlayArea);
             Spawn.SetSpawnSafetyTarget(Player, 220f);
-            Enemies.SetTerrain(nextStage.Platforms, PlayArea);
-            Enemies.SetWalls(nextStage.Walls, PlayArea);
+            Enemies.SetTerrain(targetStage.Platforms, PlayArea);
+            Enemies.SetWalls(targetStage.Walls, PlayArea);
 
-            // Nhân vật xuất hiện ở mép trái của background mới, tiếp tục chạy vào giữa màn.
-            Player.ResetPosition(PlayArea.Left + 8f, GroundY - Player.Height);
+            // Xây dựng lại cổng cho stage mới
+            Portals.RebuildPortalsForStage(
+                _stageIndex,
+                _stageSequence.Count,
+                PlayArea.Width,
+                PlayArea.Height,
+                GroundY);
+
+            // Đặt vị trí người chơi dựa vào hướng đi
+            if (portalType == PortalType.BackPortal)
+            {
+                // Đi về màn trước → xuất hiện ở mép phải, hướng sang trái
+                Player.ResetPosition(PlayArea.Right - Player.Width - 90f, GroundY - Player.Height);
+                Player.SetFacing(FacingDirection.Left);
+            }
+            else
+            {
+                // Đi qua màn sau → xuất hiện ở mép trái, hướng sang phải
+                Player.ResetPosition(PlayArea.Left + 90f, GroundY - Player.Height);
+                Player.SetFacing(FacingDirection.Right);
+            }
+
             Player.ResolveGroundCollision(GroundY);
 
-            // ✅ THÊM: Nếu vừa chuyển sang stage cuối, kích hoạt boss encounter luôn
+            // Nếu stage này đã từng clear trước đó, cổng forward phải được giữ lại khi quay lại màn cũ.
+            bool stagePreviouslyCleared = _clearedStages.Contains(_stageIndex);
+            Portals.UpdatePortalVisibility(
+                stagePreviouslyCleared || Enemies.Enemies.Count == 0 &&
+                (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted),
+                Player.Bounds,
+                Player.Facing);
+
+            // Nếu là stage cuối, kích hoạt boss encounter
             bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
             if (isLastStage && !_bossEncounterTriggered)
             {
                 _bossEncounterTriggered = true;
-                Enemies.Clear();
-                Projectiles.Clear();
                 BossEncounter.StartEncounter();
             }
+
+            SetStatus($"Đã đến: {targetStage.Name}");
         }
 
         public void SetPlayArea(float width, float height)
@@ -268,6 +340,14 @@ namespace ElementalSpirit.GameEngine
             Spawn.SetSpawnSafetyTarget(Player, 220f);
             Enemies.SetTerrain(_stageSequence[_stageIndex].Platforms, PlayArea);
             Enemies.SetWalls(_stageSequence[_stageIndex].Walls, PlayArea);
+
+            // Xây dựng cổng cho stage hiện tại
+            Portals.RebuildPortalsForStage(
+                _stageIndex,
+                _stageSequence.Count,
+                width,
+                height,
+                GroundY);
 
             if (Player.Y + Player.Height > GroundY)
                 Player.ResolveGroundCollision(GroundY);
@@ -448,9 +528,21 @@ namespace ElementalSpirit.GameEngine
                 {
                     Waves.Update(deltaTime);
                 }
+
+                // Cập nhật trạng thái hiển thị cổng dựa trên điều kiện hết quái hoặc stage đã từng clear trước đó.
+                bool allEnemiesCleared = Enemies.Enemies.Count == 0 &&
+                                         (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted);
+                bool stagePreviouslyCleared = _clearedStages.Contains(_stageIndex);
+                Portals.UpdatePortalVisibility(allEnemiesCleared || stagePreviouslyCleared, Player.Bounds, Player.Facing);
+
+                // Kiểm tra người chơi có đi vào cổng không
+                Portals.CheckPlayerInteraction(Player.Bounds);
             }
             else
             {
+                // Khi đang thoại boss, ẩn cổng đi
+                Portals.HideAll();
+
                 // Không để phím dùng để kết thúc thoại tự động kích hoạt kỹ năng/đòn đánh.
                 _jumpKeyWasPressed = Input.IsJumpPressed();
                 _attackKeyWasPressed = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
@@ -660,6 +752,17 @@ namespace ElementalSpirit.GameEngine
 
             Player.ResetPosition(PlayerConstants.DefaultStartX, PlayerConstants.DefaultStartY);
             Player.RestoreHp(data.PlayerHp);
+
+            // Xây dựng lại cổng cho stage được load từ save
+            if (PlayArea.Width > 0 && PlayArea.Height > 0)
+            {
+                Portals.RebuildPortalsForStage(
+                    _stageIndex,
+                    _stageSequence.Count,
+                    PlayArea.Width,
+                    PlayArea.Height,
+                    GroundY);
+            }
         }
 
         private void SetStatus(string message)
@@ -681,7 +784,6 @@ namespace ElementalSpirit.GameEngine
                     BossEncounter.AdvanceDialogue();
                     return;
                 }
-
                 if (IsBossDialogueActive()) return;
             }
 
@@ -788,11 +890,6 @@ namespace ElementalSpirit.GameEngine
             IsStageCompleted = true;
         }
 
-        /// <summary>
-        /// Kiểm tra và kích hoạt cuộc gặp boss nếu đang ở stage cuối.
-        /// Phương pháp phòng thủ: kích hoạt sớm, kết hợp với kiểm tra trong
-        /// AdvanceToNextStage() và chặn Waves.Update() trong UpdateStageTransition().
-        /// </summary>
         private void TryTriggerBossEncounter()
         {
             if (_bossEncounterTriggered) return;

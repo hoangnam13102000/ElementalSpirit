@@ -9,6 +9,7 @@ using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Enemy.NormalEnemy;
 using ElementalSpirit.Domain.Skill;
+using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
@@ -22,6 +23,7 @@ namespace ElementalSpirit.Presentation.Rendering
         private readonly GameManager _gameManager;
         private readonly PlayerAnimationController _playerAnimController;
         private readonly SkillAnimationController _skillAnimController;
+        private readonly PortalAnimationController _portalAnimController;
         private readonly Image[]? _fireballFrames;
         private readonly ILocalizationService _localization;
         private readonly Dictionary<string, Rectangle> _visibleAssetBounds = new();
@@ -41,12 +43,14 @@ namespace ElementalSpirit.Presentation.Rendering
             GameManager gameManager,
             PlayerAnimationController playerAnimController,
             SkillAnimationController skillAnimController,
+            PortalAnimationController portalAnimController,
             Image[]? fireballFrames,
             ILocalizationService localization)
         {
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _playerAnimController = playerAnimController ?? throw new ArgumentNullException(nameof(playerAnimController));
             _skillAnimController = skillAnimController ?? throw new ArgumentNullException(nameof(skillAnimController));
+            _portalAnimController = portalAnimController ?? throw new ArgumentNullException(nameof(portalAnimController));
             _fireballFrames = fireballFrames;
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
         }
@@ -62,6 +66,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 DrawPlayer(g);
                 DrawProjectiles(g);
                 DrawEnemies(g);
+                DrawPortals(g);
                 DrawSkillHud(g, clientSize);
                 DrawCurrencyHud(g, clientSize);
                 DrawEquipmentHud(g, clientSize);
@@ -677,6 +682,7 @@ namespace ElementalSpirit.Presentation.Rendering
                         sourceBounds.Width,
                         sourceBounds.Height,
                         GraphicsUnit.Pixel);
+                    icon.Dispose();
                 }
                 else if (string.IsNullOrEmpty(skill.IconAssetKey))
                 {
@@ -690,6 +696,54 @@ namespace ElementalSpirit.Presentation.Rendering
                 var nameSize = g.MeasureString(skill.Name, nameFont);
                 g.DrawString(skill.Name, nameFont, nameBrush,
                     x + (slotSize - nameSize.Width) / 2f, startY + slotSize - 15f);
+            }
+        }
+
+        private void DrawPortals(Graphics g)
+        {
+            foreach (var portal in _gameManager.Portals.Portals)
+            {
+                if (!portal.IsVisible) continue;
+
+                var bounds = portal.Bounds;
+                var portalImage = _portalAnimController.CurrentImage;
+
+                if (portalImage != null)
+                {
+                    float drawWidth = bounds.Width + 14f;
+                    float drawHeight = bounds.Height + 10f;
+                    float drawX = bounds.X - 7f;
+                    float drawY = bounds.Y - 5f;
+
+                    g.DrawImage(portalImage, drawX, drawY, drawWidth, drawHeight);
+                    continue;
+                }
+
+                bool isForward = portal.Type == PortalType.ForwardPortal;
+                Color portalColor = isForward
+                    ? Color.FromArgb(100, 190, 255)
+                    : Color.FromArgb(110, 255, 165);
+                float pulse = 0.5f + 0.5f *
+                    (float)Math.Sin(DateTime.Now.TimeOfDay.TotalSeconds * 3f);
+
+                using var fill = new SolidBrush(Color.FromArgb(45, portalColor));
+                using var glow = new Pen(Color.FromArgb((int)(170 + pulse * 70), portalColor), 4f);
+                using var border = new Pen(Color.FromArgb(230, portalColor), 2f);
+
+                g.FillRectangle(fill, bounds);
+                g.DrawRectangle(glow, bounds);
+                g.DrawRectangle(border, bounds.X + 4f, bounds.Y + 4f,
+                    bounds.Width - 8f, bounds.Height - 8f);
+
+                for (int i = 0; i < 6; i++)
+                {
+                    float t = (float)((DateTime.Now.TimeOfDay.TotalSeconds * 0.6f + i / 6f) % 1f);
+                    float particleY = bounds.Bottom - t * bounds.Height;
+                    float particleX = bounds.X + bounds.Width / 2f +
+                        (float)Math.Sin(DateTime.Now.TimeOfDay.TotalSeconds * 2f + i) * 14f;
+                    using var particle = new SolidBrush(Color.FromArgb(210, portalColor));
+                    g.FillEllipse(particle, particleX - 3f, particleY - 3f, 6f, 6f);
+                }
             }
         }
 

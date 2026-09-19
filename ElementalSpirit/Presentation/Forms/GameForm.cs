@@ -22,6 +22,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly GameRenderer _renderer;
         private readonly PlayerAnimationController _playerAnimController;
         private readonly SkillAnimationController _skillAnimController;
+        private readonly PortalAnimationController _portalAnimController;
         private readonly Image[]? _fireballFrames;
 
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
@@ -51,6 +52,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             _playerAnimController = MageAnimationLoader.CreateController();
             _skillAnimController = CreateWaterfallAnimationController();
+            _portalAnimController = StoneGateAnimationLoader.CreateController();
 
             try { _fireballFrames = MageAnimationLoader.LoadFireballFrames(); }
             catch { _fireballFrames = null; }
@@ -59,6 +61,7 @@ namespace ElementalSpirit.Presentation.Forms
                 _gameManager,
                 _playerAnimController,
                 _skillAnimController,
+                _portalAnimController,
                 _fireballFrames,
                 _localization);
 
@@ -78,6 +81,7 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager.Update(deltaTime);
             UpdatePlayerAnimation(deltaTime);
             UpdateSkillAnimation(deltaTime);
+            _portalAnimController.Update(deltaTime);
             Invalidate();
         }
 

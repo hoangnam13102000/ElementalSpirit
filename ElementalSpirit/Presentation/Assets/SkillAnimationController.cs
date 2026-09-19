@@ -13,6 +13,7 @@ namespace ElementalSpirit.Presentation.Assets
         public bool IsCompleted { get; private set; }
         public Image? CurrentImage =>
             _frames.Length == 0 ? null : _frames[CurrentFrameIndex];
+        public Image? CurrentFrame => CurrentImage;
 
         public SkillAnimationController(Image[] frames, float fps)
         {
