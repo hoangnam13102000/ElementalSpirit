@@ -37,7 +37,7 @@ namespace ElementalSpirit.Domain.Enemy
         public GorgonBossSkill CurrentSkill => _currentSkill;
 
         public GorgonBoss(float x, float y, GorgonBossAnimationController? animController = null)
-            : base(x, y, 1000, 18)
+            : base(x, y, 400, 18)
         {
             Width = 180;
             Height = 170;

@@ -67,6 +67,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             ApplyTranslations();
             LayoutMenuButtons();
+            Services.AudioManager.Instance.PlayMusic("menu_theme.mp3", loop: true);
         }
 
         private void ApplyTranslations()
@@ -114,6 +115,7 @@ namespace ElementalSpirit.Presentation.Forms
         private void BtnStart_Click(object? sender, EventArgs e)
         {
             _btnStart.Enabled = false;
+            Services.AudioManager.Instance.StopMusic();
             this.Hide();
 
             var introForm = new IntroForm(_localization);
@@ -144,6 +146,7 @@ namespace ElementalSpirit.Presentation.Forms
             }
 
             this.Hide();
+            Services.AudioManager.Instance.StopMusic();
 
             var gameManager = Program.CreateGameManager();
             gameManager.ApplySaveData(saveData);
@@ -177,6 +180,7 @@ namespace ElementalSpirit.Presentation.Forms
             LayoutMenuButtons();
             this.Show();
             this.Activate();
+            Services.AudioManager.Instance.PlayMusic("menu_theme.mp3", loop: true);
         }
 
         protected override void OnPaint(PaintEventArgs e)

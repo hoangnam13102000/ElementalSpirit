@@ -50,6 +50,7 @@ namespace ElementalSpirit
             ISaveGameService saveGameService = new SaveGameService();
 
             Application.Run(new MainMenuForm(localization, saveGameService));
+            Services.AudioManager.Instance.Dispose();
         }
     }
 }

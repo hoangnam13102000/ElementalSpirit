@@ -55,6 +55,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             _introManager.Start();
             BeginFadeIn();
+            Services.AudioManager.Instance.PlayMusic("intro_theme.mp3", loop: true);
         }
 
         private void HandleSceneChanged(DialogueScene scene)
@@ -102,6 +103,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             _fadeTimer.Stop();
             _currentBackground?.Dispose();
+            Services.AudioManager.Instance.StopMusic();
 
             this.Hide();
             OnIntroFinished?.Invoke();

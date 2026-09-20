@@ -60,6 +60,7 @@ namespace ElementalSpirit.Domain.Player
         public event Action? OnFireAnimationEnded;
         public event Action? OnHurtAnimationEnded;
         public event Action? OnDeathAnimationEnded;
+        public event Action? OnDeath;
 
         public Player(float startX, float startY)
             : base(startX, startY, PlayerConstants.Width, PlayerConstants.Height,
@@ -265,6 +266,7 @@ namespace ElementalSpirit.Domain.Player
             IsCastingSkill = false;
             IsHurt = false;
             VelocityX = 0f;
+            OnDeath?.Invoke();
         }
 
         public void NotifyAttackHitFrame() => OnAttackHitFrame?.Invoke();

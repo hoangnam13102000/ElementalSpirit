@@ -17,7 +17,10 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         private readonly Label _lblLanguage;
         private readonly ComboBox _cmbLanguage;
         private readonly Label _lblResolution;
-        private readonly Label _lblSound;
+        private readonly Label _lblMusic;
+        private readonly CheckBox _chkMusic;           
+        private readonly Label _lblSfx;              
+        private readonly CheckBox _chkSfx;
         private readonly Label _lblFullscreen;
         private readonly Label _lblSaveGame;
         private readonly Button _btnSaveGame;
@@ -31,7 +34,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             GameManager? activeGame = null)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
-            ClientSize = new Size(420, 450);
+            ClientSize = new Size(420, 485);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
@@ -56,28 +59,48 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             };
 
             _lblResolution = CreateLabel(120);
-            _lblSound = CreateLabel(155);
-            _lblFullscreen = CreateLabel(190);
 
-            _lblSaveGame = CreateLabel(232);
+            _lblMusic = CreateLabel(155);
+            _chkMusic = new CheckBox
+            {
+                Location = new Point(230, 154),
+                Checked = Services.AudioManager.Instance.MusicEnabled,
+                ForeColor = Color.FromArgb(230, 220, 255)
+            };
+            _chkMusic.CheckedChanged += (s, e) =>
+                Services.AudioManager.Instance.MusicEnabled = _chkMusic.Checked;
 
-            _btnSaveGame = CreateButton(180, 228, 200);
+            _lblSfx = CreateLabel(190);
+            _chkSfx = new CheckBox
+            {
+                Location = new Point(230, 189),
+                Checked = Services.AudioManager.Instance.SfxEnabled,
+                ForeColor = Color.FromArgb(230, 220, 255)
+            };
+            _chkSfx.CheckedChanged += (s, e) =>
+                Services.AudioManager.Instance.SfxEnabled = _chkSfx.Checked;
+
+            _lblFullscreen = CreateLabel(225);   
+
+            _lblSaveGame = CreateLabel(267);    
+
+            _btnSaveGame = CreateButton(180, 263, 200);   
             _btnSaveGame.Click += (s, e) => SaveGameRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnSave = CreateButton(100, 310);
+            _btnSave = CreateButton(100, 345);
             _btnSave.Click += (s, e) => SaveRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnCancel = CreateButton(220, 310);
+            _btnCancel = CreateButton(220, 345);
             _btnCancel.Click += (s, e) => CancelRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnExitGame = CreateButton(100, 366, 220);
+            _btnExitGame = CreateButton(100, 401, 220);
             _btnExitGame.BackColor = Color.FromArgb(120, 30, 30);
             _btnExitGame.Click += (s, e) => ExitGameRequested?.Invoke(this, EventArgs.Empty);
 
             Controls.AddRange(new Control[]
             {
                 _lblTitle, _lblLanguage, _cmbLanguage,
-                _lblResolution, _lblSound, _lblFullscreen,
+                 _lblResolution, _lblMusic, _chkMusic, _lblSfx, _chkSfx, _lblFullscreen,
                 _lblSaveGame, _btnSaveGame,
                 _btnSave, _btnCancel, _btnExitGame
             });
@@ -121,7 +144,8 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _lblTitle.Text = translate("settings.title");
             _lblLanguage.Text = translate("settings.language.label");
             _lblResolution.Text = translate("settings.resolution.label") + " 1280x720";
-            _lblSound.Text = translate("settings.sound.label") + " " + translate("settings.value.on");
+            _lblMusic.Text = "Nhạc nền:";
+            _lblSfx.Text = "Âm thanh nhân vật:";
             _lblFullscreen.Text = translate("settings.fullscreen.label") + " " + translate("settings.value.off");
             _lblSaveGame.Text = translate("settings.savegame.label");
             _btnSaveGame.Text = translate("settings.button.savegame");

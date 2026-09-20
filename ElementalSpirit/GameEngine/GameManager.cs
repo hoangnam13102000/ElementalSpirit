@@ -138,6 +138,7 @@ namespace ElementalSpirit.GameEngine
 
             Player.OnAttackHitFrame += OnPlayerAttackHitFrame;
             Player.OnFireCastFrame += OnPlayerFireCastFrame;
+            Player.OnDeath += OnPlayerDeath;
 
             _stageSequence = StageData.CreateEarthForestCampaign();
             _stageIndex = 0;
@@ -160,6 +161,7 @@ namespace ElementalSpirit.GameEngine
             if (isLastStage)
             {
                 IsStageCompleted = true;
+                Services.AudioManager.Instance.PlaySfx("win.mp3");
                 return;
             }
 
@@ -315,7 +317,10 @@ namespace ElementalSpirit.GameEngine
         {
             if (Player.IsDead || Player.IsInvulnerable) return;
             if (slime.CanHitTarget(Player))
+            {
                 Player.TakeDamage(slime.Damage);
+                Services.AudioManager.Instance.PlaySfx("hurt.mp3");
+            }
         }
 
         private void OnBossProjectileCast(GorgonBoss boss)
@@ -491,6 +496,7 @@ namespace ElementalSpirit.GameEngine
 
         private void OnPlayerAttackHitFrame() => SpawnPlayerProjectile();
         private void OnPlayerFireCastFrame() => SpawnFireballProjectile();
+        private void OnPlayerDeath() => Services.AudioManager.Instance.PlaySfx("lose.mp3");
 
         private void SpawnPlayerProjectile()
         {
@@ -501,6 +507,17 @@ namespace ElementalSpirit.GameEngine
             Projectiles.Add(ProjectileFactory.CreatePlayerProjectile(
                 spawnX, spawnY, dir, Player.Damage, Player.CurrentProjectileType));
 
+            // ✅ Gom chung logic phát âm thanh theo loại đạn vào 1 chỗ, tách biệt hẳn khỏi WindBarrage
+            if (Player.CurrentProjectileType == ProjectileType.Slash)
+            {
+                Services.AudioManager.Instance.PlaySfx("slash.mp3");
+            }
+            else if (Player.CurrentProjectileType == ProjectileType.Basic)
+            {
+                Services.AudioManager.Instance.PlaySfx("shot.mp3");
+            }
+
+            // ✅ WindBarrage xử lý riêng, không liên quan gì đến việc chọn âm thanh
             if (Player.ActiveWindBarrage && Player.ExtraProjectiles > 0)
             {
                 float spread = 18f;
@@ -534,6 +551,7 @@ namespace ElementalSpirit.GameEngine
                 if (Player.Bounds.IntersectsWith(e.Bounds))
                 {
                     Player.TakeDamage(e.Damage);
+                    Services.AudioManager.Instance.PlaySfx("hurt.mp3");
                     break;
                 }
             }
@@ -550,6 +568,7 @@ namespace ElementalSpirit.GameEngine
                 if (Player.Bounds.IntersectsWith(projectile.Bounds))
                 {
                     Player.TakeDamage(projectile.Damage);
+                    Services.AudioManager.Instance.PlaySfx("hurt.mp3");
                     projectile.Kill();
                     break;
                 }
@@ -720,6 +739,10 @@ namespace ElementalSpirit.GameEngine
         {
             if (!Skills.TryActivate(skillId)) return false;
             Player.StartSkillCast();
+
+            if (skillId == "waterfall")
+                Services.AudioManager.Instance.PlaySfx("waterfall.mp3");
+
             return true;
         }
 
@@ -786,6 +809,7 @@ namespace ElementalSpirit.GameEngine
         private void OnBossEncounterCompleted()
         {
             IsStageCompleted = true;
+            Services.AudioManager.Instance.PlaySfx("win.mp3");
         }
 
         /// <summary>

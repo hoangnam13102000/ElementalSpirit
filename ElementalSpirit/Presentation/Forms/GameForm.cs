@@ -1,7 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.Windows.Forms;
-using ElementalSpirit.Domain.BossEncounter;
+﻿using ElementalSpirit.Domain.BossEncounter;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
@@ -9,7 +6,11 @@ using ElementalSpirit.Presentation.Assets;
 using ElementalSpirit.Presentation.BossEncounter;
 using ElementalSpirit.Presentation.Forms.Settings;
 using ElementalSpirit.Presentation.Rendering;
+using ElementalSpirit.Services;
 using ElementalSpirit.Services.Abstractions;
+using System;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace ElementalSpirit.Presentation.Forms
 {
@@ -71,6 +72,8 @@ namespace ElementalSpirit.Presentation.Forms
             FormClosing += OnFormClosing;
 
             _gameTimer.Start();
+
+            Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
         }
 
         private void OnGameTick(float deltaTime)
@@ -257,6 +260,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
+            Services.AudioManager.Instance.StopMusic();
             _gameTimer.Stop();
             _gameTimer.Dispose();
             _playerAnimController.Dispose();

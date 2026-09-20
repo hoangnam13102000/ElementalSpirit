@@ -21,4 +21,38 @@
 		<Folder Include="Resources\Images\Menu\" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <PackageReference Include="NAudio" Version="3.1.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="Resources\Audio\Music\forest_theme.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\Music\intro_theme.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\Music\menu_theme.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\SFX\lose.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\SFX\hurt.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\SFX\shot.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\SFX\slash.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\SFX\waterfall.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Resources\Audio\SFX\win.mp3">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
 </Project>
