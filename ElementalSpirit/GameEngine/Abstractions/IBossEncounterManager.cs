@@ -2,6 +2,7 @@
 {
     using ElementalSpirit.Domain.BossEncounter;
     using ElementalSpirit.Domain.Enemy;
+    using ElementalSpirit.Presentation.BossEncounter;
     using System;
 
     public interface IBossEncounterManager : IBossEncounterListener
@@ -19,10 +20,10 @@
         GorgonBoss? CurrentBoss { get; }
 
         /// <summary>Bong bóng thoại của boss đang hiển thị</summary>
-        ElementalSpirit.Presentation.BossEncounter.BossSpeechBubble ActiveSpeechBubble { get; }
+        BossSpeechBubble ActiveSpeechBubble { get; }
 
         /// <summary>Bong bóng thoại của người chơi đang hiển thị</summary>
-        ElementalSpirit.Presentation.BossEncounter.BossSpeechBubble PlayerSpeechBubble { get; }
+        BossSpeechBubble PlayerSpeechBubble { get; }
 
         /// <summary>Cảnh thoại mở đầu</summary>
         BossDialogueScene PreBossScene { get; }

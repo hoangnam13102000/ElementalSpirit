@@ -2,11 +2,14 @@ using System;
 using System.Linq;
 using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Enemy.AI;
+using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
+using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Factories;
 using ElementalSpirit.Presentation.Assets;
+using System.Drawing;
 using Xunit;
 
 namespace ElementalSpirit.Tests;
@@ -145,6 +148,111 @@ public class BossStageTests
 
         Assert.False(boss.IsHurt);
         Assert.True(boss.X > 0f);
+    }
+
+    [Fact]
+    public void SlashSkill_CanBeActivatedByShortId()
+    {
+        var manager = new SkillManager(new TestProjectileLoadout());
+
+        Assert.True(manager.TryActivate("slash"));
+    }
+
+    [Fact]
+    public void SlashSkill_KeepsWindSlashIcon_WhenSelected()
+    {
+        var loadout = new TestProjectileLoadout();
+        var manager = new SkillManager(loadout);
+
+        Assert.True(manager.TryActivate("slash"));
+
+        var slash = manager.Skills.Single(skill => skill.Id == "slash.wind");
+        Assert.False(string.IsNullOrWhiteSpace(slash.IconAssetKey));
+        Assert.Contains("WindSlash", slash.IconAssetKey, StringComparison.Ordinal);
+        Assert.Equal(ProjectileType.Slash, loadout.CurrentProjectileType);
+
+        Assert.True(manager.TryActivate("slash"));
+        Assert.Equal(ProjectileType.Slash, loadout.CurrentProjectileType);
+    }
+
+    [Fact]
+    public void PortalManager_ShowsForwardPortal_WhenEnemiesAreCleared_AndPlayerIsClose()
+    {
+        var manager = new PortalManager();
+        manager.RebuildPortalsForStage(0, 2, 1280f, 720f, 540f);
+
+        var playerBounds = new RectangleF(1160f, 420f, 30f, 30f);
+        manager.UpdatePortalVisibility(allEnemiesCleared: true, playerBounds: playerBounds, playerFacing: FacingDirection.Right);
+
+        var forwardPortal = manager.Portals.Single(p => p.Type == PortalType.ForwardPortal);
+        Assert.True(forwardPortal.IsVisible);
+    }
+
+    [Fact]
+    public void PortalManager_BackPortal_RemainsVisible_AtAllTimes()
+    {
+        var manager = new PortalManager();
+        manager.RebuildPortalsForStage(1, 3, 1280f, 720f, 540f);
+
+        var playerBounds = new RectangleF(1000f, 300f, 30f, 30f);
+        manager.UpdatePortalVisibility(allEnemiesCleared: true, playerBounds: playerBounds, playerFacing: FacingDirection.Right);
+
+        var backPortal = manager.Portals.Single(p => p.Type == PortalType.BackPortal);
+        Assert.True(backPortal.IsVisible);
+    }
+
+    [Fact]
+    public void PortalManager_OpensForwardPortal_AfterStageClear_WithoutProximityOrFacingRequirement()
+    {
+        var manager = new PortalManager();
+        manager.RebuildPortalsForStage(1, 3, 1280f, 720f, 540f);
+
+        var playerBounds = new RectangleF(100f, 300f, 30f, 30f);
+        manager.UpdatePortalVisibility(allEnemiesCleared: true, playerBounds: playerBounds, playerFacing: FacingDirection.Left);
+
+        var forwardPortal = manager.Portals.Single(p => p.Type == PortalType.ForwardPortal);
+        Assert.True(forwardPortal.IsVisible);
+
+        manager.UpdatePortalVisibility(allEnemiesCleared: true, playerBounds: playerBounds, playerFacing: FacingDirection.Right);
+        Assert.True(forwardPortal.IsVisible);
+    }
+
+    [Fact]
+    public void StoneGateAnimationLoader_LoadsFrames_FromSpriteSheet()
+    {
+        var controller = StoneGateAnimationLoader.CreateController();
+
+        Assert.NotNull(controller.CurrentImage);
+        Assert.True(controller.CurrentImage.Width > 0);
+        Assert.True(controller.CurrentImage.Height > 0);
+
+        controller.Dispose();
+    }
+
+    [Fact]
+    public void AssetLoader_ReturnsIndependentCopies_ForRepeatedBackgroundLoads()
+    {
+        var first = AssetLoader.Get("EarthForest.png");
+        var second = AssetLoader.Get("EarthForest.png");
+
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.NotSame(first, second);
+
+        first!.Dispose();
+
+        Assert.False(second!.Size.IsEmpty);
+        Assert.True(second.Width > 0 && second.Height > 0);
+
+        second.Dispose();
+        AssetLoader.DisposeAll();
+    }
+
+    private sealed class TestProjectileLoadout : IProjectileLoadout
+    {
+        public ProjectileType CurrentProjectileType { get; private set; } = ProjectileType.Basic;
+
+        public void SetProjectileType(ProjectileType projectileType) => CurrentProjectileType = projectileType;
     }
 
     private sealed class TestEnemyTarget : IEnemyTarget

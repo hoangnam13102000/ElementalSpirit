@@ -21,7 +21,18 @@ namespace ElementalSpirit.Presentation.Assets
             }
 
             if (_cache.TryGetValue(fileName, out var cached))
-                return cached;
+            {
+                try
+                {
+                    return (Image)cached.Clone();
+                }
+                catch (ArgumentException)
+                {
+                    // A previous caller may have disposed an image from an older cache version.
+                    _cache.Remove(fileName);
+                    cached.Dispose();
+                }
+            }
 
             string path = Path.Combine(ImagesFolder, fileName);
 
@@ -59,7 +70,7 @@ namespace ElementalSpirit.Presentation.Assets
                 var image = new Bitmap(raw);
                 _cache[fileName] = image;
                 Debug.WriteLine($"[AssetLoader] LOADED OK: {fileName} ({image.Width}x{image.Height})");
-                return image;
+                return (Image)image.Clone();
             }
             catch (Exception ex)
             {
