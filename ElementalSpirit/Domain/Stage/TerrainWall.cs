@@ -9,12 +9,15 @@ namespace ElementalSpirit.Domain.Stage
         public float TopRatio { get; }
         public float BottomRatio { get; }
 
-        public TerrainWall(string name, float xRatio, float topRatio, float bottomRatio)
+        public bool BlocksPlayer { get; }
+
+        public TerrainWall(string name, float xRatio, float topRatio, float bottomRatio, bool blocksPlayer = false)
         {
             Name = name;
             XRatio = xRatio;
             TopRatio = topRatio;
             BottomRatio = bottomRatio;
+            BlocksPlayer = blocksPlayer;
         }
 
         public RectangleF GetAbsoluteBounds(RectangleF playArea)

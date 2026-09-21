@@ -53,13 +53,16 @@ namespace ElementalSpirit.GameEngine
         public IPortalManager Portals { get; }
 
         public RectangleF PlayArea { get; private set; }
+        // Mặt đất chính của stage hiện tại (theo StageData.GroundTopRatio), được cập nhật mỗi khi
+        // đổi stage hoặc đổi kích thước vùng chơi - xem RefreshGroundY().
         public float GroundY { get; private set; }
-
-        private const float GroundTopRatio = 0.78f;
 
         // Xu ly va cham nen nhieu tang (da, cau treo, khoang trong ...) cho Player,
         // dua tren TerrainPlatform cua stage hien tai thay vi 1 duong GroundY phang.
         private readonly TerrainCollisionResolver _terrainResolver = new();
+
+        // Va chạm ngang của Player với thành lỗ / vách (TerrainWall.BlocksPlayer).
+        private readonly TerrainWallResolver _wallResolver = new();
 
         // Neu Player roi qua khoi day man hinh (vd: rot xuong nuoc giua khe vuc)
         // thi dua ve vi tri an toan thay vi roi mai mai ra ngoai tam nhin.
@@ -160,7 +163,7 @@ namespace ElementalSpirit.GameEngine
 
         public void Dispose()
         {
-            
+
         }
 
         private void HandleStageCompleted()
@@ -286,6 +289,7 @@ namespace ElementalSpirit.GameEngine
             if (targetStageIndex < 0 || targetStageIndex >= _stageSequence.Count) return;
 
             _stageIndex = targetStageIndex;
+            RefreshGroundY();
             var targetStage = _stageSequence[_stageIndex];
 
             Enemies.Clear();
@@ -342,7 +346,7 @@ namespace ElementalSpirit.GameEngine
         public void SetPlayArea(float width, float height)
         {
             PlayArea = new RectangleF(0, 0, width, height);
-            GroundY = PlayArea.Top + PlayArea.Height * GroundTopRatio;
+            RefreshGroundY();
             Spawn.SetSpawnArea(width, height);
             Spawn.SetTerrain(_stageSequence[_stageIndex].Platforms, PlayArea);
             Spawn.SetSpawnSafetyTarget(Player, 220f);
@@ -359,6 +363,32 @@ namespace ElementalSpirit.GameEngine
 
             if (Player.Y + Player.Height > GroundY)
                 Player.ResolveGroundCollision(GroundY);
+        }
+
+        /// <summary>
+        /// Tính lại GroundY theo stage hiện tại. Mỗi stage có mặt đất riêng (StageData.GroundTopRatio),
+        /// nên mọi chỗ dùng GroundY (điểm xuất hiện của Player, cổng, mặt đất dự phòng của quái...)
+        /// đều tự khớp với mặt đất thật của stage đó.
+        /// </summary>
+        private void RefreshGroundY()
+        {
+            GroundY = PlayArea.Top + PlayArea.Height * _stageSequence[_stageIndex].GroundTopRatio;
+        }
+
+        /// <summary>
+        /// Chặn Player đi xuyên ngang qua thành lỗ (TerrainWall.BlocksPlayer) khi đang ở dưới mặt đất,
+        /// vd: đang đứng dưới đáy lỗ ở màn 3 thì phải nhảy lên khỏi mép chứ không thể đi xuyên qua nền đất.
+        /// </summary>
+        private void ResolvePlayerWalls(float previousX)
+        {
+            var walls = _stageSequence[_stageIndex].Walls;
+            if (walls.Count == 0) return;
+
+            float resolvedX = _wallResolver.ResolvePlayerHorizontalPosition(
+                Player.Bounds, previousX, walls, PlayArea);
+
+            if (resolvedX != Player.X)
+                Player.RestoreHorizontalPosition(resolvedX);
         }
 
         /// <summary>
@@ -396,6 +426,7 @@ namespace ElementalSpirit.GameEngine
             if (Player.Y < PlayArea.Bottom + FallRecoveryMargin) return;
 
             Player.ResetPosition(PlayArea.Left + 8f, GroundY - Player.Height);
+            Player.ResolveGroundCollision(GroundY);
             SetStatus("Ban roi xuong nuoc! Quay lai vi tri an toan.");
         }
 
@@ -505,7 +536,9 @@ namespace ElementalSpirit.GameEngine
                 _fireKeyWasPressed = fireKeyNow;
 
                 float previousFootY = Player.Y + Player.Height;
+                float previousX = Player.X;
                 Player.Update(deltaTime);
+                ResolvePlayerWalls(previousX);
                 ResolvePlayerTerrain(previousFootY);
                 Player.ClampHorizontalBounds(PlayArea.Left, PlayArea.Right);
                 HandlePlayerFallRecovery();
@@ -730,6 +763,15 @@ namespace ElementalSpirit.GameEngine
 
             int targetIndex = Math.Clamp(data.StageIndex, 0, _stageSequence.Count - 1);
             _stageIndex = targetIndex;
+            RefreshGroundY();
+
+            // Save chỉ lưu StageIndex, không lưu danh sách stage đã clear. Người chơi đã đến được stage này
+            // nghĩa là mọi stage phía trước đều đã clear -> khôi phục lại để cổng forward của các màn cũ
+            // vẫn hiện khi quay lại bằng cổng back.
+            _clearedStages.Clear();
+            for (int i = 0; i < targetIndex; i++)
+                _clearedStages.Add(i);
+
             TransitionPhase = StageTransitionPhase.None;
             IsStageCompleted = false;
             Enemies.Clear();

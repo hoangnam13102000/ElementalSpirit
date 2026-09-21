@@ -15,10 +15,10 @@ namespace ElementalSpirit.Services
         private static AudioManager? _instance;
         public static AudioManager Instance => _instance ??= new AudioManager();
 
-        private WaveOutEvent? _musicOutput;
+        private WaveOut? _musicOutput;
         private AudioFileReader? _musicReader;
 
-        private readonly WaveOutEvent _sfxOutput;
+        private readonly WaveOut _sfxOutput;
         private readonly MixingSampleProvider _sfxMixer;
         private const int SfxSampleRate = 44100;
         private const int SfxChannels = 2;
@@ -51,7 +51,7 @@ namespace ElementalSpirit.Services
                 ReadFully = true // giữ mixer luôn "sống", không tự dừng khi hết input
             };
 
-            _sfxOutput = new WaveOutEvent();
+            _sfxOutput = new WaveOut();
             _sfxOutput.Init(_sfxMixer);
             _sfxOutput.Play(); // chạy sẵn, không cần Play lại mỗi lần phát SFX
         }
@@ -68,7 +68,7 @@ namespace ElementalSpirit.Services
                 ? new LoopStream(_musicReader).ToSampleProvider()
                 : _musicReader;
 
-            _musicOutput = new WaveOutEvent();
+            _musicOutput = new WaveOut();
             _musicOutput.Init(source);
             _musicOutput.Play();
         }

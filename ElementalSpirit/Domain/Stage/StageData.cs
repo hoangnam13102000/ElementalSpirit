@@ -13,6 +13,22 @@ namespace ElementalSpirit.Domain.Stage
         public List<TerrainPlatform> Platforms { get; set; } = new();
         public List<TerrainWall> Walls { get; set; } = new();
 
+        /// <summary>
+        /// Vị trí mặt đất chính của stage (tỉ lệ theo chiều cao vùng chơi). Dùng cho điểm xuất hiện của Player,
+        /// vị trí cổng, mặt đất dự phòng của quái... Mặc định 0.78 như các màn khác; màn 3 có mặt đất cao hơn.
+        /// </summary>
+        public float GroundTopRatio { get; set; } = 0.78f;
+
+        private static void AddPlatform(StageData stage, string name, float minXRatio, float maxXRatio, float topRatio, float bottomRatio)
+        {
+            stage.Platforms.Add(new TerrainPlatform(name, minXRatio, maxXRatio, topRatio, bottomRatio));
+        }
+
+        private static void AddWall(StageData stage, string name, float xRatio, float topRatio, float bottomRatio, bool blocksPlayer = false)
+        {
+            stage.Walls.Add(new TerrainWall(name, xRatio, topRatio, bottomRatio, blocksPlayer));
+        }
+
         public static StageData CreateEarthForest()
         {
             var stage = new StageData
@@ -238,19 +254,50 @@ namespace ElementalSpirit.Domain.Stage
 
         public static StageData CreateEarthForest3()
         {
+            // Mặt đất thật của màn 3 (nền thấp có dãy ống) nằm ở 0.66 chiều cao ảnh nền 720x404,
+            // cao hơn mặt đất 0.78 của các màn khác -> phải khai báo GroundTopRatio riêng để Player,
+            // cổng và quái xuất hiện đúng trên mặt đất thay vì bị "chôn" bên trong nền rồi rơi xuyên xuống.
+            const float groundTop = 0.66f;
+
+            // Cái lỗ (vết ống vỡ) trên nền, đo trực tiếp trên EarthForest3.png:
+            //   mép trái x = 470px (0.653), mép phải x = 507px (0.704),
+            //   đáy lỗ là mép ống vỡ bên dưới, y ≈ 303px (0.75).
+            const float holeLeft = 0.653f;
+            const float holeRight = 0.704f;
+            const float holeFloorTop = 0.75f;
+
             var stage = new StageData
             {
                 StageNumber = 3,
                 Name = "Earth Forest - Ruined Stairway",
-                BackgroundImageName = "EarthForest3.png"
+                BackgroundImageName = "EarthForest3.png",
+                GroundTopRatio = groundTop
             };
 
-            stage.Platforms.Add(new TerrainPlatform(
-                name: "Ground",
-                minXRatio: 0.0f,
-                maxXRatio: 1.0f,
-                topRatio: 0.78f,
-                bottomRatio: 1.0f));
+            // Nền thấp chạy liền mạch 2 bên, chừa đúng khoảng trống của cái lỗ.
+            AddPlatform(stage, "GroundLeft", 0.00f, holeLeft, groundTop, 1.0f);
+            AddPlatform(stage, "GroundRight", holeRight, 1.0f, groundTop, 1.0f);
+
+            // Đáy của lỗ: Player rơi vào sẽ đứng được trên đáy này, không rơi xuyên xuống dưới màn hình.
+            // Tên có chứa "Pit" để SpawnManager không cho quái xuất hiện trong lỗ.
+            AddPlatform(stage, "PitFloor", holeLeft, holeRight, holeFloorTop, 0.80f);
+
+            // 2 thành lỗ: chặn Player đi xuyên ngang qua nền đất khi đang ở dưới mặt đất
+            // (phải nhảy lên khỏi mép), đồng thời chặn quái đi vào lỗ như vách vực ở màn 2.
+            AddWall(stage, "PitWallLeft", holeLeft, groundTop, 1.0f, blocksPlayer: true);
+            AddWall(stage, "PitWallRight", holeRight, groundTop, 1.0f, blocksPlayer: true);
+
+            // Cầu thang đá đổ nát (Terrain) - 5 bậc lớn xấp xỉ đường viền bậc thang trong ảnh,
+            // đủ thấp để nhảy lên từng bậc (chênh lệch mỗi bậc luôn nhỏ hơn tầm nhảy của Player).
+            AddPlatform(stage, "LeftStairTop", 0.00f, 0.105f, 0.05f, 0.16f);
+            AddPlatform(stage, "LeftStairUpper", 0.06f, 0.19f, 0.16f, 0.28f);
+            AddPlatform(stage, "LeftStairMid", 0.14f, 0.27f, 0.28f, 0.40f);
+            AddPlatform(stage, "LeftStairLower", 0.22f, 0.35f, 0.40f, 0.52f);
+            AddPlatform(stage, "LeftStairBase", 0.30f, 0.40f, 0.52f, 0.66f);
+
+            // 2 phiến đá nổi (Platform) giữa màn, đúng vị trí trong ảnh nền.
+            AddPlatform(stage, "CenterPlatform", 0.335f, 0.615f, 0.35f, 0.50f);
+            AddPlatform(stage, "RightPlatform", 0.788f, 1.0f, 0.36f, 0.51f);
 
             var wave1 = new WaveData(1);
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 10, 0.45f));

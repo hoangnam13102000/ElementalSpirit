@@ -25,6 +25,18 @@ public class BossStageTests
     }
 
     [Fact]
+    public void EarthForest3_HasStairLikePlatforms_AndPitWalls()
+    {
+        var stage = StageData.CreateEarthForest3();
+
+        Assert.True(stage.Platforms.Count >= 8, $"Expected stage 3 to contain multiple collision platforms but found {stage.Platforms.Count}.");
+        Assert.Contains(stage.Platforms, p => p.Name == "LeftUpperStair");
+        Assert.Contains(stage.Platforms, p => p.Name == "CenterBridge");
+        Assert.Contains(stage.Walls, w => w.Name == "LeftPitWall");
+        Assert.Contains(stage.Walls, w => w.Name == "RightPitWall");
+    }
+
+    [Fact]
     public void FinalBossStage_DoesNotSpawnGorgonInWaveList()
     {
         var stages = StageData.CreateEarthForestCampaign();
