@@ -31,7 +31,7 @@ namespace ElementalSpirit.Presentation.Assets
                     // A previous caller may have disposed an image from an older cache version.
                     _cache.Remove(fileName);
                     cached.Dispose();
-                }
+                 }
             }
 
             string path = Path.Combine(ImagesFolder, fileName);
