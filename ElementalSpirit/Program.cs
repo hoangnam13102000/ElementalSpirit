@@ -26,7 +26,7 @@ namespace ElementalSpirit
             var skills = new SkillManager(player);
             var shop = new ShopService();
             var upgrades = new UpgradeService();
-            var wallet = new PlayerWallet(250, 20, 2);
+            var wallet = new PlayerWallet(0, 0, 0);
             var inventory = new Inventory();
             var localization = LocalizationManager.Instance;
             var bossEncounter = new BossEncounterManager(localization);

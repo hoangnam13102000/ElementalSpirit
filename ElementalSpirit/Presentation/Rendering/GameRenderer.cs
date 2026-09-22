@@ -71,6 +71,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 DrawCurrencyHud(g, clientSize);
                 DrawEquipmentHud(g, clientSize);
                 DrawDebugInfo(g, clientSize);
+
             }
 
             if (_gameManager.BossEncounter.IsIntroDialogue)
@@ -425,6 +426,303 @@ namespace ElementalSpirit.Presentation.Rendering
             g.DrawRectangle(borderPen, barX, barY, HealthBarWidth, HealthBarHeight);
         }
 
+        // ===================== HUD THEME TOKENS =====================
+        private static readonly Color HudPanelFill = Color.FromArgb(200, 16, 22, 14);
+        private static readonly Color HudPanelBorder = Color.FromArgb(220, 201, 162, 39);   // vàng cổ
+        private static readonly Color HudTextPrimary = Color.FromArgb(255, 240, 230, 200);  // vàng giấy da
+        private static readonly Color HudTextSecondary = Color.FromArgb(220, 185, 174, 140);
+        private static readonly Color HudHpColor = Color.FromArgb(255, 193, 68, 60);         // đỏ ruby trầm
+        private static readonly Color HudGoldColor = Color.FromArgb(255, 232, 185, 35);
+        private static readonly Color HudShardColor = Color.FromArgb(255, 127, 209, 174);    // ngọc lam
+        private static readonly Color HudCrystalColor = Color.FromArgb(255, 126, 200, 227);  // lam nhạt
+
+        // ===================== PANEL TRÁI: STAGE / WAVE / HP =====================
+        private void DrawDebugInfo(Graphics g, Size clientSize)
+        {
+            var p = _gameManager.Player;
+            var waves = _gameManager.Waves;
+
+            const float panelX = 14f;
+            const float panelY = 14f;
+            const float minPanelW = 240f;
+            const float panelH = 108f;
+
+            using var stageFont = new Font("Georgia", 12.5f, FontStyle.Bold); 
+            var stageNameSize = g.MeasureString(waves.StageName, stageFont);
+            using var hintFontMeasure = new Font("Consolas", 8f);
+            var hintSize = g.MeasureString(_localization.Translate("hud.controls.line2"), hintFontMeasure);
+            float panelW = Math.Max(minPanelW, Math.Max(stageNameSize.Width, hintSize.Width) + 28f);
+            using var panelPath = CreateRoundedRectangle(new RectangleF(panelX, panelY, panelW, panelH), 10f);
+            using var panelBg = new SolidBrush(HudPanelFill);
+            using var panelBorder = new Pen(HudPanelBorder, 1.6f);
+            g.FillPath(panelBg, panelPath);
+            g.DrawPath(panelBorder, panelPath);
+
+            // --- Dòng 1: tên khu vực ---
+            using var stageBrush = new SolidBrush(HudTextPrimary);
+            g.DrawString(waves.StageName, stageFont, stageBrush, new RectangleF(panelX + 14f, panelY + 10f, panelW - 28f, 34f));
+
+            // --- Chip trạng thái wave (góc phải panel) ---
+            string statusText;
+            Color statusColor;
+            if (_gameManager.IsInStageTransition)
+            {
+                statusText = "Đang chuyển cảnh";
+                statusColor = HudCrystalColor;
+            }
+            else if (_gameManager.IsStageCompleted)
+            {
+                statusText = "Hoàn thành";
+                statusColor = HudGoldColor;
+            }
+            else
+            {
+                statusText = $"Đợt {waves.CurrentWaveNumber}/{waves.TotalWaves}";
+                statusColor = HudTextSecondary;
+            }
+            DrawStatusChip(g, statusText, statusColor, panelX + 14f, panelY + 40f, alignRight: false);
+
+            // --- Dòng 2: thanh máu với icon tim ---
+            float hpRowY = panelY + 66f;
+            DrawHeartIcon(g, panelX + 14f, hpRowY + 3f, 15f, HudHpColor);
+
+            float barX = panelX + 36f;
+            float barY = hpRowY + 4f;
+            float barW = panelW - 36f - 14f;
+            float barH = 15f;
+            float hpPercent = p.MaxHp > 0 ? Math.Clamp((float)p.CurrentHp / p.MaxHp, 0f, 1f) : 0f;
+
+            using var barBg = new SolidBrush(Color.FromArgb(160, 40, 20, 20));
+            using var barBgPath = CreateRoundedRectangle(new RectangleF(barX, barY, barW, barH), 4f);
+            g.FillPath(barBg, barBgPath);
+
+            if (hpPercent > 0f)
+            {
+                using var barFillPath = CreateRoundedRectangle(new RectangleF(barX, barY, barW * hpPercent, barH), 4f);
+                using var barFillBrush = new LinearGradientBrush(
+                    new RectangleF(barX, barY, barW, barH),
+                    Color.FromArgb(255, 220, 90, 80),
+                    HudHpColor,
+                    0f);
+                g.FillPath(barFillBrush, barFillPath);
+            }
+            using var barBorderPen = new Pen(Color.FromArgb(180, 10, 10, 10), 1f);
+            g.DrawPath(barBorderPen, barBgPath);
+
+            using var hpNumFont = new Font("Consolas", 8.5f, FontStyle.Bold);
+            using var hpNumBrush = new SolidBrush(Color.White);
+            string hpText = $"{p.CurrentHp}/{p.MaxHp}";
+            var hpTextSize = g.MeasureString(hpText, hpNumFont);
+            g.DrawString(hpText, hpNumFont, hpNumBrush, barX + barW / 2f - hpTextSize.Width / 2f, barY - 0.5f);
+
+            // --- Dòng 3: gợi ý điều khiển (nhỏ, mờ) ---
+            using var hintFont = new Font("Consolas", 8f);
+            using var hintBrush = new SolidBrush(Color.FromArgb(170, HudTextSecondary));
+            g.DrawString(_localization.Translate("hud.controls.line2"), hintFont, hintBrush, panelX + 14f, panelY + 84f);
+
+            // ---Thông báo lớn giữa màn hình khi qua stage / chết-- -
+            if (_gameManager.IsStageCompleted)
+            {
+                DrawCenterBanner(g, clientSize, _localization.Translate("hud.stageClear.big"), HudHpColor);
+            }
+            if (p.IsDead)
+            {
+                DrawCenterBanner(g, clientSize, "GAME OVER", HudHpColor, subtitle: "Press ESC to exit");
+            }
+        }
+
+        private void DrawStatusChip(Graphics g, string text, Color accent, float rightEdgeX, float y, bool alignRight)
+        {
+            using var chipFont = new Font("Consolas", 8f, FontStyle.Bold);
+            var textSize = g.MeasureString(text, chipFont);
+            const float paddingX = 8f;
+            float chipW = textSize.Width + paddingX * 2f;
+            float chipH = 18f;
+            float chipX = alignRight ? rightEdgeX - chipW : rightEdgeX;
+
+            using var chipPath = CreateRoundedRectangle(new RectangleF(chipX, y, chipW, chipH), 9f);
+            using var chipBg = new SolidBrush(Color.FromArgb(90, accent.R, accent.G, accent.B));
+            using var chipBorder = new Pen(Color.FromArgb(200, accent.R, accent.G, accent.B), 1f);
+            g.FillPath(chipBg, chipPath);
+            g.DrawPath(chipBorder, chipPath);
+
+            using var chipTextBrush = new SolidBrush(Color.FromArgb(255, 245, 245, 235));
+            g.DrawString(text, chipFont, chipTextBrush, chipX + paddingX, y + 3f);
+        }
+
+        private void DrawCenterBanner(Graphics g, Size clientSize, string message, Color accent, string? subtitle = null)
+        {
+            using var bigFont = new Font("Georgia", 30f, FontStyle.Bold);
+            using var shadowBrush = new SolidBrush(Color.FromArgb(160, 0, 0, 0));
+            using var textBrush = new SolidBrush(accent);
+            var size = g.MeasureString(message, bigFont);
+            float x = (clientSize.Width - size.Width) / 2f;
+            float y = clientSize.Height / 2f - 46f;
+
+            g.DrawString(message, bigFont, shadowBrush, x + 2f, y + 2f);
+            g.DrawString(message, bigFont, textBrush, x, y);
+
+            if (subtitle != null)
+            {
+                using var subFont = new Font("Consolas", 13f);
+                using var subBrush = new SolidBrush(Color.Black);
+                var subSize = g.MeasureString(subtitle, subFont);
+                g.DrawString(subtitle, subFont, subBrush, (clientSize.Width - subSize.Width) / 2f, y + 46f);
+            }
+        }
+
+        // ===================== PANEL PHẢI: VÀNG / MẢNH / PHA LÊ =====================
+        private void DrawCurrencyHud(Graphics g, Size clientSize)
+        {
+            var w = _gameManager.Wallet;
+            const float pillW = 118f;
+            const float pillH = 30f;
+            const float gap = 6f;
+            float startX = clientSize.Width - pillW - 14f;
+            float y = 14f;
+
+            DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Coin, HudGoldColor, w.Gold.ToString());
+            y += pillH + gap;
+            DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Shard, HudShardColor, w.SpiritShards.ToString());
+            y += pillH + gap;
+            DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Crystal, HudCrystalColor, w.Crystals.ToString());
+
+            if (!string.IsNullOrEmpty(_gameManager.StatusMessage))
+            {
+                using var msgFont = new Font("Consolas", 10.5f, FontStyle.Italic);
+                using var msgBrush = new SolidBrush(HudTextPrimary);
+                var msgSize = g.MeasureString(_gameManager.StatusMessage, msgFont);
+                float msgX = (clientSize.Width - msgSize.Width) / 2f;
+                float msgY = 135f;
+
+                using var msgBg = new SolidBrush(Color.FromArgb(170, 16, 22, 14));
+                g.FillRectangle(msgBg, msgX - 8f, msgY - 3f, msgSize.Width + 16f, msgSize.Height + 6f);
+                g.DrawString(_gameManager.StatusMessage, msgFont, msgBrush, msgX, msgY);
+            }
+        }
+
+        private enum IconKind { Coin, Shard, Crystal }
+
+        private void DrawResourcePill(Graphics g, float x, float y, float w, float h, IconKind icon, Color accent, string value)
+        {
+            using var pillPath = CreateRoundedRectangle(new RectangleF(x, y, w, h), h / 2f);
+            using var pillBg = new SolidBrush(HudPanelFill);
+            using var pillBorder = new Pen(Color.FromArgb(200, accent.R, accent.G, accent.B), 1.4f);
+            g.FillPath(pillBg, pillPath);
+            g.DrawPath(pillBorder, pillPath);
+
+            float iconCx = x + h / 2f;
+            float iconCy = y + h / 2f;
+            switch (icon)
+            {
+                case IconKind.Coin: DrawCoinIcon(g, iconCx, iconCy, h * 0.34f, accent); break;
+                case IconKind.Shard: DrawShardIcon(g, iconCx, iconCy, h * 0.34f, accent); break;
+                case IconKind.Crystal: DrawCrystalIcon(g, iconCx, iconCy, h * 0.34f, accent); break;
+            }
+
+            using var valFont = new Font("Consolas", 11f, FontStyle.Bold);
+            using var valBrush = new SolidBrush(HudTextPrimary);
+            var valSize = g.MeasureString(value, valFont);
+            g.DrawString(value, valFont, valBrush, x + h + 4f, y + (h - valSize.Height) / 2f);
+        }
+
+        // ===================== ICON VECTOR NHỎ (không cần file ảnh) =====================
+        private static void DrawHeartIcon(Graphics g, float cx, float cy, float size, Color color)
+        {
+            using var brush = new SolidBrush(color);
+            float r = size * 0.32f;
+            g.FillEllipse(brush, cx - r * 1.5f, cy - r * 0.7f, r * 1.5f, r * 1.5f);
+            g.FillEllipse(brush, cx, cy - r * 0.7f, r * 1.5f, r * 1.5f);
+            var trianglePts = new[]
+            {
+                new PointF(cx - r * 1.5f, cy - r * 0.1f),
+                new PointF(cx + r * 1.5f, cy - r * 0.1f),
+                new PointF(cx + r * 0.3f, cy + r * 1.6f)
+            };
+            g.FillPolygon(brush, trianglePts);
+        }
+
+        private static void DrawCoinIcon(Graphics g, float cx, float cy, float radius, Color color)
+        {
+            var rect = new RectangleF(cx - radius, cy - radius, radius * 2f, radius * 2f);
+            using var fill = new SolidBrush(color);
+            using var rim = new Pen(Color.FromArgb(220, 90, 60, 10), 1.4f);
+            g.FillEllipse(fill, rect);
+            g.DrawEllipse(rim, rect);
+            using var shine = new SolidBrush(Color.FromArgb(140, 255, 255, 255));
+            g.FillEllipse(shine, cx - radius * 0.4f, cy - radius * 0.55f, radius * 0.6f, radius * 0.4f);
+        }
+
+        private static void DrawShardIcon(Graphics g, float cx, float cy, float size, Color color)
+        {
+            var pts = new[]
+            {
+                new PointF(cx, cy - size),
+                new PointF(cx + size * 0.55f, cy),
+                new PointF(cx, cy + size),
+                new PointF(cx - size * 0.55f, cy)
+            };
+            using var fill = new SolidBrush(color);
+            using var outline = new Pen(Color.FromArgb(200, 20, 60, 45), 1f);
+            g.FillPolygon(fill, pts);
+            g.DrawPolygon(outline, pts);
+        }
+
+        private static void DrawCrystalIcon(Graphics g, float cx, float cy, float size, Color color)
+        {
+            var pts = new[]
+            {
+                new PointF(cx, cy - size * 1.15f),
+                new PointF(cx + size * 0.75f, cy - size * 0.2f),
+                new PointF(cx + size * 0.4f, cy + size),
+                new PointF(cx - size * 0.4f, cy + size),
+                new PointF(cx - size * 0.75f, cy - size * 0.2f)
+            };
+            using var fill = new SolidBrush(color);
+            using var outline = new Pen(Color.FromArgb(200, 20, 50, 65), 1f);
+            g.FillPolygon(fill, pts);
+            g.DrawPolygon(outline, pts);
+            using var facet = new Pen(Color.FromArgb(120, 255, 255, 255), 1f);
+            g.DrawLine(facet, cx, cy - size * 1.15f, cx, cy + size);
+        }
+
+        // ===================== PANEL TRANG BỊ (chip hàng ngang dưới panel vàng) =====================
+        private void DrawEquipmentHud(Graphics g, Size clientSize)
+        {
+            var inv = _gameManager.Inventory;
+            const float chipH = 26f;
+            const float chipGap = 6f;
+            float y = 14f + (30f + 6f) * 3f + 10f; // ngay dưới 3 pill tài nguyên
+
+            float x = clientSize.Width - 14f;
+            x = DrawEquipChip(g, x, y, chipH, "PK", inv.GetEquipped(EquipmentSlot.Accessory), HudCrystalColor) - chipGap;
+            x = DrawEquipChip(g, x, y, chipH, "Giáp", inv.GetEquipped(EquipmentSlot.Armor), HudShardColor) - chipGap;
+            x = DrawEquipChip(g, x, y, chipH, "VK", inv.GetEquipped(EquipmentSlot.Weapon), HudGoldColor) - chipGap;
+        }
+
+        /// <summary>Vẽ 1 chip trang bị neo theo mép PHẢI tại rightEdgeX, trả về toạ độ X bên trái của chip (để chip kế tiếp nối vào).</summary>
+        private float DrawEquipChip(Graphics g, float rightEdgeX, float y, float h, string label, Equipment? item, Color accent)
+        {
+            string name = item?.Name ?? "—";
+            using var font = new Font("Consolas", 8.5f);
+            using var labelFont = new Font("Consolas", 7.5f, FontStyle.Bold);
+            string display = $"{label}: {name}";
+            var textSize = g.MeasureString(display, font);
+            const float paddingX = 10f;
+            float chipW = textSize.Width + paddingX * 2f;
+            float chipX = rightEdgeX - chipW;
+
+            using var chipPath = CreateRoundedRectangle(new RectangleF(chipX, y, chipW, h), h / 2f);
+            using var chipBg = new SolidBrush(Color.FromArgb(150, 16, 22, 14));
+            using var chipBorder = new Pen(Color.FromArgb(160, accent.R, accent.G, accent.B), 1f);
+            g.FillPath(chipBg, chipPath);
+            g.DrawPath(chipBorder, chipPath);
+
+            using var textBrush = new SolidBrush(item != null ? HudTextPrimary : HudTextSecondary);
+            g.DrawString(display, font, textBrush, chipX + paddingX, y + (h - textSize.Height) / 2f);
+
+            return chipX;
+        }
         private void DrawProjectiles(Graphics g)
         {
             foreach (var p in _gameManager.Projectiles.Projectiles)
@@ -864,105 +1162,10 @@ namespace ElementalSpirit.Presentation.Rendering
                 : Rectangle.FromLTRB(minX, minY, maxX + 1, maxY + 1);
         }
 
-        private void DrawCurrencyHud(Graphics g, Size clientSize)
-        {
-            var w = _gameManager.Wallet;
-            string text = $"{_localization.Translate("hud.currency.gold")} {w.Gold}   " +
-                          $"{_localization.Translate("hud.currency.shards")} {w.SpiritShards}   " +
-                          $"{_localization.Translate("hud.currency.crystals")} {w.Crystals}";
-            using var font = new Font("Consolas", 12f, FontStyle.Bold);
-            using var brush = new SolidBrush(Color.FromArgb(255, 220, 140));
-            var size = g.MeasureString(text, font);
-            g.DrawString(text, font, brush, clientSize.Width - size.Width - 16, 12);
+        
+        
 
-            if (!string.IsNullOrEmpty(_gameManager.StatusMessage))
-            {
-                using var msgFont = new Font("Consolas", 11f);
-                using var msgBrush = new SolidBrush(Color.FromArgb(180, 255, 200));
-                var msgSize = g.MeasureString(_gameManager.StatusMessage, msgFont);
-                g.DrawString(_gameManager.StatusMessage, msgFont, msgBrush,
-                    clientSize.Width - msgSize.Width - 16, 34);
-            }
-        }
-
-        private void DrawEquipmentHud(Graphics g, Size clientSize)
-        {
-            var inv = _gameManager.Inventory;
-            float x = clientSize.Width - 260, y = 60;
-            using var titleFont = new Font("Consolas", 10f, FontStyle.Bold);
-            using var titleBrush = new SolidBrush(Color.FromArgb(180, 200, 230));
-            g.DrawString(_localization.Translate("hud.equipped.title"), titleFont, titleBrush, x, y);
-            y += 18;
-            using var itemFont = new Font("Consolas", 9f);
-            using var itemBrush = new SolidBrush(Color.FromArgb(200, 210, 230));
-            DrawEquipLine(g, itemFont, itemBrush, x, ref y, _localization.Translate("hud.equip.weapon"), inv.GetEquipped(EquipmentSlot.Weapon));
-            DrawEquipLine(g, itemFont, itemBrush, x, ref y, _localization.Translate("hud.equip.armor"), inv.GetEquipped(EquipmentSlot.Armor));
-            DrawEquipLine(g, itemFont, itemBrush, x, ref y, _localization.Translate("hud.equip.accessory"), inv.GetEquipped(EquipmentSlot.Accessory));
-            y += 8;
-            g.DrawString(string.Format(_localization.Translate("hud.owned"), inv.Items.Count), itemFont, itemBrush, x, y);
-        }
-
-        private void DrawEquipLine(Graphics g, Font font, Brush brush, float x, ref float y, string label, Equipment? item)
-        {
-            string name = item?.Name ?? _localization.Translate("hud.equip.none");
-            string bonus = item == null ? "" : $" +{item.BonusDamage}DMG +{item.BonusMaxHp}HP +{item.BonusDefense}DEF";
-            g.DrawString($"{label}: {name}{bonus}", font, brush, x, y);
-            y += 16;
-        }
-
-        private void DrawDebugInfo(Graphics g, Size clientSize)
-        {
-            var p = _gameManager.Player;
-            var waves = _gameManager.Waves;
-
-            string stageStatus;
-            if (_gameManager.IsInStageTransition)
-            {
-                stageStatus = $"{_localization.Translate("hud.stageTransition")} ({_gameManager.TransitionPhase})";
-            }
-            else if (_gameManager.IsStageCompleted)
-            {
-                stageStatus = _localization.Translate("hud.stageClear.pressEsc");
-            }
-            else
-            {
-                stageStatus = $"{_localization.Translate("hud.wave.label")} {waves.CurrentWaveNumber}/{waves.TotalWaves}  |  {_localization.Translate("hud.state.label")} {waves.State}";
-            }
-
-            string info =
-                $"{_localization.Translate("hud.phase")}\n" +
-                $"{_localization.Translate("hud.stage.label")} {waves.StageName}\n" +
-                $"{stageStatus}\n" +
-                $"{_localization.Translate("hud.hp.label")} {p.CurrentHp}/{p.MaxHp}\n" +
-                $"{_localization.Translate("hud.currency.gold")} {_gameManager.Wallet.Gold}\n" +
-                $"{_localization.Translate("hud.controls.line2")}";
-
-            using var font = new Font("Consolas", 11f);
-            using var brush = new SolidBrush(Color.FromArgb(200, 220, 255));
-            g.DrawString(info, font, brush, 12, 12);
-
-            if (_gameManager.IsStageCompleted)
-            {
-                using var bigFont = new Font("Consolas", 28f, FontStyle.Bold);
-                using var bigBrush = new SolidBrush(Color.FromArgb(100, 255, 150));
-                string msg = _localization.Translate("hud.stageClear.big");
-                var size = g.MeasureString(msg, bigFont);
-                g.DrawString(msg, bigFont, bigBrush, (clientSize.Width - size.Width) / 2, clientSize.Height / 2 - 40);
-            }
-
-            if (p.IsDead)
-            {
-                using var deadFont = new Font("Consolas", 32f, FontStyle.Bold);
-                using var deadBrush = new SolidBrush(Color.FromArgb(200, 255, 60, 60));
-                string msg = "GAME OVER";
-                var size = g.MeasureString(msg, deadFont);
-                g.DrawString(msg, deadFont, deadBrush, (clientSize.Width - size.Width) / 2, clientSize.Height / 2 - 80);
-                using var hintFont = new Font("Consolas", 14f);
-                using var hintBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
-                string hint = "Press ESC to exit";
-                var hintSize = g.MeasureString(hint, hintFont);
-                g.DrawString(hint, hintFont, hintBrush, (clientSize.Width - hintSize.Width) / 2, clientSize.Height / 2 - 30);
-            }
-        }
+       
+ 
     }
 }

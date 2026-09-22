@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Windows.Forms;
-using ElementalSpirit.Data;
+﻿using ElementalSpirit.Data;
 using ElementalSpirit.Domain.BossEncounter;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Enemy;
@@ -13,12 +8,18 @@ using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.Domain.SaveData;
-using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Domain.Skill;
+using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Factories;
-using ElementalSpirit.Services;
 using ElementalSpirit.GameEngine.Abstractions;
+using ElementalSpirit.Presentation.Forms;
+using ElementalSpirit.Services;
 using ElementalSpirit.Services.Abstractions;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
 
 namespace ElementalSpirit.GameEngine
 {
@@ -88,6 +89,12 @@ namespace ElementalSpirit.GameEngine
         private const float RunOutDuration = 0.6f;   // thời gian tối đa chạy ra mép phải
         private const float FadeDuration = 0.55f;    // thời gian crossfade giữa 2 background
         private const float RunInDuration = 0.6f;    // thời gian chạy vào từ mép trái
+        private GameForm? _gameForm;
+
+        public void SetGameForm(GameForm gameForm)
+        {
+            _gameForm = gameForm;
+        }
 
         public StageTransitionPhase TransitionPhase { get; private set; } = StageTransitionPhase.None;
 
@@ -171,17 +178,19 @@ namespace ElementalSpirit.GameEngine
             _clearedStages.Add(_stageIndex);
 
             bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
+
             if (isLastStage)
             {
                 IsStageCompleted = true;
                 Services.AudioManager.Instance.PlaySfx("win.mp3");
                 return;
-            }
 
+            }
             // Không tự động chuyển cảnh nữa.
             // Cổng ForwardPortal sẽ được Portals.UpdatePortalVisibility() hiện ra
             // khi stage này đã từng clear, kể cả khi người chơi quay lại màn cũ.
             SetStatus("Đã tiêu diệt hết quái! Cổng di chuyển đã mở.");
+
         }
 
         private void UpdateStageTransition(float deltaTime)
@@ -560,6 +569,7 @@ namespace ElementalSpirit.GameEngine
                             boss.OnBossProjectileCast += OnBossProjectileCast;
                             break;
                     }
+                    e.OnDied -= OnEnemyDied; e.OnDied += OnEnemyDied;
                 }
 
                 Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
@@ -628,6 +638,29 @@ namespace ElementalSpirit.GameEngine
         private void OnPlayerAttackHitFrame() => SpawnPlayerProjectile();
         private void OnPlayerFireCastFrame() => SpawnFireballProjectile();
         private void OnPlayerDeath() => Services.AudioManager.Instance.PlaySfx("lose.mp3");
+        private void OnEnemyDied(Enemy enemy)
+        {
+            Services.AudioManager.Instance.PlaySfx("enemy_die.mp3");
+            if (enemy is GorgonBoss boss)
+            {
+                // 🏆 Hạ Boss: Thưởng lớn (Nhiều Vàng, Mảnh tinh linh & Kim cương)
+                Wallet.AddGold(150);
+                Wallet.AddSpiritShards(10);
+                Wallet.AddCrystals(2);
+                SetStatus("Tiêu diệt Boss! Nhận 150 Vàng, 10 Mảnh, 2 Kim Cương!");
+            }
+            else if (enemy is Slime)
+            {
+                // 🟢 Quái thường Slime: Thưởng ít vàng
+                Wallet.AddGold(10);
+                Wallet.AddSpiritShards(1);
+            }
+            else
+            {
+                // 👾 Các quái thường khác
+                Wallet.AddGold(15);
+            }
+        }
 
         private void SpawnPlayerProjectile()
         {
@@ -747,7 +780,19 @@ namespace ElementalSpirit.GameEngine
 
             return data;
         }
+        public void LoadSaveData(GameSaveData saveData)
+        {
+            if (saveData == null) return;
 
+            int targetStage = Math.Clamp(saveData.StageIndex, 0, _stageSequence.Count - 1);
+            TransitionToStage(targetStage, PortalType.ForwardPortal);
+
+            Wallet.AddGold(saveData.Gold);
+            Wallet.AddSpiritShards(saveData.SpiritShards);
+            Wallet.AddCrystals(saveData.Crystals);
+
+            SetStatus("Đã tải dữ liệu trò chơi thành công!");
+        }
         /// <summary>
         /// Áp 1 snapshot GameSaveData đã đọc từ file lên GameManager vừa được khởi tạo
         /// (từ Program.CreateGameManager()), coi như checkpoint tại đầu khu vực đã lưu:

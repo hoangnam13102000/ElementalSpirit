@@ -65,6 +65,7 @@ namespace ElementalSpirit.Domain.Enemy
                 IsDead = true;
                 IsHurt = false;
                 _deathTimer = DeathDuration;
+                OnDied?.Invoke(this);
             }
             else
             {
@@ -85,6 +86,7 @@ namespace ElementalSpirit.Domain.Enemy
             _deathTimer = 0f;
         }
 
+        public event Action<Enemy>? OnDied;
         public virtual void OnDeath() { }
     }
 }

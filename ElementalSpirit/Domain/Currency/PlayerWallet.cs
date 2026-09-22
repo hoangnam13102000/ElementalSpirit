@@ -8,7 +8,7 @@ namespace ElementalSpirit.Domain.Currency
         public int SpiritShards { get; private set; }
         public int Crystals { get; private set; }
 
-        public PlayerWallet(int gold = 200, int spiritShards = 15, int crystals = 0)
+        public PlayerWallet(int gold = 0, int spiritShards = 0, int crystals = 0)
         {
             Gold = gold;
             SpiritShards = spiritShards;

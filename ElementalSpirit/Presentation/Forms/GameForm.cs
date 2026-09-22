@@ -25,7 +25,6 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly SkillAnimationController _skillAnimController;
         private readonly PortalAnimationController _portalAnimController;
         private readonly Image[]? _fireballFrames;
-
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
         private bool _fireCastFrameTriggered;
@@ -37,7 +36,6 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
-
             Text = _localization.Translate("gameForm.windowTitle");
             ClientSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
@@ -45,12 +43,10 @@ namespace ElementalSpirit.Presentation.Forms
             MaximizeBox = false;
             DoubleBuffered = true;
             KeyPreview = true;
-
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
-
             _playerAnimController = MageAnimationLoader.CreateController();
             _skillAnimController = CreateWaterfallAnimationController();
             _portalAnimController = StoneGateAnimationLoader.CreateController();
@@ -73,12 +69,10 @@ namespace ElementalSpirit.Presentation.Forms
             KeyUp += OnKeyUp;
             Resize += OnFormResize;
             FormClosing += OnFormClosing;
-
             _gameTimer.Start();
 
             Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
         }
-
         private void OnGameTick(float deltaTime)
         {
             _gameManager.Update(deltaTime);
@@ -87,7 +81,6 @@ namespace ElementalSpirit.Presentation.Forms
             _portalAnimController.Update(deltaTime);
             Invalidate();
         }
-
         private void UpdateSkillAnimation(float deltaTime)
         {
             var state = _gameManager.Skills.CurrentAnimationState;
@@ -96,11 +89,9 @@ namespace ElementalSpirit.Presentation.Forms
             {
                 _skillAnimController.Restart();
             }
-
             if (state == Domain.Skill.SkillAnimationState.Waterfall)
                 _skillAnimController.Update(deltaTime);
         }
-
         private static SkillAnimationController CreateWaterfallAnimationController()
         {
             var frames = new System.Collections.Generic.List<Image>();
@@ -111,7 +102,6 @@ namespace ElementalSpirit.Presentation.Forms
             }
             return new SkillAnimationController(frames.ToArray(), 12f);
         }
-
         private void UpdatePlayerAnimation(float deltaTime)
         {
             var player = _gameManager.Player;
@@ -123,7 +113,6 @@ namespace ElementalSpirit.Presentation.Forms
                 _fireCastFrameTriggered = false;
                 _lastAnimState = desired;
             }
-
             _playerAnimController.Play(desired);
             _playerAnimController.Update(deltaTime);
 
@@ -165,14 +154,12 @@ namespace ElementalSpirit.Presentation.Forms
                 }
             }
         }
-
         private PlayerAnimationState DetermineAnimationState(Player player)
         {
             if (player.IsDead) return PlayerAnimationState.Death;
             if (player.IsHurt) return PlayerAnimationState.Hurt;
             if (player.IsCastingSkill) return PlayerAnimationState.Fire;
             if (player.IsFiring) return PlayerAnimationState.Fire;
-
             if (player.IsAttacking)
             {
                 if (!player.IsGrounded) return PlayerAnimationState.Attack;
@@ -180,7 +167,6 @@ namespace ElementalSpirit.Presentation.Forms
                     return player.WantsToRun ? PlayerAnimationState.RunAttack : PlayerAnimationState.WalkAttack;
                 return PlayerAnimationState.Attack;
             }
-
             if (!player.IsGrounded)
                 return player.VelocityY < -300f ? PlayerAnimationState.HighJump : PlayerAnimationState.Jump;
 
@@ -189,38 +175,30 @@ namespace ElementalSpirit.Presentation.Forms
 
             return PlayerAnimationState.Idle;
         }
-
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.B) { OpenShop(); return; }
             if (e.KeyCode == Keys.U) { OpenUpgrade(); return; }
             if (e.KeyCode == Keys.P) { OpenSettings(); return; }
-
             _gameManager.HandleKeyDown(e.KeyCode);
-
             if (e.KeyCode == Keys.Escape) Close();
         }
-
         private void OpenSettings()
         {
             PauseGame();
             bool exitToMenu;
-
             using (var settings = new SettingsForm(_localization, _saveGameService, _gameManager))
             {
                 settings.ShowDialog(this);
                 exitToMenu = settings.ExitToMainMenuRequested;
             }
-
             if (exitToMenu)
             {
                 Close();
                 return;
             }
-
             ResumeGame();
         }
-
         private void OpenShop()
         {
             PauseGame();
@@ -232,7 +210,6 @@ namespace ElementalSpirit.Presentation.Forms
             }
             finally { ResumeGame(); }
         }
-
         private void OpenUpgrade()
         {
             PauseGame();
@@ -243,14 +220,12 @@ namespace ElementalSpirit.Presentation.Forms
             }
             finally { ResumeGame(); }
         }
-
         private void PauseGame()
         {
             _gameManager.IsPaused = true;
             _gameManager.Input.Clear();
             _gameTimer.Pause();
         }
-
         private void ResumeGame()
         {
             _gameManager.IsPaused = false;
@@ -258,10 +233,8 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer.Resume();
             Invalidate();
         }
-
         private void OnKeyUp(object? sender, KeyEventArgs e) => _gameManager.HandleKeyUp(e.KeyCode);
         private void OnFormResize(object? sender, EventArgs e) => _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
-
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
             Services.AudioManager.Instance.StopMusic();
@@ -270,15 +243,11 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer.Dispose();
             _playerAnimController.Dispose();
             _skillAnimController.Dispose();
-
             if (_fireballFrames != null) foreach (var img in _fireballFrames) img.Dispose();
-
             AssetLoader.DisposeAll();
             MageAnimationLoader.DisposeAll();
             SlimeAnimationLoader.DisposeAll();
-
         }
-
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
