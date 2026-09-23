@@ -38,7 +38,7 @@ namespace ElementalSpirit.Domain.Skill
             if (context == null) throw new ArgumentNullException(nameof(context));
 
             var areas = new List<SkillDamageArea>(ColumnCount);
-            float baseX = context.OriginX + context.Direction * ColumnSpacing;
+            float baseX = context.OriginX;
             float columnY = context.OriginY - ColumnHeight;
 
             for (int column = 0; column < ColumnCount; column++)

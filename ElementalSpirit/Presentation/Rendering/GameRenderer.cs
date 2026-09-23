@@ -362,7 +362,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 var image = _skillAnimController.CurrentImage;
                 Rectangle sourceBounds = GetVisibleAssetBounds(image);
                 float direction = p.Facing == FacingDirection.Right ? 1f : -1f;
-                float baseX = p.X + p.Width / 2f + direction * WaterfallSkill.ColumnSpacing;
+                float baseX = p.X + p.Width / 2f;
                 float columnWidth = WaterfallSkill.ColumnWidth;
                 float columnHeight = WaterfallSkill.ColumnHeight;
                 float columnY = p.Y + p.Height - columnHeight;

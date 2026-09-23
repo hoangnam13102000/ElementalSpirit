@@ -26,7 +26,7 @@ namespace ElementalSpirit.GameEngine
                     var e = enemies[j];
                     if (!e.IsAlive) continue;
 
-                    if (p.Bounds.IntersectsWith(e.Bounds))
+                    var hitBox = System.Drawing.RectangleF.Inflate(p.Bounds, 0f, 10f); if (hitBox.IntersectsWith(e.Bounds))
                     {
                         e.TakeDamage(p.Damage);
                         p.Kill(); // đạn biến mất sau khi trúng
