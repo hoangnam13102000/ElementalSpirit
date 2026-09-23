@@ -49,7 +49,7 @@ namespace ElementalSpirit
             ILocalizationService localization = LocalizationManager.Instance;
             ISaveGameService saveGameService = new SaveGameService();
 
-            Application.Run(new MainMenuForm(localization, saveGameService));
+            Application.Run(new MainMenuForm(localization, saveGameService)); 
             Services.AudioManager.Instance.Dispose();
         }
     }

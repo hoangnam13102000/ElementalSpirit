@@ -137,11 +137,12 @@ namespace ElementalSpirit.Domain.Player
             ExtraProjectiles = 0;
         }
 
-        public void TryJump()
-        {
-            if (!IsGrounded || IsDead || IsHurt) return;
-            VelocityY = -JumpForce;
-            IsGrounded = false;
+        public bool TryJump()
+        { if (!IsGrounded || IsDead || IsHurt) 
+            return false; 
+            VelocityY = -JumpForce; 
+            IsGrounded = false; 
+            return true;
         }
 
         public void Update(float deltaTime)

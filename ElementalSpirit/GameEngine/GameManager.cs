@@ -533,7 +533,8 @@ namespace ElementalSpirit.GameEngine
                 }
 
                 bool jumpKeyNow = Input.IsJumpPressed();
-                if (jumpKeyNow && !_jumpKeyWasPressed) Player.TryJump();
+                if (jumpKeyNow && !_jumpKeyWasPressed && Player.TryJump()) 
+                    Services.AudioManager.Instance.PlaySfx("jump.mp3");
                 _jumpKeyWasPressed = jumpKeyNow;
 
                 bool attackKeyNow = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
