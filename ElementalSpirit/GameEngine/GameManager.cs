@@ -644,11 +644,10 @@ namespace ElementalSpirit.GameEngine
             Services.AudioManager.Instance.PlaySfx("enemy_die.mp3");
             if (enemy is GorgonBoss boss)
             {
-                // 🏆 Hạ Boss: Thưởng lớn (Nhiều Vàng, Mảnh tinh linh & Kim cương)
-                Wallet.AddGold(150);
+                // Hạ Boss
+                Wallet.AddGold(100);
                 Wallet.AddSpiritShards(10);
-                Wallet.AddCrystals(2);
-                SetStatus("Tiêu diệt Boss! Nhận 150 Vàng, 10 Mảnh, 2 Kim Cương!");
+                SetStatus("Boss rơi: +100 vàng!");
             }
             else if (enemy is Slime)
             {

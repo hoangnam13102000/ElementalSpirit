@@ -582,10 +582,7 @@ namespace ElementalSpirit.Presentation.Rendering
             float y = 14f;
 
             DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Coin, HudGoldColor, w.Gold.ToString());
-            y += pillH + gap;
-            DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Shard, HudShardColor, w.SpiritShards.ToString());
-            y += pillH + gap;
-            DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Crystal, HudCrystalColor, w.Crystals.ToString());
+            
 
             if (!string.IsNullOrEmpty(_gameManager.StatusMessage))
             {
@@ -593,7 +590,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 using var msgBrush = new SolidBrush(HudTextPrimary);
                 var msgSize = g.MeasureString(_gameManager.StatusMessage, msgFont);
                 float msgX = (clientSize.Width - msgSize.Width) / 2f;
-                float msgY = 135f;
+                float msgY = 100f;
 
                 using var msgBg = new SolidBrush(Color.FromArgb(170, 16, 22, 14));
                 g.FillRectangle(msgBg, msgX - 8f, msgY - 3f, msgSize.Width + 16f, msgSize.Height + 6f);
@@ -692,7 +689,7 @@ namespace ElementalSpirit.Presentation.Rendering
             var inv = _gameManager.Inventory;
             const float chipH = 26f;
             const float chipGap = 6f;
-            float y = 14f + (30f + 6f) * 3f + 10f; // ngay dưới 3 pill tài nguyên
+            float y = 14f + (30f + 6f) * 1f + 10f; 
 
             float x = clientSize.Width - 14f;
             x = DrawEquipChip(g, x, y, chipH, "PK", inv.GetEquipped(EquipmentSlot.Accessory), HudCrystalColor) - chipGap;
