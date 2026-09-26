@@ -24,6 +24,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly PlayerAnimationController _playerAnimController;
         private readonly SkillAnimationController _skillAnimController;
         private readonly PortalAnimationController _portalAnimController;
+        private readonly AnimationClip? _goldAnimation;
         private readonly Image[]? _fireballFrames;
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
@@ -50,6 +51,7 @@ namespace ElementalSpirit.Presentation.Forms
             _playerAnimController = MageAnimationLoader.CreateController();
             _skillAnimController = CreateWaterfallAnimationController();
             _portalAnimController = StoneGateAnimationLoader.CreateController();
+            _goldAnimation = GoldAnimationLoader.CreateClip();
 
             try { _fireballFrames = MageAnimationLoader.LoadFireballFrames(); }
             catch { _fireballFrames = null; }
@@ -59,6 +61,7 @@ namespace ElementalSpirit.Presentation.Forms
                 _playerAnimController,
                 _skillAnimController,
                 _portalAnimController,
+                _goldAnimation,
                 _fireballFrames,
                 _localization);
 
@@ -79,6 +82,7 @@ namespace ElementalSpirit.Presentation.Forms
             UpdatePlayerAnimation(deltaTime);
             UpdateSkillAnimation(deltaTime);
             _portalAnimController.Update(deltaTime);
+            _goldAnimation?.Update(deltaTime);
             Invalidate();
         }
         private void UpdateSkillAnimation(float deltaTime)
@@ -243,6 +247,7 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer.Dispose();
             _playerAnimController.Dispose();
             _skillAnimController.Dispose();
+            _goldAnimation?.Dispose();
             if (_fireballFrames != null) foreach (var img in _fireballFrames) img.Dispose();
             AssetLoader.DisposeAll();
             MageAnimationLoader.DisposeAll();

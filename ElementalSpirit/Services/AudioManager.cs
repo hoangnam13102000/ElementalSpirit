@@ -97,8 +97,11 @@ namespace ElementalSpirit.Services
 
             try
             {
-                var reader = new AudioFileReader(path) { Volume = SfxVolume };
-                var sampleProvider = ConvertToMixerFormat(reader);
+                WaveStream reader = Path.GetExtension(path).Equals(".flac", StringComparison.OrdinalIgnoreCase)
+                    ? new MediaFoundationReader(path)
+                    : new AudioFileReader(path);
+                var volumeProvider = new VolumeSampleProvider(reader.ToSampleProvider()) { Volume = SfxVolume };
+                var sampleProvider = ConvertToMixerFormat(volumeProvider);
                 var autoDisposeProvider = new AutoDisposeSampleProvider(sampleProvider, reader);
 
                 _sfxMixer.AddMixerInput(autoDisposeProvider);
@@ -119,10 +122,8 @@ namespace ElementalSpirit.Services
             }
         }
 
-        private ISampleProvider ConvertToMixerFormat(AudioFileReader reader)
+        private ISampleProvider ConvertToMixerFormat(ISampleProvider source)
         {
-            ISampleProvider source = reader;
-
             // Đưa mọi file về cùng sample rate/channels với mixer, tránh lỗi "invalid parameter"
             if (source.WaveFormat.Channels == 1)
                 source = new MonoToStereoSampleProvider(source);

@@ -1031,6 +1031,7 @@ namespace ElementalSpirit.GameEngine
                 {
                     Wallet.AddGold(loot.GoldAmount);
                     SetStatus($"+{loot.GoldAmount} vàng");
+                    Services.AudioManager.Instance.PlaySfx("coin.flac");
                 } else if (loot.Type == LootType.Equipment && loot.EquipmentId != null) 
                 { 
                     var template = Data.EquipmentCatalog.Find(loot.EquipmentId); 
@@ -1038,6 +1039,7 @@ namespace ElementalSpirit.GameEngine
                     {
                         Inventory.Add(template.Clone());
                         SetStatus($"Nhặt được: {template.Name}");
+                        Services.AudioManager.Instance.PlaySfx("coin.flac");
                     } 
                 }
                 _loot.RemoveAt(i);

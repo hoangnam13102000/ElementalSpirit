@@ -25,6 +25,7 @@ namespace ElementalSpirit.Presentation.Rendering
         private readonly PlayerAnimationController _playerAnimController;
         private readonly SkillAnimationController _skillAnimController;
         private readonly PortalAnimationController _portalAnimController;
+        private readonly AnimationClip? _goldAnimation;
         private readonly Image[]? _fireballFrames;
         private readonly ILocalizationService _localization;
         private readonly Dictionary<string, Rectangle> _visibleAssetBounds = new();
@@ -39,7 +40,6 @@ namespace ElementalSpirit.Presentation.Rendering
         private Image? _backgroundImage;
         private string _loadedIncomingBackgroundName = "";
         private Image? _incomingBackgroundImage;
-        private Image? coinImage;
         private Image? bootsImage;
 
         public GameRenderer(
@@ -47,6 +47,7 @@ namespace ElementalSpirit.Presentation.Rendering
             PlayerAnimationController playerAnimController,
             SkillAnimationController skillAnimController,
             PortalAnimationController portalAnimController,
+            AnimationClip? goldAnimation,
             Image[]? fireballFrames,
             ILocalizationService localization)
         {
@@ -54,13 +55,13 @@ namespace ElementalSpirit.Presentation.Rendering
             _playerAnimController = playerAnimController ?? throw new ArgumentNullException(nameof(playerAnimController));
             _skillAnimController = skillAnimController ?? throw new ArgumentNullException(nameof(skillAnimController));
             _portalAnimController = portalAnimController ?? throw new ArgumentNullException(nameof(portalAnimController));
+            _goldAnimation = goldAnimation;
             _fireballFrames = fireballFrames;
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
 
             try
             {
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                coinImage = Image.FromFile(System.IO.Path.Combine(baseDir, "Resources", "Images", "Loot", "coin.png"));
                 bootsImage = Image.FromFile(System.IO.Path.Combine(baseDir, "Resources", "Images", "Loot", "boots.png"));
             }
             catch
@@ -258,7 +259,7 @@ namespace ElementalSpirit.Presentation.Rendering
 
             foreach (var loot in _gameManager.Loot) 
             {
-                float scale = 2.5f;
+                float scale = loot.Type == LootType.Gold ? 1.8f : 2.5f;
                 int width = (int)(loot.Width * scale);
                 int height = (int)(loot.Height * scale);
                 int drawX = (int)(loot.X - (width - loot.Width) / 2f);
@@ -266,9 +267,9 @@ namespace ElementalSpirit.Presentation.Rendering
 
                 if (loot.Type == LootType.Gold) 
                 {
-                    if (coinImage != null)
+                    if (_goldAnimation != null)
                     {
-                        g.DrawImage(coinImage, drawX, drawY, width, height);
+                        g.DrawImage(_goldAnimation.CurrentImage, drawX, drawY, width, height);
                     }
                     else
                     {
