@@ -15,5 +15,6 @@ namespace ElementalSpirit.GameEngine.Abstractions
         void LoadStage(StageData stage);
         void Update(float deltaTime);
         void ForceNextWave();
+        void RestoreState(WaveState state);
     }
 }

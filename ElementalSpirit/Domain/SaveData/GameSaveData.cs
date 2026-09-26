@@ -18,6 +18,7 @@ namespace ElementalSpirit.Domain.SaveData
         public int SpiritShards { get; set; }
         public int Crystals { get; set; }
         public List<string> OwnedEquipmentIds { get; set; } = new();
+        public List<int> ClearedStages { get; set; } = new();
         public string? EquippedWeaponId { get; set; }
         public string? EquippedArmorId { get; set; }
         public string? EquippedAccessoryId { get; set; }
@@ -25,5 +26,6 @@ namespace ElementalSpirit.Domain.SaveData
         public string? EquippedSpiritSlot1Id { get; set; }
         public string? EquippedSpiritSlot2Id { get; set; }
         public DateTime SavedAtUtc { get; set; }
+        public int RemainingEnemyCount { get; set; } = -1; 
     }
 }

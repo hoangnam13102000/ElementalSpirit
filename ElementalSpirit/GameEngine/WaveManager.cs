@@ -134,5 +134,12 @@ namespace ElementalSpirit.GameEngine
             _state = WaveState.WaitingToStart;
             _timer = 0.3f;
         }
+
+        public void RestoreState(WaveState state) 
+        { 
+            if (_currentStage == null) return;
+            _currentWaveIndex = _currentStage.Waves.Count - 1;
+            _state = state; 
+        }
     }
 }

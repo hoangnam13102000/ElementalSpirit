@@ -209,6 +209,16 @@ namespace ElementalSpirit.Domain.Player
             HP = Math.Max(0, HP - reduced);
             if (HP <= 0) StartDeath();
             else StartHurt();
+
+            try
+            {
+                string savePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Saves", "savegame.json");
+                if (System.IO.File.Exists(savePath))
+                {
+                    System.IO.File.Delete(savePath);
+                }
+            }
+            catch { /* Quản lý ngoại lệ nếu cần */ }
         }
 
         public void Heal(int amount) => HP = Math.Min(MaxHp, HP + amount);
@@ -262,6 +272,16 @@ namespace ElementalSpirit.Domain.Player
 
         private void StartDeath()
         {
+            try
+            {
+                string savePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Saves", "savegame.json");
+                if (System.IO.File.Exists(savePath))
+                {
+                    System.IO.File.Delete(savePath);
+                }
+            }
+            catch { /* Ignore */ }
+
             IsDead = true;
             IsAttacking = false;
             IsFiring = false;

@@ -1,4 +1,5 @@
-﻿using ElementalSpirit.Data;
+﻿using ElementalSpirit.Domain.Loot;
+using ElementalSpirit.Data;
 using ElementalSpirit.Domain.BossEncounter;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Enemy;
@@ -51,6 +52,7 @@ namespace ElementalSpirit.GameEngine
         public IUpgradeService Upgrades { get; }
         public IShopService Shop { get; }
         public IBossEncounterManager BossEncounter { get; }
+        public IReadOnlyList<LootDrop> Loot => _loot;
         public IPortalManager Portals { get; }
 
         public RectangleF PlayArea { get; private set; }
@@ -80,6 +82,8 @@ namespace ElementalSpirit.GameEngine
 
         // Flag đánh dấu stage boss cuối đã kích hoạt encounter
         private bool _bossEncounterTriggered;
+        private readonly List<LootDrop> _loot = new();
+        private readonly Random _random = new();
 
         // ---- Chuyển cảnh giữa các background (EarthForest -> EarthForest2 -> EarthForest3) ----
         private readonly List<StageData> _stageSequence;
@@ -302,6 +306,7 @@ namespace ElementalSpirit.GameEngine
             var targetStage = _stageSequence[_stageIndex];
 
             Enemies.Clear();
+            _loot.Clear();
             Projectiles.Clear();
             Waves.LoadStage(targetStage);
             Spawn.SetTerrain(targetStage.Platforms, PlayArea);
@@ -552,6 +557,7 @@ namespace ElementalSpirit.GameEngine
                 ResolvePlayerTerrain(previousFootY);
                 Player.ClampHorizontalBounds(PlayArea.Left, PlayArea.Right);
                 HandlePlayerFallRecovery();
+                CheckLootPickup();
 
                 Spirits.Update(deltaTime, Player);
                 Skills.Update(deltaTime);
@@ -570,7 +576,8 @@ namespace ElementalSpirit.GameEngine
                             boss.OnBossProjectileCast += OnBossProjectileCast;
                             break;
                     }
-                    e.OnDied -= OnEnemyDied; e.OnDied += OnEnemyDied;
+                    e.OnDied -= OnEnemyDied;
+                    e.OnDied += OnEnemyDied;
                 }
 
                 Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
@@ -639,27 +646,18 @@ namespace ElementalSpirit.GameEngine
         private void OnPlayerAttackHitFrame() => SpawnPlayerProjectile();
         private void OnPlayerFireCastFrame() => SpawnFireballProjectile();
         private void OnPlayerDeath() => Services.AudioManager.Instance.PlaySfx("lose.mp3");
-        private void OnEnemyDied(Enemy enemy)
-        {
-            Services.AudioManager.Instance.PlaySfx("enemy_die.mp3");
-            if (enemy is GorgonBoss boss)
-            {
-                // Hạ Boss
-                Wallet.AddGold(100);
-                Wallet.AddSpiritShards(10);
-                SetStatus("Boss rơi: +100 vàng!");
-            }
-            else if (enemy is Slime)
-            {
-                // 🟢 Quái thường Slime: Thưởng ít vàng
-                Wallet.AddGold(10);
-                Wallet.AddSpiritShards(1);
-            }
-            else
-            {
-                // 👾 Các quái thường khác
-                Wallet.AddGold(15);
-            }
+        private void OnEnemyDied(Domain.Enemy.Enemy enemy) 
+        { 
+            float dropX = enemy.X + enemy.Width / 2f - 9f; 
+            float dropY = enemy.Y + enemy.Height - 18f; 
+            if (enemy is GorgonBoss) { _loot.Add(LootDrop.CreateGold(dropX, dropY, 100));
+            } else {
+                _loot.Add(LootDrop.CreateGold(dropX, dropY, 10));
+                if (_random.NextDouble() < 0.30) 
+                { 
+                    _loot.Add(LootDrop.CreateEquipment(dropX + 16f, dropY, "acc_swift_boots"));
+                }
+            } 
         }
 
         private void SpawnPlayerProjectile()
@@ -754,6 +752,15 @@ namespace ElementalSpirit.GameEngine
         /// </summary>
         public GameSaveData CaptureSaveData()
         {
+            if (Enemies.Enemies.Count == 0 &&
+       (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted))
+            {
+                if (!_clearedStages.Contains(_stageIndex))
+                {
+                    _clearedStages.Add(_stageIndex);
+                }
+            }
+
             var data = new GameSaveData
             {
                 StageIndex = _stageIndex,
@@ -762,11 +769,13 @@ namespace ElementalSpirit.GameEngine
                 Gold = Wallet.Gold,
                 SpiritShards = Wallet.SpiritShards,
                 Crystals = Wallet.Crystals,
-                SavedAtUtc = DateTime.UtcNow
+                SavedAtUtc = DateTime.UtcNow,
+                RemainingEnemyCount = Enemies.Enemies.Count
             };
 
             foreach (var item in Inventory.Items)
                 data.OwnedEquipmentIds.Add(item.Id);
+            data.ClearedStages = _clearedStages.ToList();
 
             data.EquippedWeaponId = Inventory.GetEquipped(EquipmentSlot.Weapon)?.Id;
             data.EquippedArmorId = Inventory.GetEquipped(EquipmentSlot.Armor)?.Id;
@@ -780,48 +789,35 @@ namespace ElementalSpirit.GameEngine
 
             return data;
         }
-        public void LoadSaveData(GameSaveData saveData)
-        {
-            if (saveData == null) return;
 
-            int targetStage = Math.Clamp(saveData.StageIndex, 0, _stageSequence.Count - 1);
-            TransitionToStage(targetStage, PortalType.ForwardPortal);
-
-            Wallet.AddGold(saveData.Gold);
-            Wallet.AddSpiritShards(saveData.SpiritShards);
-            Wallet.AddCrystals(saveData.Crystals);
-
-            SetStatus("Đã tải dữ liệu trò chơi thành công!");
-        }
-        /// <summary>
-        /// Áp 1 snapshot GameSaveData đã đọc từ file lên GameManager vừa được khởi tạo
-        /// (từ Program.CreateGameManager()), coi như checkpoint tại đầu khu vực đã lưu:
-        /// nạp lại đúng khu vực (wave sẽ bắt đầu lại từ đầu khu vực đó), ví tiền, trang bị
-        /// đang sở hữu/đang mặc, cấp độ + tinh linh đang trang bị, và HP của nhân vật.
-        /// Chỉ dùng các API public đã có sẵn của từng lớp (Inventory.Add/TryEquip,
-        /// SpiritManager.Equip, ISpirit.Upgrade, PlayerWallet.LoadFrom, Player.RestoreHp...)
-        /// nên không thay đổi logic gameplay hiện có, chỉ tái sử dụng nó.
-        /// </summary>
         public void ApplySaveData(GameSaveData data)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
 
             int targetIndex = Math.Clamp(data.StageIndex, 0, _stageSequence.Count - 1);
             _stageIndex = targetIndex;
+            _clearedStages.Clear(); 
+            foreach (var idx in data.ClearedStages) 
+            _clearedStages.Add(idx);
             RefreshGroundY();
-
-            // Save chỉ lưu StageIndex, không lưu danh sách stage đã clear. Người chơi đã đến được stage này
-            // nghĩa là mọi stage phía trước đều đã clear -> khôi phục lại để cổng forward của các màn cũ
-            // vẫn hiện khi quay lại bằng cổng back.
-            _clearedStages.Clear();
-            for (int i = 0; i < targetIndex; i++)
-                _clearedStages.Add(i);
 
             TransitionPhase = StageTransitionPhase.None;
             IsStageCompleted = false;
             Enemies.Clear();
+            _loot.Clear();
             Projectiles.Clear();
             Waves.LoadStage(_stageSequence[_stageIndex]);
+
+            if (data.RemainingEnemyCount >= 0) 
+            { 
+                Enemies.Clear(); if (data.RemainingEnemyCount == 0)
+                { 
+                    Waves.RestoreState(WaveState.StageCompleted); 
+                } else {
+                    Spawn.Spawn(new SpawnData(EnemyType.Slime, data.RemainingEnemyCount, 0.1f));
+                    Waves.RestoreState(WaveState.WaitingForClear); 
+                }
+            }
 
             foreach (var itemId in data.OwnedEquipmentIds)
             {
@@ -1019,9 +1015,34 @@ namespace ElementalSpirit.GameEngine
             {
                 _bossEncounterTriggered = true;
                 Enemies.Clear();
+                _loot.Clear();
                 Projectiles.Clear();
                 BossEncounter.StartEncounter();
             }
         }
+
+        private void CheckLootPickup() 
+        { 
+            for (int i = _loot.Count - 1; i >= 0; i--) 
+            { 
+                var loot = _loot[i];
+                if (!Player.Bounds.IntersectsWith(loot.Bounds)) continue; 
+                if (loot.Type == LootType.Gold) 
+                {
+                    Wallet.AddGold(loot.GoldAmount);
+                    SetStatus($"+{loot.GoldAmount} vàng");
+                } else if (loot.Type == LootType.Equipment && loot.EquipmentId != null) 
+                { 
+                    var template = Data.EquipmentCatalog.Find(loot.EquipmentId); 
+                    if (template != null) 
+                    {
+                        Inventory.Add(template.Clone());
+                        SetStatus($"Nhặt được: {template.Name}");
+                    } 
+                }
+                _loot.RemoveAt(i);
+            }
+        }
+
     }
 }

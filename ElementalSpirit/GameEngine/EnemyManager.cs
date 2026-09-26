@@ -61,7 +61,7 @@ namespace ElementalSpirit.GameEngine
             }
         }
 
-        public void Clear() => _enemies.Clear();
+        public void Clear() => _enemies.Clear(); 
 
         private void ResolveTerrainMovement(
             Enemy enemy,

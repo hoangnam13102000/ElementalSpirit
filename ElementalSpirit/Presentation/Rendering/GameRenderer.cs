@@ -1,4 +1,5 @@
 ﻿using System;
+using ElementalSpirit.Domain.Loot;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -38,6 +39,8 @@ namespace ElementalSpirit.Presentation.Rendering
         private Image? _backgroundImage;
         private string _loadedIncomingBackgroundName = "";
         private Image? _incomingBackgroundImage;
+        private Image? coinImage;
+        private Image? bootsImage;
 
         public GameRenderer(
             GameManager gameManager,
@@ -53,7 +56,19 @@ namespace ElementalSpirit.Presentation.Rendering
             _portalAnimController = portalAnimController ?? throw new ArgumentNullException(nameof(portalAnimController));
             _fireballFrames = fireballFrames;
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                coinImage = Image.FromFile(System.IO.Path.Combine(baseDir, "Resources", "Images", "Loot", "coin.png"));
+                bootsImage = Image.FromFile(System.IO.Path.Combine(baseDir, "Resources", "Images", "Loot", "boots.png"));
+            }
+            catch
+            {
+                // Nếu chưa nạp được ảnh thì code vẫn dùng hình tròn vector dự phòng bên dưới
+            }
         }
+
 
         public void Render(Graphics g, Size clientSize)
         {
@@ -67,6 +82,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 DrawProjectiles(g);
                 DrawEnemies(g);
                 DrawPortals(g);
+                DrawLoot(g);
                 DrawSkillHud(g, clientSize);
                 DrawCurrencyHud(g, clientSize);
                 DrawEquipmentHud(g, clientSize);
@@ -233,6 +249,49 @@ namespace ElementalSpirit.Presentation.Rendering
             }
 
             g.DrawString(hint, hintFont, hintBrush, rect.X + paddingX, currentY + 2f, format);
+        }
+
+        private void DrawLoot(Graphics g)
+        {
+            float time = (float)Environment.TickCount / 200f;
+            float offsetY = (float)Math.Sin(time) * 3.5f;
+
+            foreach (var loot in _gameManager.Loot) 
+            {
+                float scale = 2.5f;
+                int width = (int)(loot.Width * scale);
+                int height = (int)(loot.Height * scale);
+                int drawX = (int)(loot.X - (width - loot.Width) / 2f);
+                int drawY = (int)(loot.Y + offsetY - (height - loot.Height) / 2f);
+
+                if (loot.Type == LootType.Gold) 
+                {
+                    if (coinImage != null)
+                    {
+                        g.DrawImage(coinImage, drawX, drawY, width, height);
+                    }
+                    else
+                    {
+                            DrawCoinIcon(g, drawX + width / 2f,
+                            drawY + height / 2f,
+                            width / 2f, Color.FromArgb(255, 232, 185, 35)); 
+                    }
+                } else 
+                {
+                    if (bootsImage != null)
+                    {
+                        g.DrawImage(bootsImage, drawX, drawY, width, height);
+                    }
+                    else
+                    {
+                        using var shoeBrush = new SolidBrush(Color.FromArgb(255, 200, 160, 100));
+                        using var shoeOutline = new Pen(Color.FromArgb(255, 90, 60, 30), 1.4f);
+                        var rect = new RectangleF(drawX, drawY, width, height);
+                        g.FillEllipse(shoeBrush, rect);
+                        g.DrawEllipse(shoeOutline, rect);
+                    }
+                }
+            }
         }
 
         private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
@@ -444,7 +503,7 @@ namespace ElementalSpirit.Presentation.Rendering
 
             const float panelX = 14f;
             const float panelY = 14f;
-            const float minPanelW = 240f;
+            const float minPanelW = 320f;
             const float panelH = 108f;
 
             using var stageFont = new Font("Georgia", 12.5f, FontStyle.Bold); 
@@ -590,7 +649,7 @@ namespace ElementalSpirit.Presentation.Rendering
                 using var msgBrush = new SolidBrush(HudTextPrimary);
                 var msgSize = g.MeasureString(_gameManager.StatusMessage, msgFont);
                 float msgX = (clientSize.Width - msgSize.Width) / 2f;
-                float msgY = 100f;
+                float msgY = 220f;
 
                 using var msgBg = new SolidBrush(Color.FromArgb(170, 16, 22, 14));
                 g.FillRectangle(msgBg, msgX - 8f, msgY - 3f, msgSize.Width + 16f, msgSize.Height + 6f);
