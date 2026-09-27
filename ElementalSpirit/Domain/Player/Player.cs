@@ -25,6 +25,8 @@ namespace ElementalSpirit.Domain.Player
         public float JumpForce { get; private set; } = PlayerConstants.JumpForce;
         public float Gravity { get; private set; } = PlayerConstants.Gravity;
         public bool IsGrounded { get; private set; }
+        public bool HasDoubleJumpBoots { get; private set; }
+        private bool _doubleJumpConsumed;
         public PlayerMovementState MovementState { get; private set; }
 
         public FacingDirection Facing { get; private set; } = FacingDirection.Right;
@@ -138,11 +140,37 @@ namespace ElementalSpirit.Domain.Player
         }
 
         public bool TryJump()
-        { if (!IsGrounded || IsDead || IsHurt) 
-            return false; 
-            VelocityY = -JumpForce; 
-            IsGrounded = false; 
-            return true;
+        {
+            if (IsDead || IsHurt) return false;
+
+            if (IsGrounded)
+            {
+                VelocityY = -JumpForce;
+                IsGrounded = false;
+                _doubleJumpConsumed = false;
+                return true;
+            }
+
+            if (HasDoubleJumpBoots && !_doubleJumpConsumed)
+            {
+                VelocityY = -JumpForce * 0.9f;
+                _doubleJumpConsumed = true;
+                return true;
+            }
+
+            return false;
+        }
+
+        public void GrantDoubleJumpBoots()
+        {
+            HasDoubleJumpBoots = true;
+            _doubleJumpConsumed = false;
+        }
+
+        public void ClearDoubleJumpBoots()
+        {
+            HasDoubleJumpBoots = false;
+            _doubleJumpConsumed = false;
         }
 
         public void Update(float deltaTime)
@@ -178,6 +206,7 @@ namespace ElementalSpirit.Domain.Player
                 Y = groundY - Height;
                 VelocityY = 0f;
                 IsGrounded = true;
+                _doubleJumpConsumed = false;
             }
             else
             {
@@ -209,17 +238,9 @@ namespace ElementalSpirit.Domain.Player
             HP = Math.Max(0, HP - reduced);
             if (HP <= 0) StartDeath();
             else StartHurt();
-
-            try
-            {
-                string savePath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Saves", "savegame.json");
-                if (System.IO.File.Exists(savePath))
-                {
-                    System.IO.File.Delete(savePath);
-                }
-            }
-            catch { /* Quản lý ngoại lệ nếu cần */ }
         }
+
+        public void Die() => StartDeath();
 
         public void Heal(int amount) => HP = Math.Min(MaxHp, HP + amount);
 

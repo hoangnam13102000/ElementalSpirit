@@ -25,6 +25,18 @@ namespace ElementalSpirit.Domain.Inventory
 
         public bool Owns(string itemId) => _items.Exists(i => i.Id == itemId);
 
+        public bool Remove(string itemId)
+        {
+            var item = _items.Find(i => i.Id == itemId);
+            if (item == null) return false;
+
+            _items.Remove(item);
+            if (_equipped[item.Slot]?.Id == itemId)
+                _equipped[item.Slot] = null;
+
+            return true;
+        }
+
         public bool TryEquip(string itemId)
         {
             var item = _items.Find(i => i.Id == itemId);

@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
@@ -20,6 +23,11 @@ namespace ElementalSpirit.Services
 
         private readonly WaveOut _sfxOutput;
         private readonly MixingSampleProvider _sfxMixer;
+        private readonly object _cachedSfxLock = new();
+        private readonly Dictionary<string, float[]> _cachedSfxSamples =
+            new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, int> _pendingCachedSfxPlays =
+            new(StringComparer.OrdinalIgnoreCase);
         private const int SfxSampleRate = 44100;
         private const int SfxChannels = 2;
 
@@ -54,6 +62,9 @@ namespace ElementalSpirit.Services
             _sfxOutput = new WaveOut();
             _sfxOutput.Init(_sfxMixer);
             _sfxOutput.Play(); // chạy sẵn, không cần Play lại mỗi lần phát SFX
+
+            _ = Task.Run(() => PreloadCachedSfx("coin.flac"));
+            _ = Task.Run(() => PreloadCachedSfx("waterfall.mp3"));
         }
 
         public void PlayMusic(string fileName, bool loop = true)
@@ -97,6 +108,12 @@ namespace ElementalSpirit.Services
 
             try
             {
+                if (IsCachedSfx(fileName))
+                {
+                    PlayCachedSfx(fileName);
+                    return;
+                }
+
                 WaveStream reader = Path.GetExtension(path).Equals(".flac", StringComparison.OrdinalIgnoreCase)
                     ? new MediaFoundationReader(path)
                     : new AudioFileReader(path);
@@ -122,6 +139,77 @@ namespace ElementalSpirit.Services
             }
         }
 
+        private static bool IsCachedSfx(string fileName) =>
+            string.Equals(fileName, "coin.flac", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(fileName, "waterfall.mp3", StringComparison.OrdinalIgnoreCase);
+
+        private void PreloadCachedSfx(string fileName)
+        {
+            string path = Path.Combine(AudioBaseDir, "SFX", fileName);
+            if (!File.Exists(path))
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioManager] KHÔNG TÌM THẤY FILE SFX: {path}");
+                return;
+            }
+
+            try
+            {
+                using WaveStream reader = Path.GetExtension(path).Equals(".flac", StringComparison.OrdinalIgnoreCase)
+                    ? new MediaFoundationReader(path)
+                    : new AudioFileReader(path);
+                var source = ConvertToMixerFormat(reader.ToSampleProvider());
+                var chunk = new float[8192];
+                var samples = new List<float>();
+                int read;
+
+                while ((read = source.Read(chunk)) > 0)
+                {
+                    for (int i = 0; i < read; i++)
+                        samples.Add(chunk[i]);
+                }
+
+                lock (_cachedSfxLock)
+                {
+                    var cachedSamples = samples.ToArray();
+                    _cachedSfxSamples[fileName] = cachedSamples;
+                    _pendingCachedSfxPlays.TryGetValue(fileName, out int pendingPlays);
+                    while (pendingPlays > 0)
+                    {
+                        AddCachedSfxToMixer(cachedSamples);
+                        pendingPlays--;
+                    }
+                    _pendingCachedSfxPlays.Remove(fileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioManager] Lỗi preload {fileName}: {ex}");
+            }
+        }
+
+        private void PlayCachedSfx(string fileName)
+        {
+            lock (_cachedSfxLock)
+            {
+                if (!_cachedSfxSamples.TryGetValue(fileName, out var samples))
+                {
+                    _pendingCachedSfxPlays.TryGetValue(fileName, out int pendingPlays);
+                    _pendingCachedSfxPlays[fileName] = pendingPlays + 1;
+                    return;
+                }
+
+                AddCachedSfxToMixer(samples);
+            }
+        }
+
+        private void AddCachedSfxToMixer(float[] samples)
+        {
+            _sfxMixer.AddMixerInput(new CachedSfxSampleProvider(samples, SfxVolume));
+
+            if (_sfxOutput.PlaybackState != PlaybackState.Playing)
+                _sfxOutput.Play();
+        }
+
         private ISampleProvider ConvertToMixerFormat(ISampleProvider source)
         {
             // Đưa mọi file về cùng sample rate/channels với mixer, tránh lỗi "invalid parameter"
@@ -142,6 +230,31 @@ namespace ElementalSpirit.Services
         }
     }
 
+    internal sealed class CachedSfxSampleProvider : ISampleProvider
+    {
+        private readonly float[] _samples;
+        private readonly float _volume;
+        private int _position;
+
+        public CachedSfxSampleProvider(float[] samples, float volume)
+        {
+            _samples = samples;
+            _volume = volume;
+        }
+
+        public WaveFormat WaveFormat =>
+            WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
+
+        public int Read(Span<float> buffer)
+        {
+            int count = Math.Min(buffer.Length, _samples.Length - _position);
+            for (int i = 0; i < count; i++)
+                buffer[i] = _samples[_position + i] * _volume;
+
+            _position += count;
+            return count;
+        }
+    }
 
     public class AutoDisposeSampleProvider : ISampleProvider
     {

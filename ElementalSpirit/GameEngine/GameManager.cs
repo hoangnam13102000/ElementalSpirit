@@ -67,8 +67,7 @@ namespace ElementalSpirit.GameEngine
         // Va chạm ngang của Player với thành lỗ / vách (TerrainWall.BlocksPlayer).
         private readonly TerrainWallResolver _wallResolver = new();
 
-        // Neu Player roi qua khoi day man hinh (vd: rot xuong nuoc giua khe vuc)
-        // thi dua ve vi tri an toan thay vi roi mai mai ra ngoai tam nhin.
+        // Player that bai neu roi qua day vung choi.
         private const float FallRecoveryMargin = 40f;
 
         public bool IsStageCompleted { get; private set; }
@@ -441,9 +440,7 @@ namespace ElementalSpirit.GameEngine
             if (Player.IsDead) return;
             if (Player.Y < PlayArea.Bottom + FallRecoveryMargin) return;
 
-            Player.ResetPosition(PlayArea.Left + 8f, GroundY - Player.Height);
-            Player.ResolveGroundCollision(GroundY);
-            SetStatus("Ban roi xuong nuoc! Quay lai vi tri an toan.");
+            Player.Die();
         }
 
         private void OnSlimeAttackHit(Slime slime)
@@ -647,7 +644,13 @@ namespace ElementalSpirit.GameEngine
 
         private void OnPlayerAttackHitFrame() => SpawnPlayerProjectile();
         private void OnPlayerFireCastFrame() => SpawnFireballProjectile();
-        private void OnPlayerDeath() => Services.AudioManager.Instance.PlaySfx("lose.mp3");
+        private void OnPlayerDeath()
+        {
+            Player.ClearDoubleJumpBoots();
+            Inventory.Remove("acc_swift_boots");
+            RefreshPlayerEquipmentStats();
+            Services.AudioManager.Instance.PlaySfx("lose.mp3");
+        }
         private void OnEnemyDied(Domain.Enemy.Enemy enemy) 
         { 
             float dropX = enemy.X + enemy.Width / 2f - 9f; 
@@ -786,6 +789,7 @@ namespace ElementalSpirit.GameEngine
             data.EquippedWeaponId = Inventory.GetEquipped(EquipmentSlot.Weapon)?.Id;
             data.EquippedArmorId = Inventory.GetEquipped(EquipmentSlot.Armor)?.Id;
             data.EquippedAccessoryId = Inventory.GetEquipped(EquipmentSlot.Accessory)?.Id;
+            data.HasDoubleJumpBoots = Player.HasDoubleJumpBoots;
 
             foreach (var spirit in Spirits.Unlocked)
                 data.Spirits.Add(new SpiritSaveData { Id = spirit.Id, Level = spirit.Level });
@@ -835,6 +839,7 @@ namespace ElementalSpirit.GameEngine
             if (data.EquippedWeaponId != null) Inventory.TryEquip(data.EquippedWeaponId);
             if (data.EquippedArmorId != null) Inventory.TryEquip(data.EquippedArmorId);
             if (data.EquippedAccessoryId != null) Inventory.TryEquip(data.EquippedAccessoryId);
+            if (data.HasDoubleJumpBoots) Player.GrantDoubleJumpBoots();
 
             RefreshPlayerEquipmentStats();
             Wallet.LoadFrom(data.Gold, data.SpiritShards, data.Crystals);
@@ -1044,7 +1049,17 @@ namespace ElementalSpirit.GameEngine
                     if (template != null) 
                     {
                         Inventory.Add(template.Clone());
-                        SetStatus($"Nhặt được: {template.Name}");
+
+                        if (template.Id == "acc_swift_boots")
+                        {
+                            Player.GrantDoubleJumpBoots();
+                            SetStatus("Nhặt được: Đôi Giày Tốc Hành - Double Jump đã kích hoạt");
+                        }
+                        else
+                        {
+                            SetStatus($"Nhặt được: {template.Name}");
+                        }
+
                         Services.AudioManager.Instance.PlaySfx("coin.flac");
                     } 
                 } else if (loot.Type == LootType.HealthPotion)

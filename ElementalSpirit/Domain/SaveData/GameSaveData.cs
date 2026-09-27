@@ -22,6 +22,7 @@ namespace ElementalSpirit.Domain.SaveData
         public string? EquippedWeaponId { get; set; }
         public string? EquippedArmorId { get; set; }
         public string? EquippedAccessoryId { get; set; }
+        public bool HasDoubleJumpBoots { get; set; }
         public List<SpiritSaveData> Spirits { get; set; } = new();
         public string? EquippedSpiritSlot1Id { get; set; }
         public string? EquippedSpiritSlot2Id { get; set; }
