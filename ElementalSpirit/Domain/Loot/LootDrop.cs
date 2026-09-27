@@ -5,7 +5,8 @@ namespace ElementalSpirit.Domain.Loot
     public enum LootType
     {
         Gold,
-        Equipment
+        Equipment,
+        HealthPotion
     }
 
     /// <summary>
@@ -22,6 +23,7 @@ namespace ElementalSpirit.Domain.Loot
         public int Height => 18;
         public int GoldAmount { get; }
         public string? EquipmentId { get; }
+        public int HealPercent { get; }
 
         public RectangleF Bounds => new RectangleF(X, Y, Width, Height);
 
@@ -31,13 +33,23 @@ namespace ElementalSpirit.Domain.Loot
         public static LootDrop CreateEquipment(float x, float y, string equipmentId) =>
             new(LootType.Equipment, x, y, 0, equipmentId);
 
-        private LootDrop(LootType type, float x, float y, int goldAmount, string? equipmentId)
+        public static LootDrop CreateHealthPotion(float x, float y, int healPercent = 10) =>
+            new(LootType.HealthPotion, x, y, 0, null, healPercent);
+
+        private LootDrop(
+            LootType type,
+            float x,
+            float y,
+            int goldAmount,
+            string? equipmentId,
+            int healPercent = 0)
         {
             Type = type;
             X = x;
             Y = y;
             GoldAmount = goldAmount;
             EquipmentId = equipmentId;
+            HealPercent = healPercent;
         }
     }
 }

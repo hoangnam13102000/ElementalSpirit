@@ -84,6 +84,8 @@ namespace ElementalSpirit.GameEngine
         private bool _bossEncounterTriggered;
         private readonly List<LootDrop> _loot = new();
         private readonly Random _random = new();
+        private const double BootsDropChance = 0.15;
+        private const double HealthPotionDropChance = 0.35;
 
         // ---- Chuyển cảnh giữa các background (EarthForest -> EarthForest2 -> EarthForest3) ----
         private readonly List<StageData> _stageSequence;
@@ -653,9 +655,13 @@ namespace ElementalSpirit.GameEngine
             if (enemy is GorgonBoss) { _loot.Add(LootDrop.CreateGold(dropX, dropY, 100));
             } else {
                 _loot.Add(LootDrop.CreateGold(dropX, dropY, 10));
-                if (_random.NextDouble() < 0.30) 
-                { 
+                double dropRoll = _random.NextDouble();
+                if (dropRoll < BootsDropChance)
+                {
                     _loot.Add(LootDrop.CreateEquipment(dropX + 16f, dropY, "acc_swift_boots"));
+                } else if (dropRoll < BootsDropChance + HealthPotionDropChance)
+                {
+                    _loot.Add(LootDrop.CreateHealthPotion(dropX + 16f, dropY));
                 }
             } 
         }
@@ -1041,6 +1047,12 @@ namespace ElementalSpirit.GameEngine
                         SetStatus($"Nhặt được: {template.Name}");
                         Services.AudioManager.Instance.PlaySfx("coin.flac");
                     } 
+                } else if (loot.Type == LootType.HealthPotion)
+                {
+                    int healAmount = (int)Math.Ceiling(Player.MaxHp * loot.HealPercent / 100d);
+                    Player.Heal(healAmount);
+                    SetStatus($"Hồi phục {loot.HealPercent}% máu");
+                    Services.AudioManager.Instance.PlaySfx("coin.flac");
                 }
                 _loot.RemoveAt(i);
             }

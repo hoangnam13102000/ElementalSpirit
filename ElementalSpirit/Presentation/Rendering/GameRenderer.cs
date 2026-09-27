@@ -41,6 +41,7 @@ namespace ElementalSpirit.Presentation.Rendering
         private string _loadedIncomingBackgroundName = "";
         private Image? _incomingBackgroundImage;
         private Image? bootsImage;
+        private readonly Image? _healthPotionImage;
 
         public GameRenderer(
             GameManager gameManager,
@@ -58,6 +59,7 @@ namespace ElementalSpirit.Presentation.Rendering
             _goldAnimation = goldAnimation;
             _fireballFrames = fireballFrames;
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _healthPotionImage = AssetLoader.Get("Loot/heal_bottle.png");
 
             try
             {
@@ -277,7 +279,7 @@ namespace ElementalSpirit.Presentation.Rendering
                             drawY + height / 2f,
                             width / 2f, Color.FromArgb(255, 232, 185, 35)); 
                     }
-                } else 
+                } else if (loot.Type == LootType.Equipment)
                 {
                     if (bootsImage != null)
                     {
@@ -291,8 +293,33 @@ namespace ElementalSpirit.Presentation.Rendering
                         g.FillEllipse(shoeBrush, rect);
                         g.DrawEllipse(shoeOutline, rect);
                     }
+                } else if (loot.Type == LootType.HealthPotion)
+                {
+                    if (_healthPotionImage != null)
+                    {
+                        g.DrawImage(_healthPotionImage, drawX, drawY, width, height);
+                    }
+                    else
+                    {
+                        DrawHealthPotionIcon(g, drawX, drawY, width, height);
+                    }
                 }
             }
+        }
+
+        private static void DrawHealthPotionIcon(Graphics g, int x, int y, int width, int height)
+        {
+            float neckWidth = width * 0.32f;
+            float neckHeight = height * 0.2f;
+            float bodyY = y + neckHeight;
+            var body = new RectangleF(x + width * 0.18f, bodyY, width * 0.64f, height * 0.72f);
+
+            using var potionBrush = new SolidBrush(Color.FromArgb(230, 210, 45, 65));
+            using var outline = new Pen(Color.FromArgb(255, 105, 25, 40), 1.5f);
+            using var neckBrush = new SolidBrush(Color.FromArgb(230, 235, 215, 180));
+            g.FillRectangle(neckBrush, x + (width - neckWidth) / 2f, y, neckWidth, neckHeight);
+            g.FillEllipse(potionBrush, body);
+            g.DrawEllipse(outline, body);
         }
 
         private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
