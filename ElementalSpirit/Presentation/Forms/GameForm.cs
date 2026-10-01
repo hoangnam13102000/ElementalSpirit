@@ -37,6 +37,7 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
+            AppIcon.ApplyTo(this);
             Text = _localization.Translate("gameForm.windowTitle");
             ClientSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;

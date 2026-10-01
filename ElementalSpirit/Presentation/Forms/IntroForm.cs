@@ -29,6 +29,7 @@ namespace ElementalSpirit.Presentation.Forms
         public IntroForm(ILocalizationService localization)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            AppIcon.ApplyTo(this);
             _introManager = new IntroManager(_localization);
             _introManager.OnSceneChanged += HandleSceneChanged;
             _introManager.OnLineChanged += HandleLineChanged;
