@@ -18,6 +18,7 @@
         private bool _bossDefeatedNotified;
         private BossDialogueScene? _currentScene;
         private int _currentLineIndex;
+        private readonly ILocalizationService _localization;
         public string PlayerName { get; set; } = "Arin";
 
         public BossEncounterState CurrentState => _currentState;
@@ -45,6 +46,7 @@
         {
             if (localization == null) throw new ArgumentNullException(nameof(localization));
 
+            _localization = localization;
             PreBossScene = BossEncounterData.CreatePreBossScene(localization);
             PostBossScene = BossEncounterData.CreatePostBossScene(localization);
             SpiritRescueScene = BossEncounterData.CreateSpiritRescueScene(localization);
@@ -159,7 +161,7 @@
             var line = _currentScene.Lines[_currentLineIndex];
             string speakerName = line.Speaker switch
             {
-                BossDialogueSpeaker.Gorgon => "Gorgon",
+                BossDialogueSpeaker.Gorgon => _localization.Translate("boss.speaker.gorgon"),
                 BossDialogueSpeaker.Arin => PlayerName,
                 BossDialogueSpeaker.Terra => "Terra",
                 BossDialogueSpeaker.Narrator => "Narrator",

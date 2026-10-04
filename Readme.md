@@ -47,7 +47,7 @@ Khi cân bằng nguyên tố bị phá vỡ, Pháp Sư Nguyên Tố do người 
 
 | Khu vực | Tinh Linh | Boss |
 | --- | --- | --- |
-| Rừng Đất | Terra | Vệ Binh Golem |
+| Rừng Đất | Terra | Mãng Xà Gordor |
 | Tàn Tích Nước | Aqua | Leviathan |
 | Núi Lửa Lửa | Ignis | Rồng Lửa |
 | Đền Gió | Zephyr | Phượng Hoàng Bão |
@@ -95,7 +95,7 @@ Lỗi ứng dụng không xử lý được được ghi tại `%LOCALAPPDATA%\E
 | --- | --- | --- |
 | Hoàng Trung Nam | 44.01.104.145 | 48.01.CNTT.B |
 | Lê Thị Vân Anh | 46.01.103.007 | 48.01.TIN.SPA |
-| Lê Thanh Tú | Chưa có thông tin | 50.01.CNTT.B |
+| Lê Thanh Tú | 50.01.104.172 | 50.01.CNTT.B |
 | Hồ Thị Mỹ Thuận | 50.01.104.157 | 50.01.CNTT.A |
 
 ## Công nghệ

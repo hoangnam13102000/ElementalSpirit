@@ -4,7 +4,7 @@
     using System.Collections.Generic;
 
     /// <summary>
-    /// Nhà cung cấp dữ liệu tĩnh cho cuộc gặp boss Gorgon.
+    /// Nhà cung cấp dữ liệu tĩnh cho cuộc gặp boss Gordor.
     /// Chứa toàn bộ nội dung cốt truyện: đoạn thoại gặp boss,
     /// đoạn thoại sau khi đánh bại boss, và cảnh giải cứu tinh linh đất.
     /// 
@@ -14,8 +14,8 @@
     public static class BossEncounterData
     {
         /// <summary>
-        /// Tạo cảnh thoại mở đầu khi Arin vừa gặp Gorgon trong rừng sâu.
-        /// Nội dung: Gorgon chế nhạo, Terra kêu cứu, Arin quyết tâm chiến đấu.
+        /// Tạo cảnh thoại mở đầu khi người chơi vừa gặp Gordor trong rừng sâu.
+        /// Nội dung: Gordor chế nhạo, Terra kêu cứu, người chơi quyết tâm chiến đấu.
         /// </summary>
         public static BossDialogueScene CreatePreBossScene(ILocalizationService localization)
         {
@@ -59,14 +59,14 @@
             };
 
             return new BossDialogueScene(
-                sceneName: "The Gorgon's Lair",
+                sceneName: "Gordor's Lair",
                 backgroundImageName: "Backgrounds/DarkForest.jpg",
                 lines: lines.AsReadOnly());
         }
 
         /// <summary>
-        /// Tạo cảnh thoại sau khi Gorgon bị đánh bại.
-        /// Nội dung: Gorgon tan biến, tinh linh Terra được giải phóng,
+        /// Tạo cảnh thoại sau khi Gordor bị đánh bại.
+        /// Nội dung: Gordor tan biến, tinh linh Terra được giải phóng,
         /// Terra cảm ơn Arin và trao quyền năng.
         /// </summary>
         public static BossDialogueScene CreatePostBossScene(ILocalizationService localization)

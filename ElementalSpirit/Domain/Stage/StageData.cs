@@ -311,7 +311,7 @@ namespace ElementalSpirit.Domain.Stage
             var stage = new StageData
             {
                 StageNumber = 4,
-                Name = "Final Forest - Gorgon Boss",
+                Name = "Final Forest - Gordor Boss",
                 BackgroundImageName = "FinalForest.png"
             };
 

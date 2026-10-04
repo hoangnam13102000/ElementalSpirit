@@ -147,7 +147,7 @@ namespace ElementalSpirit.Presentation.Forms
 
             grid.Rows.Add("Hoàng Trung Nam", "44.01.104.145", "48.01.CNTT.B");
             grid.Rows.Add("Lê Thị Vân Anh", "46.01.103.007", "48.01.TIN.SPA");
-            grid.Rows.Add("Lê Thanh Tú", localization.Translate("guide.notProvided"), "50.01.CNTT.B");
+            grid.Rows.Add("Lê Thanh Tú", "50.01.104.172", "50.01.CNTT.B");
             grid.Rows.Add("Hồ Thị Mỹ Thuận", "50.01.104.157", "50.01.CNTT.A");
             return grid;
         }
