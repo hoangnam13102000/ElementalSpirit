@@ -10,6 +10,9 @@
         /// <summary>Trạng thái hiện tại của cuộc gặp boss</summary>
         BossEncounterState CurrentState { get; }
 
+        /// <summary>Tên người chơi hiển thị trong các đoạn hội thoại</summary>
+        string PlayerName { get; set; }
+
         /// <summary>Background của cảnh thoại đang hiển thị, nếu có.</summary>
         string? ActiveBackgroundImageName { get; }
 

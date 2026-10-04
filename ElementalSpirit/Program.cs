@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows.Forms;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Inventory;
@@ -45,12 +46,41 @@ namespace ElementalSpirit
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += OnUiThreadException;
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 
             ILocalizationService localization = LocalizationManager.Instance;
             ISaveGameService saveGameService = new SaveGameService();
 
-            Application.Run(new MainMenuForm(localization, saveGameService)); 
-            Services.AudioManager.Instance.Dispose();
+            try
+            {
+                Application.Run(new MainMenuForm(localization, saveGameService));
+            }
+            finally
+            {
+                Services.AudioManager.Instance.Dispose();
+            }
+        }
+
+        private static void OnUiThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        {
+            ErrorLogger.Log("Unhandled UI-thread exception", e.Exception);
+            MessageBox.Show(
+                "Đã xảy ra lỗi nghiêm trọng. Ứng dụng sẽ đóng để tránh làm hỏng dữ liệu. Chi tiết đã được ghi vào thư mục nhật ký.",
+                "Elemental Spirit",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            Application.Exit();
+        }
+
+        private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            if (e.ExceptionObject is Exception exception)
+                ErrorLogger.Log("Unhandled application exception", exception);
+            else
+                ErrorLogger.Log("Unhandled application exception", new InvalidOperationException(
+                    $"Unhandled object: {e.ExceptionObject}"));
         }
     }
 }

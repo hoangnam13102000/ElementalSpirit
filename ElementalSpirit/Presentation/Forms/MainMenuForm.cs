@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Windows.Forms;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
@@ -12,11 +13,10 @@ namespace ElementalSpirit.Presentation.Forms
 {
     public class MainMenuForm : Form
     {
-        private const int ButtonSpacingY = 85;
-        private const int ButtonStartY = 300;
-
         private readonly Button _btnContinue;
         private readonly Button _btnStart;
+        private readonly Button _btnLeaderboard;
+        private readonly Button _btnGuide;
         private readonly Button _btnSettings;
         private readonly Button _btnExit;
         private Image? _menuBackground;
@@ -45,13 +45,23 @@ namespace ElementalSpirit.Presentation.Forms
             {
                 _menuBackground = LoadMenuBackground();
             }
-            catch { _menuBackground = null; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainMenuForm] Menu background unavailable: {ex}");
+                _menuBackground = null;
+            }
 
             _btnContinue = CreateMenuButton();
             _btnContinue.Click += BtnContinue_Click;
 
             _btnStart = CreateMenuButton();
             _btnStart.Click += BtnStart_Click;
+
+            _btnLeaderboard = CreateMenuButton();
+            _btnLeaderboard.Click += BtnLeaderboard_Click;
+
+            _btnGuide = CreateMenuButton();
+            _btnGuide.Click += BtnGuide_Click;
 
             _btnSettings = CreateMenuButton();
             _btnSettings.Click += BtnSettings_Click;
@@ -61,9 +71,16 @@ namespace ElementalSpirit.Presentation.Forms
 
             Controls.Add(_btnContinue);
             Controls.Add(_btnStart);
+            Controls.Add(_btnLeaderboard);
+            Controls.Add(_btnGuide);
             Controls.Add(_btnSettings);
             Controls.Add(_btnExit);
 
+            Resize += (_, _) =>
+            {
+                LayoutMenuButtons();
+                Invalidate();
+            };
             _localization.LanguageChanged += (s, e) => ApplyTranslations();
 
             ApplyTranslations();
@@ -71,11 +88,19 @@ namespace ElementalSpirit.Presentation.Forms
             Services.AudioManager.Instance.PlayMusic("menu_theme.mp3", loop: true);
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
+        }
+
         private void ApplyTranslations()
         {
             Text = _localization.Translate("menu.windowTitle");
             _btnContinue.Text = _localization.Translate("menu.continue");
             _btnStart.Text = _localization.Translate("menu.start");
+            _btnLeaderboard.Text = _localization.Translate("menu.leaderboard");
+            _btnGuide.Text = _localization.Translate("menu.guide");
             _btnSettings.Text = _localization.Translate("menu.settings");
             _btnExit.Text = _localization.Translate("menu.exit");
             Invalidate(); // vẽ lại tiêu đề game trong OnPaint
@@ -83,26 +108,32 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void LayoutMenuButtons()
         {
+            float verticalScale = ClientSize.Height / 720f;
             bool hasSave = _saveGameService.HasSavedGame;
             _btnContinue.Visible = hasSave;
 
-            int y = ButtonStartY;
-            if (hasSave)
+            int buttonHeight = Math.Clamp((int)(58 * verticalScale), 42, 58);
+            int spacing = buttonHeight + Math.Max(8, (int)(12 * verticalScale));
+            int buttonWidth = Math.Min(400, ClientSize.Width - 48);
+            int left = (ClientSize.Width - buttonWidth) / 2;
+            var buttons = new[] { _btnContinue, _btnStart, _btnLeaderboard, _btnGuide, _btnSettings, _btnExit };
+            var visibleButtons = buttons.Where(button => button.Visible).ToArray();
+            int totalHeight = visibleButtons.Length * buttonHeight + (visibleButtons.Length - 1) * (spacing - buttonHeight);
+            int y = Math.Max((int)(150 * verticalScale), (ClientSize.Height - totalHeight) / 2 + (int)(36 * verticalScale));
+
+            foreach (Button button in visibleButtons)
             {
-                _btnContinue.Top = y;
-                y += ButtonSpacingY;
+                button.SetBounds(left, y, buttonWidth, buttonHeight);
+                y += spacing;
             }
-            _btnStart.Top = y; y += ButtonSpacingY;
-            _btnSettings.Top = y; y += ButtonSpacingY;
-            _btnExit.Top = y;
         }
 
         private Button CreateMenuButton()
         {
             var btn = new Button
             {
-                Bounds = new Rectangle(440, ButtonStartY, 400, 65),
-                Font = new Font("Georgia", 18f, FontStyle.Bold),
+                Bounds = new Rectangle(0, 0, 400, 58),
+                Font = new Font("Georgia", 16f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(230, 220, 255),
                 BackColor = Color.FromArgb(70, 40, 80, 150),
                 FlatStyle = FlatStyle.Flat,
@@ -115,27 +146,60 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnStart_Click(object? sender, EventArgs e)
         {
+            using var nameDialog = new PlayerNameDialog(_localization);
+            if (nameDialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            string playerName = nameDialog.PlayerName;
+            var gameManager = Program.CreateGameManager();
+            gameManager.SetPlayerName(playerName);
+
             _btnStart.Enabled = false;
             Services.AudioManager.Instance.StopMusic();
             this.Hide();
 
-            var introForm = new IntroForm(_localization);
-            introForm.StartIntro();
-
-            introForm.OnIntroFinished += () =>
-            {
-                var gameForm = new GameForm(Program.CreateGameManager(), _localization, _saveGameService);
-                gameForm.ShowDialog();
-                ReturnToMenu();
-                _btnStart.Enabled = true;
-            };
-
+            using var introForm = new IntroForm(_localization, playerName);
+            bool introCompleted = false;
+            introForm.OnIntroFinished += () => introCompleted = true;
+            introForm.Shown += (_, _) => introForm.StartIntro();
             introForm.ShowDialog();
+
+            if (introCompleted)
+            {
+                using var gameForm = new GameForm(gameManager, _localization, _saveGameService);
+                gameForm.ShowDialog();
+            }
+            else
+            {
+                gameManager.Dispose();
+            }
+
+            ReturnToMenu();
+            _btnStart.Enabled = true;
         }
 
         private void BtnContinue_Click(object? sender, EventArgs e)
         {
-            var saveData = _saveGameService.Load();
+            ElementalSpirit.Domain.SaveData.GameSaveData? saveData;
+            try
+            {
+                saveData = _saveGameService.Load();
+            }
+            catch (Exception ex) when (
+                ex is IOException ||
+                ex is UnauthorizedAccessException ||
+                ex is InvalidDataException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainMenuForm] Could not load saved game: {ex}");
+                MessageBox.Show(
+                    this,
+                    _localization.Translate("menu.continue.loadError"),
+                    _localization.Translate("menu.windowTitle"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
             if (saveData == null)
             {
                 using var dialog = new InformationDialog(
@@ -170,12 +234,28 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
-            using var settingsForm = new SettingsForm(_localization, _saveGameService);
+            using var settingsForm = new SettingsForm(
+                _localization,
+                _saveGameService,
+                onFullscreenChanged: enabled => WindowDisplayMode.SetFullscreen(this, enabled));
             settingsForm.ShowDialog(this);
+        }
+
+        private void BtnLeaderboard_Click(object? sender, EventArgs e)
+        {
+            using var leaderboard = new LeaderboardForm(_localization);
+            leaderboard.ShowDialog(this);
+        }
+
+        private void BtnGuide_Click(object? sender, EventArgs e)
+        {
+            using var guide = new GuideAndTeamForm(_localization);
+            guide.ShowDialog(this);
         }
 
         private void ReturnToMenu()
         {
+            WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
             _menuBackground?.Dispose();
             _menuBackground = LoadMenuBackground();
             LayoutMenuButtons();
@@ -196,8 +276,9 @@ namespace ElementalSpirit.Presentation.Forms
                 {
                     _menuBackground = LoadMenuBackground();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[MainMenuForm] Menu background unavailable: {ex}");
                     _menuBackground = null;
                 }
             }

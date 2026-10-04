@@ -71,6 +71,7 @@ namespace ElementalSpirit.GameEngine
         private const float FallRecoveryMargin = 40f;
 
         public bool IsStageCompleted { get; private set; }
+        public event Action? FinalBossDefeated;
         public bool IsPaused { get; set; }
         public string StatusMessage { get; private set; } = "";
 
@@ -101,6 +102,12 @@ namespace ElementalSpirit.GameEngine
             _gameForm = gameForm;
         }
 
+        public void SetPlayerName(string name)
+        {
+            Player.SetName(name);
+            BossEncounter.PlayerName = Player.Name;
+        }
+
         public StageTransitionPhase TransitionPhase { get; private set; } = StageTransitionPhase.None;
 
         /// <summary>0..1 - dùng để renderer crossfade sang background kế tiếp.</summary>
@@ -112,6 +119,8 @@ namespace ElementalSpirit.GameEngine
         public bool IsInStageTransition => TransitionPhase != StageTransitionPhase.None;
         public int StageIndex => _stageIndex;
         public int TotalStagesInCampaign => _stageSequence.Count;
+        public int ClearedStageCount => _clearedStages.Count;
+        public Guid RunId { get; private set; } = Guid.NewGuid();
 
         public GameManager(
             IInputManager input,
@@ -144,14 +153,8 @@ namespace ElementalSpirit.GameEngine
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             BossEncounter = bossEncounter ?? throw new ArgumentNullException(nameof(bossEncounter));
+            BossEncounter.PlayerName = Player.Name;
             Portals = portals ?? throw new ArgumentNullException(nameof(portals));
-
-            var starter = EquipmentCatalog.Find("wpn_basic_wand");
-            if (starter != null)
-            {
-                Inventory.Add(starter.Clone());
-                Inventory.TryEquip(starter.Id);
-            }
 
             RefreshPlayerEquipmentStats();
 
@@ -772,10 +775,13 @@ namespace ElementalSpirit.GameEngine
 
             var data = new GameSaveData
             {
+                RunId = RunId,
+                PlayerName = Player.Name,
                 StageIndex = _stageIndex,
                 StageName = _stageSequence[_stageIndex].Name,
                 PlayerHp = Player.CurrentHp,
                 Gold = Wallet.Gold,
+                TotalGoldEarned = Wallet.TotalGoldEarned,
                 SpiritShards = Wallet.SpiritShards,
                 Crystals = Wallet.Crystals,
                 SavedAtUtc = DateTime.UtcNow,
@@ -786,8 +792,6 @@ namespace ElementalSpirit.GameEngine
                 data.OwnedEquipmentIds.Add(item.Id);
             data.ClearedStages = _clearedStages.ToList();
 
-            data.EquippedWeaponId = Inventory.GetEquipped(EquipmentSlot.Weapon)?.Id;
-            data.EquippedArmorId = Inventory.GetEquipped(EquipmentSlot.Armor)?.Id;
             data.EquippedAccessoryId = Inventory.GetEquipped(EquipmentSlot.Accessory)?.Id;
             data.HasDoubleJumpBoots = Player.HasDoubleJumpBoots;
 
@@ -804,6 +808,8 @@ namespace ElementalSpirit.GameEngine
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
 
+            RunId = data.RunId == Guid.Empty ? Guid.NewGuid() : data.RunId;
+            SetPlayerName(string.IsNullOrWhiteSpace(data.PlayerName) ? "Arin" : data.PlayerName);
             int targetIndex = Math.Clamp(data.StageIndex, 0, _stageSequence.Count - 1);
             _stageIndex = targetIndex;
             _clearedStages.Clear(); 
@@ -836,13 +842,11 @@ namespace ElementalSpirit.GameEngine
                     Inventory.Add(template.Clone());
             }
 
-            if (data.EquippedWeaponId != null) Inventory.TryEquip(data.EquippedWeaponId);
-            if (data.EquippedArmorId != null) Inventory.TryEquip(data.EquippedArmorId);
             if (data.EquippedAccessoryId != null) Inventory.TryEquip(data.EquippedAccessoryId);
             if (data.HasDoubleJumpBoots) Player.GrantDoubleJumpBoots();
 
             RefreshPlayerEquipmentStats();
-            Wallet.LoadFrom(data.Gold, data.SpiritShards, data.Crystals);
+            Wallet.LoadFrom(data.Gold, data.SpiritShards, data.Crystals, data.TotalGoldEarned);
 
             foreach (var savedSpirit in data.Spirits)
             {
@@ -929,8 +933,6 @@ namespace ElementalSpirit.GameEngine
 
 #if DEBUG
             if (key == Keys.N) Waves.ForceNextWave();
-            if (key == Keys.D3) { Spirits.Equip(0, Spirits.Unlocked[0]); Spirits.Equip(1, Spirits.Unlocked[1]); SetStatus("Equipped: Terra + Ignis"); }
-            else if (key == Keys.D4) { Spirits.Equip(0, Spirits.Unlocked[2]); Spirits.Equip(1, Spirits.Unlocked[3]); SetStatus("Equipped: Aqua + Zephyr"); }
             if (key == Keys.G) { Wallet.AddGold(100); Wallet.AddSpiritShards(10); SetStatus("+100 Gold, +10 Spirit Shards"); }
 #endif
         }
@@ -1012,6 +1014,7 @@ namespace ElementalSpirit.GameEngine
         {
             IsStageCompleted = true;
             Services.AudioManager.Instance.PlaySfx("win.mp3");
+            FinalBossDefeated?.Invoke();
         }
 
         private void TryTriggerBossEncounter()

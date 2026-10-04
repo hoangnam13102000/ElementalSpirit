@@ -14,6 +14,7 @@ namespace ElementalSpirit.Presentation.Forms
     {
         private readonly ILocalizationService _localization;
         private readonly IntroManager _introManager;
+        private readonly string _playerName;
         private Image? _currentBackground;
         private string _currentSpeakerName = "";
         private string _currentText = "";
@@ -26,11 +27,14 @@ namespace ElementalSpirit.Presentation.Forms
 
         public event Action? OnIntroFinished;
 
-        public IntroForm(ILocalizationService localization)
+        public IntroForm(ILocalizationService localization, string playerName = "Arin")
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            if (string.IsNullOrWhiteSpace(playerName))
+                throw new ArgumentException("Player name cannot be empty.", nameof(playerName));
+            _playerName = playerName.Trim();
             AppIcon.ApplyTo(this);
-            _introManager = new IntroManager(_localization);
+            _introManager = new IntroManager(_localization, _playerName);
             _introManager.OnSceneChanged += HandleSceneChanged;
             _introManager.OnLineChanged += HandleLineChanged;
             _introManager.OnIntroCompleted += HandleIntroCompleted;
@@ -50,6 +54,12 @@ namespace ElementalSpirit.Presentation.Forms
 
             KeyDown += OnKeyPressed;
             MouseClick += OnMouseClicked;
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
         }
 
         public void StartIntro()
@@ -83,8 +93,9 @@ namespace ElementalSpirit.Presentation.Forms
                             _currentBackground = AssetLoader.Get(scene.BackgroundImageName);
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[IntroForm] Intro background unavailable: {ex}");
                     _currentBackground = null;
                 }
             }
@@ -249,7 +260,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             return speaker switch
             {
-                Speaker.Arin => _localization.Translate("speaker.arin"),
+                Speaker.Arin => _playerName,
                 Speaker.Terra => _localization.Translate("speaker.terra"),
                 Speaker.VillageElder => _localization.Translate("speaker.villageElder"),
                 _ => ""

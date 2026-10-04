@@ -66,8 +66,9 @@ namespace ElementalSpirit.Presentation.Rendering
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 bootsImage = Image.FromFile(System.IO.Path.Combine(baseDir, "Resources", "Images", "Loot", "boots.png"));
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[GameRenderer] Boots image unavailable: {ex}");
                 // Nếu chưa nạp được ảnh thì code vẫn dùng hình tròn vector dự phòng bên dưới
             }
         }
@@ -474,25 +475,19 @@ namespace ElementalSpirit.Presentation.Rendering
                 }
             }
 
-            DrawPlayerHealthBar(g, p, drawY);
+            Rectangle visibleSpriteBounds = GetVisibleAssetBounds(currentImage);
+            float visibleSpriteTop = drawY + visibleSpriteBounds.Top * drawSize / currentImage.Height;
+            DrawPlayerHealthBar(g, p, feetX, visibleSpriteTop);
         }
 
-        private const float HealthBarWidth = 46f;
+        private const float HealthBarWidth = 64f;
         private const float HealthBarHeight = 6f;
-        private const float HealthBarVerticalGap = 22f;
-        // The Mage sprite artwork isn't perfectly centered inside its square frame
-        // (extra space is reserved for the staff), so the hitbox's geometric
-        // center doesn't line up with what the eye reads as "the character's
-        // center". This offset (in screen pixels) corrects for that, and flips
-        // sign with the sprite's mirrored facing.
-        private const float HealthBarVisualOffsetX = 16f;
+        private const float HealthBarVerticalGap = 8f;
 
-        private void DrawPlayerHealthBar(Graphics g, Player p, float visualTopY)
+        private void DrawPlayerHealthBar(Graphics g, Player p, float centerX, float visualTopY)
         {
             if (p.IsDead) return;
 
-            float centerX = p.X + p.Width / 2f;
-            centerX += p.Facing == FacingDirection.Left ? HealthBarVisualOffsetX : -HealthBarVisualOffsetX;
             float barX = centerX - HealthBarWidth / 2f;
             float barY = visualTopY - HealthBarVerticalGap;
 
@@ -511,6 +506,23 @@ namespace ElementalSpirit.Presentation.Rendering
 
             using var borderPen = new Pen(Color.FromArgb(200, 10, 10, 12), 1f);
             g.DrawRectangle(borderPen, barX, barY, HealthBarWidth, HealthBarHeight);
+
+            using var nameFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            using var nameShadowBrush = new SolidBrush(Color.FromArgb(230, 0, 0, 0));
+            using var nameBrush = new SolidBrush(Color.White);
+            string displayName = p.Name;
+            const float maxNameWidth = HealthBarWidth - 4f;
+            while (displayName.Length > 1 && g.MeasureString(displayName, nameFont).Width > maxNameWidth)
+                displayName = displayName[..^1];
+            if (displayName != p.Name && displayName.Length > 3)
+                displayName = displayName[..^3] + "...";
+
+            SizeF nameSize = g.MeasureString(displayName, nameFont);
+            float nameWidth = nameSize.Width;
+            float nameX = centerX - nameWidth / 2f;
+            float nameY = barY - nameSize.Height - 2f;
+            g.DrawString(displayName, nameFont, nameShadowBrush, nameX + 1f, nameY + 1f);
+            g.DrawString(displayName, nameFont, nameBrush, nameX, nameY);
         }
 
         // ===================== HUD THEME TOKENS =====================
@@ -780,8 +792,6 @@ namespace ElementalSpirit.Presentation.Rendering
 
             float x = clientSize.Width - 14f;
             x = DrawEquipChip(g, x, y, chipH, "PK", inv.GetEquipped(EquipmentSlot.Accessory), HudCrystalColor) - chipGap;
-            x = DrawEquipChip(g, x, y, chipH, "Giáp", inv.GetEquipped(EquipmentSlot.Armor), HudShardColor) - chipGap;
-            x = DrawEquipChip(g, x, y, chipH, "VK", inv.GetEquipped(EquipmentSlot.Weapon), HudGoldColor) - chipGap;
         }
 
         /// <summary>Vẽ 1 chip trang bị neo theo mép PHẢI tại rightEdgeX, trả về toạ độ X bên trái của chip (để chip kế tiếp nối vào).</summary>

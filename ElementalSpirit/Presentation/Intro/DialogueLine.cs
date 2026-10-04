@@ -18,6 +18,7 @@ namespace ElementalSpirit.Presentation.Intro
         private readonly ILocalizationService _localization;
         private readonly string _textKey;
         private readonly string? _captionKey;
+        public string PlayerName { get; set; } = "Arin";
 
         public DialogueLine(ILocalizationService localization, Speaker speaker, string textKey, string? captionKey = null)
         {
@@ -28,9 +29,15 @@ namespace ElementalSpirit.Presentation.Intro
         }
 
         public string Text =>
-            string.IsNullOrEmpty(_textKey) ? "" : _localization.Translate(_textKey);
+            string.IsNullOrEmpty(_textKey)
+                ? ""
+                : _localization.Translate(_textKey)
+                    .Replace("{playerName}", PlayerName, StringComparison.OrdinalIgnoreCase);
 
         public string? OnScreenCaption =>
-            _captionKey == null ? null : _localization.Translate(_captionKey);
+            _captionKey == null
+                ? null
+                : _localization.Translate(_captionKey)
+                    .Replace("{playerName}", PlayerName, StringComparison.OrdinalIgnoreCase);
     }
 }

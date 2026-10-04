@@ -55,7 +55,11 @@ namespace ElementalSpirit.Presentation.Forms
             _goldAnimation = GoldAnimationLoader.CreateClip();
 
             try { _fireballFrames = MageAnimationLoader.LoadFireballFrames(); }
-            catch { _fireballFrames = null; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GameForm] Fireball animation unavailable: {ex}");
+                _fireballFrames = null;
+            }
 
             _renderer = new GameRenderer(
                 _gameManager,
@@ -73,10 +77,20 @@ namespace ElementalSpirit.Presentation.Forms
             KeyUp += OnKeyUp;
             Resize += OnFormResize;
             FormClosing += OnFormClosing;
-            _gameTimer.Start();
+            _gameManager.Player.OnDeath += RecordAchievement;
+            _gameManager.FinalBossDefeated += RecordAchievement;
 
             Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
         }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
+            _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
+            _gameTimer.Start();
+        }
+
         private void OnGameTick(float deltaTime)
         {
             _gameManager.Update(deltaTime);
@@ -192,7 +206,12 @@ namespace ElementalSpirit.Presentation.Forms
         {
             PauseGame();
             bool exitToMenu;
-            using (var settings = new SettingsForm(_localization, _saveGameService, _gameManager))
+            using (var settings = new SettingsForm(
+                       _localization,
+                       _saveGameService,
+                       _gameManager,
+                       RecordAchievement,
+                       enabled => WindowDisplayMode.SetFullscreen(this, enabled)))
             {
                 settings.ShowDialog(this);
                 exitToMenu = settings.ExitToMainMenuRequested;
@@ -242,6 +261,8 @@ namespace ElementalSpirit.Presentation.Forms
         private void OnFormResize(object? sender, EventArgs e) => _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
+            _gameManager.Player.OnDeath -= RecordAchievement;
+            _gameManager.FinalBossDefeated -= RecordAchievement;
             Services.AudioManager.Instance.StopMusic();
             _gameManager.Dispose();
             _gameTimer.Stop();
@@ -254,6 +275,32 @@ namespace ElementalSpirit.Presentation.Forms
             MageAnimationLoader.DisposeAll();
             SlimeAnimationLoader.DisposeAll();
         }
+
+        private void RecordAchievement()
+        {
+            try
+            {
+                new LeaderboardService().RecordRun(
+                    _gameManager.RunId,
+                    _gameManager.Player.Name,
+                    _gameManager.ClearedStageCount,
+                    _gameManager.Wallet.TotalGoldEarned);
+            }
+            catch (Exception ex) when (
+                ex is IOException ||
+                ex is UnauthorizedAccessException ||
+                ex is InvalidDataException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GameForm] Could not record leaderboard result: {ex}");
+                MessageBox.Show(
+                    this,
+                    _localization.Translate("leaderboard.saveError"),
+                    _localization.Translate("leaderboard.title"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);

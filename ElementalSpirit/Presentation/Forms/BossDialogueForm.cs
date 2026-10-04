@@ -20,6 +20,7 @@
     public sealed class BossDialogueForm : Form, IBossDialogueView
     {
         private readonly ILocalizationService _localization;
+        private readonly string _playerName;
         private readonly Panel _dialoguePanel;
         private readonly Label _speakerLabel;
         private readonly Label _textLabel;
@@ -31,9 +32,12 @@
         public event EventHandler? NextLineRequested;
         public event EventHandler? SkipSceneRequested;
 
-        public BossDialogueForm(ILocalizationService localization)
+        public BossDialogueForm(ILocalizationService localization, string playerName = "Arin")
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            if (string.IsNullOrWhiteSpace(playerName))
+                throw new ArgumentException("Player name cannot be empty.", nameof(playerName));
+            _playerName = playerName.Trim();
 
             // Form setup
             Text = _localization.Translate("boss.dialogue.title");
@@ -150,7 +154,7 @@
                 // On-screen text: hiển thị ở giữa màn hình, ẩn khung thoại
                 _dialoguePanel.Visible = false;
                 _captionLabel.Visible = true;
-                _captionLabel.Text = line.OnScreenCaption ?? line.Text;
+                _captionLabel.Text = ReplacePlayerName(line.OnScreenCaption ?? line.Text);
             }
             else
             {
@@ -159,7 +163,7 @@
                 _captionLabel.Visible = false;
                 _speakerLabel.Text = GetSpeakerDisplayName(line.Speaker);
                 _speakerLabel.ForeColor = GetSpeakerColor(line.Speaker);
-                _textLabel.Text = line.Text;
+                _textLabel.Text = ReplacePlayerName(line.Text);
             }
         }
 
@@ -190,12 +194,15 @@
             return speaker switch
             {
                 BossDialogueSpeaker.Narrator => _localization.Translate("boss.speaker.narrator"),
-                BossDialogueSpeaker.Arin => _localization.Translate("boss.speaker.arin"),
+                BossDialogueSpeaker.Arin => _playerName,
                 BossDialogueSpeaker.Gorgon => _localization.Translate("boss.speaker.gorgon"),
                 BossDialogueSpeaker.Terra => _localization.Translate("boss.speaker.terra"),
                 _ => ""
             };
         }
+
+        private string ReplacePlayerName(string text) =>
+            text.Replace("{playerName}", _playerName, StringComparison.OrdinalIgnoreCase);
 
         private static Color GetSpeakerColor(BossDialogueSpeaker speaker)
         {

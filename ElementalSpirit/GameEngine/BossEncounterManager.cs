@@ -18,6 +18,7 @@
         private bool _bossDefeatedNotified;
         private BossDialogueScene? _currentScene;
         private int _currentLineIndex;
+        public string PlayerName { get; set; } = "Arin";
 
         public BossEncounterState CurrentState => _currentState;
         public bool IsIntroDialogue => _currentState == BossEncounterState.PreBossDialogue &&
@@ -159,7 +160,7 @@
             string speakerName = line.Speaker switch
             {
                 BossDialogueSpeaker.Gorgon => "Gorgon",
-                BossDialogueSpeaker.Arin => "Arin",
+                BossDialogueSpeaker.Arin => PlayerName,
                 BossDialogueSpeaker.Terra => "Terra",
                 BossDialogueSpeaker.Narrator => "Narrator",
                 _ => ""
@@ -168,6 +169,7 @@
             string text = line.Speaker == BossDialogueSpeaker.OnScreenText
                 ? line.OnScreenCaption ?? line.Text
                 : line.Text;
+            text = text.Replace("{playerName}", PlayerName, StringComparison.OrdinalIgnoreCase);
 
             bool isPlayerBubble = line.Speaker == BossDialogueSpeaker.Arin ||
                                   line.Speaker == BossDialogueSpeaker.Terra;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Windows.Forms;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
@@ -14,17 +15,20 @@ namespace ElementalSpirit.Presentation.Presenters
         private readonly ILocalizationService _localization;
         private readonly ISaveGameService _saveGameService;
         private readonly GameManager? _activeGame;
+        private readonly Action? _onGameSaved;
 
         public SettingsPresenter(
             ISettingsView view,
             ILocalizationService localization,
             ISaveGameService saveGameService,
-            GameManager? activeGame = null)
+            GameManager? activeGame = null,
+            Action? onGameSaved = null)
         {
             _view = view;
             _localization = localization;
             _saveGameService = saveGameService;
             _activeGame = activeGame;
+            _onGameSaved = onGameSaved;
 
             _view.SelectedLanguage = _localization.CurrentLanguage;
             _view.ApplyTranslations(key => _localization.Translate(key));
@@ -68,7 +72,21 @@ namespace ElementalSpirit.Presentation.Presenters
             }
 
             var snapshot = _activeGame.CaptureSaveData();
-            _saveGameService.Save(snapshot);
+            try
+            {
+                _saveGameService.Save(snapshot);
+                _onGameSaved?.Invoke();
+            }
+            catch (Exception ex) when (
+                ex is IOException ||
+                ex is UnauthorizedAccessException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SettingsPresenter] Could not save game: {ex}");
+                _view.ShowInfo(
+                    _localization.Translate("settings.savegame.error.message"),
+                    _localization.Translate("settings.savegame.error.title"));
+                return;
+            }
 
             _view.ShowInfo(
                 _localization.Translate("settings.savegame.saved.message"),

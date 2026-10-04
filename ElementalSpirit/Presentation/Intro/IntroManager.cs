@@ -18,10 +18,18 @@ namespace ElementalSpirit.Presentation.Intro
         public DialogueLine CurrentLine => CurrentScene.Lines[_currentLineIndex];
         public bool IsFinished => _currentSceneIndex >= _scenes.Count;
 
-        public IntroManager(ILocalizationService localization)
+        public IntroManager(ILocalizationService localization, string playerName = "Arin")
         {
             if (localization == null) throw new ArgumentNullException(nameof(localization));
+            if (string.IsNullOrWhiteSpace(playerName))
+                throw new ArgumentException("Player name cannot be empty.", nameof(playerName));
+
             _scenes = IntroData.CreateAllScenes(localization);
+            foreach (DialogueScene scene in _scenes)
+            {
+                foreach (DialogueLine line in scene.Lines)
+                    line.PlayerName = playerName.Trim();
+            }
             _currentSceneIndex = 0;
             _currentLineIndex = 0;
         }

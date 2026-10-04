@@ -7,18 +7,21 @@ namespace ElementalSpirit.Domain.Currency
         public int Gold { get; private set; }
         public int SpiritShards { get; private set; }
         public int Crystals { get; private set; }
+        public int TotalGoldEarned { get; private set; }
 
         public PlayerWallet(int gold = 0, int spiritShards = 0, int crystals = 0)
         {
-            Gold = gold;
-            SpiritShards = spiritShards;
-            Crystals = crystals;
+            Gold = Math.Max(0, gold);
+            SpiritShards = Math.Max(0, spiritShards);
+            Crystals = Math.Max(0, crystals);
+            TotalGoldEarned = Gold;
         }
 
         public void AddGold(int amount)
         {
             if (amount <= 0) return;
             Gold += amount;
+            TotalGoldEarned += amount;
         }
 
         public void AddSpiritShards(int amount)
@@ -54,11 +57,12 @@ namespace ElementalSpirit.Domain.Currency
             return true;
         }
 
-        public void LoadFrom(int gold, int spiritShards, int crystals)
+        public void LoadFrom(int gold, int spiritShards, int crystals, int? totalGoldEarned = null)
         {
             Gold = Math.Max(0, gold);
             SpiritShards = Math.Max(0, spiritShards);
             Crystals = Math.Max(0, crystals);
+            TotalGoldEarned = Math.Max(Gold, totalGoldEarned ?? Gold);
         }
     }
 }

@@ -8,8 +8,6 @@ namespace ElementalSpirit.Domain.Inventory
         private readonly List<Equipment.Equipment> _items = new();
         private readonly Dictionary<EquipmentSlot, Equipment.Equipment?> _equipped = new()
         {
-            { EquipmentSlot.Weapon, null },
-            { EquipmentSlot.Armor, null },
             { EquipmentSlot.Accessory, null }
         };
 

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using ElementalSpirit.Domain.SaveData;
@@ -20,49 +19,46 @@ namespace ElementalSpirit.Services
 
         public static GameSaveData? Load()
         {
+            if (!File.Exists(SaveFilePath))
+                return null;
+
             try
             {
-                if (!File.Exists(SaveFilePath))
-                    return null;
-
                 string json = File.ReadAllText(SaveFilePath);
-                return JsonSerializer.Deserialize<GameSaveData>(json, SerializerOptions);
+                GameSaveData? data = JsonSerializer.Deserialize<GameSaveData>(json, SerializerOptions);
+                if (data == null ||
+                    data.OwnedEquipmentIds == null ||
+                    data.ClearedStages == null ||
+                    data.Spirits == null)
+                {
+                    throw new InvalidDataException("Saved game file contains invalid data.");
+                }
+
+                return data;
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                Debug.WriteLine($"[GameSaveFileStore] Load failed: {ex}");
-                return null;
+                throw new InvalidDataException("Saved game file contains invalid JSON.", ex);
             }
         }
 
         public static void Save(GameSaveData data)
         {
-            try
-            {
-                string? dir = Path.GetDirectoryName(SaveFilePath);
-                if (dir != null)
-                    Directory.CreateDirectory(dir);
+            ArgumentNullException.ThrowIfNull(data);
 
-                string json = JsonSerializer.Serialize(data, SerializerOptions);
-                File.WriteAllText(SaveFilePath, json);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[GameSaveFileStore] Save failed: {ex}");
-            }
+            string? dir = Path.GetDirectoryName(SaveFilePath);
+            if (dir == null)
+                throw new IOException("Could not determine the save-game directory.");
+
+            Directory.CreateDirectory(dir);
+            string json = JsonSerializer.Serialize(data, SerializerOptions);
+            File.WriteAllText(SaveFilePath, json);
         }
 
         public static void Delete()
         {
-            try
-            {
-                if (File.Exists(SaveFilePath))
-                    File.Delete(SaveFilePath);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[GameSaveFileStore] Delete failed: {ex}");
-            }
+            if (File.Exists(SaveFilePath))
+                File.Delete(SaveFilePath);
         }
     }
 }

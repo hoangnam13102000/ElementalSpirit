@@ -22,6 +22,8 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         private readonly Label _lblSfx;              
         private readonly CheckBox _chkSfx;
         private readonly Label _lblFullscreen;
+        private readonly CheckBox _chkFullscreen;
+        private readonly Action<bool>? _onFullscreenChanged;
         private readonly Label _lblSaveGame;
         private readonly Button _btnSaveGame;
         private readonly Button _btnSave;
@@ -31,9 +33,12 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         public SettingsForm(
             ILocalizationService localization,
             ISaveGameService saveGameService,
-            GameManager? activeGame = null)
+            GameManager? activeGame = null,
+            Action? onGameSaved = null,
+            Action<bool>? onFullscreenChanged = null)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _onFullscreenChanged = onFullscreenChanged;
             ClientSize = new Size(420, 485);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
@@ -80,7 +85,19 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _chkSfx.CheckedChanged += (s, e) =>
                 Services.AudioManager.Instance.SfxEnabled = _chkSfx.Checked;
 
-            _lblFullscreen = CreateLabel(225);   
+            _lblFullscreen = CreateLabel(225);
+            _chkFullscreen = new CheckBox
+            {
+                Location = new Point(230, 224),
+                Checked = Services.FullscreenPreferenceStore.Load(),
+                ForeColor = Color.FromArgb(230, 220, 255)
+            };
+            _chkFullscreen.CheckedChanged += (_, _) =>
+            {
+                Services.FullscreenPreferenceStore.Save(_chkFullscreen.Checked);
+                _onFullscreenChanged?.Invoke(_chkFullscreen.Checked);
+                ApplyFullscreenTranslation(key => _localization.Translate(key));
+            };
 
             _lblSaveGame = CreateLabel(267);    
 
@@ -100,7 +117,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             Controls.AddRange(new Control[]
             {
                 _lblTitle, _lblLanguage, _cmbLanguage,
-                 _lblResolution, _lblMusic, _chkMusic, _lblSfx, _chkSfx, _lblFullscreen,
+                 _lblResolution, _lblMusic, _chkMusic, _lblSfx, _chkSfx, _lblFullscreen, _chkFullscreen,
                 _lblSaveGame, _btnSaveGame,
                 _btnSave, _btnCancel, _btnExitGame
             });
@@ -109,7 +126,8 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                 this,
                 _localization,
                 saveGameService ?? throw new ArgumentNullException(nameof(saveGameService)),
-                activeGame);
+                activeGame,
+                onGameSaved);
         }
 
         [Browsable(false)]
@@ -146,7 +164,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _lblResolution.Text = translate("settings.resolution.label") + " 1280x720";
             _lblMusic.Text = "Nhạc nền:";
             _lblSfx.Text = "Âm thanh nhân vật:";
-            _lblFullscreen.Text = translate("settings.fullscreen.label") + " " + translate("settings.value.off");
+            ApplyFullscreenTranslation(translate);
             _lblSaveGame.Text = translate("settings.savegame.label");
             _btnSaveGame.Text = translate("settings.button.savegame");
             _btnSave.Text = translate("settings.button.save");
@@ -187,6 +205,12 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         }
 
         public void CloseView() => Close();
+
+        private void ApplyFullscreenTranslation(Func<string, string> translate)
+        {
+            _lblFullscreen.Text = translate("settings.fullscreen.label") + " " +
+                                  translate(_chkFullscreen.Checked ? "settings.value.on" : "settings.value.off");
+        }
 
         private static Label CreateLabel(int y, Font? font = null) => new()
         {

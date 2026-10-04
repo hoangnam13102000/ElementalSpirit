@@ -16,6 +16,7 @@ namespace ElementalSpirit.Domain.Player
 
     public class Player : Character, IEnemyTarget, IProjectileLoadout
     {
+        public string Name { get; private set; } = "Arin";
         public float VelocityX { get; private set; }
         public float VelocityY { get; private set; }
         public float WalkSpeed { get; private set; } = PlayerConstants.WalkSpeed;
@@ -74,6 +75,14 @@ namespace ElementalSpirit.Domain.Player
             IsGrounded = false;
             MovementState = PlayerMovementState.Idle;
             CurrentMoveSpeed = WalkSpeed;
+        }
+
+        public void SetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Player name cannot be empty.", nameof(name));
+
+            Name = name.Trim();
         }
 
         public void MoveHorizontal(float dirX, float deltaTime)
@@ -301,7 +310,12 @@ namespace ElementalSpirit.Domain.Player
                     System.IO.File.Delete(savePath);
                 }
             }
-            catch { /* Ignore */ }
+            catch (Exception ex) when (
+                ex is System.IO.IOException ||
+                ex is UnauthorizedAccessException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Player] Could not delete save after death: {ex}");
+            }
 
             IsDead = true;
             IsAttacking = false;
