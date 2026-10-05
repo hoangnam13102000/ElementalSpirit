@@ -110,20 +110,22 @@ namespace ElementalSpirit.Presentation.Forms
         {
             float verticalScale = ClientSize.Height / 720f;
             bool hasSave = _saveGameService.HasSavedGame;
-            _btnContinue.Visible = hasSave;
+
+            _btnContinue.Enabled = hasSave;
+            _btnContinue.Visible = true;
 
             int buttonHeight = Math.Clamp((int)(58 * verticalScale), 42, 58);
             int spacing = buttonHeight + Math.Max(8, (int)(12 * verticalScale));
             int buttonWidth = Math.Min(400, ClientSize.Width - 48);
             int left = (ClientSize.Width - buttonWidth) / 2;
             var buttons = new[] { _btnContinue, _btnStart, _btnLeaderboard, _btnGuide, _btnSettings, _btnExit };
-            var visibleButtons = buttons.Where(button => button.Visible).ToArray();
-            int totalHeight = visibleButtons.Length * buttonHeight + (visibleButtons.Length - 1) * (spacing - buttonHeight);
-            int y = Math.Max((int)(150 * verticalScale), (ClientSize.Height - totalHeight) / 2 + (int)(36 * verticalScale));
+            int totalHeight = buttons.Length * buttonHeight + (buttons.Length - 1) * (spacing - buttonHeight);
+            int y = Math.Max((int)(120 * verticalScale), (ClientSize.Height - totalHeight) / 2 + (int)(18 * verticalScale));
 
-            foreach (Button button in visibleButtons)
+            foreach (Button button in buttons)
             {
                 button.SetBounds(left, y, buttonWidth, buttonHeight);
+                button.Visible = true;
                 y += spacing;
             }
         }

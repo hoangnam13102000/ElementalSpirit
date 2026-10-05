@@ -676,7 +676,6 @@ namespace ElementalSpirit.Presentation.Rendering
             var w = _gameManager.Wallet;
             const float pillW = 118f;
             const float pillH = 30f;
-            const float gap = 6f;
             float startX = clientSize.Width - pillW - 14f;
             float y = 14f;
 
