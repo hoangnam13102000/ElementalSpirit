@@ -143,6 +143,25 @@
             _bossDefeatedNotified = false;
         }
 
+        public void RestoreBossFight(GorgonBoss boss)
+        {
+            RegisterBoss(boss);
+            _currentScene = null;
+            _currentLineIndex = 0;
+            HideSpeechBubbles();
+            TransitionTo(BossEncounterState.BossFight);
+        }
+
+        public void ResetEncounter()
+        {
+            HideSpeechBubbles();
+            _currentBoss = null;
+            _bossDefeatedNotified = false;
+            _currentScene = null;
+            _currentLineIndex = 0;
+            TransitionTo(BossEncounterState.NotStarted);
+        }
+
         private void StartScene(BossDialogueScene scene)
         {
             _currentScene = scene ?? throw new ArgumentNullException(nameof(scene));

@@ -12,6 +12,7 @@ namespace ElementalSpirit.GameEngine
         private readonly SkillContext _context;
 
         public IReadOnlyList<ISkill> Skills => _skills;
+        public IReadOnlyList<string> UnlockedSkillIds => _skills.Select(skill => skill.Id).ToArray();
         public SkillAnimationState CurrentAnimationState =>
             _skills.FirstOrDefault(skill => skill.IsActive)?.AnimationState
             ?? SkillAnimationState.None;
@@ -25,9 +26,21 @@ namespace ElementalSpirit.GameEngine
             _context = new SkillContext(projectileLoadout);
             _skills = new List<ISkill>
             {
-                new SlashSkill(SlashVariant.Wind(), projectileLoadout),
-                new WaterfallSkill()
+                new SlashSkill(SlashVariant.Wind(), projectileLoadout)
             };
+        }
+
+        public bool Unlock(string skillId)
+        {
+            if (string.Equals(skillId, "waterfall", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_skills.Any(skill => skill.Id == "waterfall")) return false;
+                _skills.Add(new WaterfallSkill());
+                return true;
+            }
+
+            return _skills.Any(skill => string.Equals(
+                skill.Id, skillId, StringComparison.OrdinalIgnoreCase));
         }
 
         public bool TryActivate(string skillId)

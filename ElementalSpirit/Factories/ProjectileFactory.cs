@@ -11,14 +11,13 @@ namespace ElementalSpirit.Factories
             int damage,
             ProjectileType type = ProjectileType.Basic)
         {
-            float speed = type == ProjectileType.Slash ? 520f * direction : 450f * direction;
+            float speed = type switch
+            {
+                ProjectileType.Slash => 520f * direction,
+                ProjectileType.Fireball => 380f * direction,
+                _ => 450f * direction
+            };
             return new PlayerProjectile(x, y, speed, damage, type);
-        }
-
-        public static PlayerProjectile CreateFireball(float x, float y, float direction, int damage)
-        {
-            float speed = 380f * direction;
-            return new PlayerProjectile(x, y, speed, damage, ProjectileType.Fireball);
         }
     }
 }

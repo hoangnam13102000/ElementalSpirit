@@ -3,12 +3,6 @@ using System.Collections.Generic;
 
 namespace ElementalSpirit.Domain.SaveData
 {
-    public class SpiritSaveData
-    {
-        public string Id { get; set; } = string.Empty;
-        public int Level { get; set; }
-    }
-
     public class GameSaveData
     {
         public Guid RunId { get; set; }
@@ -18,15 +12,12 @@ namespace ElementalSpirit.Domain.SaveData
         public int PlayerHp { get; set; }
         public int Gold { get; set; }
         public int TotalGoldEarned { get; set; }
-        public int SpiritShards { get; set; }
-        public int Crystals { get; set; }
-        public List<string> OwnedEquipmentIds { get; set; } = new();
         public List<int> ClearedStages { get; set; } = new();
-        public string? EquippedAccessoryId { get; set; }
+        public List<string> UnlockedSkillIds { get; set; } = new();
+        public bool BossEncounterStarted { get; set; }
+        public bool BossEncounterCompleted { get; set; }
+        public int BossHealth { get; set; }
         public bool HasDoubleJumpBoots { get; set; }
-        public List<SpiritSaveData> Spirits { get; set; } = new();
-        public string? EquippedSpiritSlot1Id { get; set; }
-        public string? EquippedSpiritSlot2Id { get; set; }
         public DateTime SavedAtUtc { get; set; }
         public int RemainingEnemyCount { get; set; } = -1; 
     }

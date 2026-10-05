@@ -28,9 +28,7 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly Image[]? _fireballFrames;
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
-        private bool _fireCastFrameTriggered;
         private const int AttackHitFrameIndex = 3;
-        private const int FireCastFrameIndex = 5;
 
         public GameForm(GameManager gameManager, ILocalizationService localization, ISaveGameService saveGameService)
         {
@@ -129,7 +127,6 @@ namespace ElementalSpirit.Presentation.Forms
             if (desired != _lastAnimState)
             {
                 _attackHitFrameTriggered = false;
-                _fireCastFrameTriggered = false;
                 _lastAnimState = desired;
             }
             _playerAnimController.Play(desired);
@@ -144,14 +141,6 @@ namespace ElementalSpirit.Presentation.Forms
                 player.NotifyAttackHitFrame();
             }
 
-            if (desired == PlayerAnimationState.Fire &&
-                !player.IsCastingSkill &&
-                currentFrame >= FireCastFrameIndex && !_fireCastFrameTriggered)
-            {
-                _fireCastFrameTriggered = true;
-                player.NotifyFireCastFrame();
-            }
-
             if (_playerAnimController.IsCurrentCompleted)
             {
                 switch (desired)
@@ -161,10 +150,7 @@ namespace ElementalSpirit.Presentation.Forms
                     case PlayerAnimationState.RunAttack:
                         player.NotifyAttackAnimationEnded(); break;
                     case PlayerAnimationState.Fire:
-                        if (player.IsCastingSkill)
-                            player.NotifySkillAnimationEnded();
-                        else
-                            player.NotifyFireAnimationEnded();
+                        player.NotifySkillAnimationEnded();
                         break;
                     case PlayerAnimationState.Hurt:
                         player.NotifyHurtAnimationEnded(); break;
@@ -178,7 +164,6 @@ namespace ElementalSpirit.Presentation.Forms
             if (player.IsDead) return PlayerAnimationState.Death;
             if (player.IsHurt) return PlayerAnimationState.Hurt;
             if (player.IsCastingSkill) return PlayerAnimationState.Fire;
-            if (player.IsFiring) return PlayerAnimationState.Fire;
             if (player.IsAttacking)
             {
                 if (!player.IsGrounded) return PlayerAnimationState.Attack;
@@ -196,8 +181,6 @@ namespace ElementalSpirit.Presentation.Forms
         }
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.B) { OpenShop(); return; }
-            if (e.KeyCode == Keys.U) { OpenUpgrade(); return; }
             if (e.KeyCode == Keys.P) { OpenSettings(); return; }
             _gameManager.HandleKeyDown(e.KeyCode);
             if (e.KeyCode == Keys.Escape) Close();
@@ -222,27 +205,6 @@ namespace ElementalSpirit.Presentation.Forms
                 return;
             }
             ResumeGame();
-        }
-        private void OpenShop()
-        {
-            PauseGame();
-            try
-            {
-                using var shop = new ShopForm(_gameManager.Wallet, _gameManager.Inventory,
-                    _gameManager.Shop, onInventoryChanged: () => _gameManager.RefreshPlayerEquipmentStats());
-                shop.ShowDialog(this);
-            }
-            finally { ResumeGame(); }
-        }
-        private void OpenUpgrade()
-        {
-            PauseGame();
-            try
-            {
-                using var upgrade = new UpgradeForm(_gameManager.Spirits, _gameManager.Wallet, _gameManager.Upgrades, _localization);
-                upgrade.ShowDialog(this);
-            }
-            finally { ResumeGame(); }
         }
         private void PauseGame()
         {

@@ -27,9 +27,8 @@ namespace ElementalSpirit.Services
                 string json = File.ReadAllText(SaveFilePath);
                 GameSaveData? data = JsonSerializer.Deserialize<GameSaveData>(json, SerializerOptions);
                 if (data == null ||
-                    data.OwnedEquipmentIds == null ||
                     data.ClearedStages == null ||
-                    data.Spirits == null)
+                    data.UnlockedSkillIds == null)
                 {
                     throw new InvalidDataException("Saved game file contains invalid data.");
                 }

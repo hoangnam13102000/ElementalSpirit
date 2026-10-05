@@ -1,11 +1,8 @@
-﻿using ElementalSpirit.Domain.Loot;
-using ElementalSpirit.Data;
+using ElementalSpirit.Domain.Loot;
 using ElementalSpirit.Domain.BossEncounter;
 using ElementalSpirit.Domain.Currency;
 using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Enemy.NormalEnemy;
-using ElementalSpirit.Domain.Equipment;
-using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.Domain.SaveData;
@@ -45,12 +42,8 @@ namespace ElementalSpirit.GameEngine
         public ICollisionManager Collision { get; }
         public ISpawnManager Spawn { get; }
         public IWaveManager Waves { get; }
-        public ISpiritManager Spirits { get; }
         public ISkillManager Skills { get; }
         public PlayerWallet Wallet { get; }
-        public Inventory Inventory { get; }
-        public IUpgradeService Upgrades { get; }
-        public IShopService Shop { get; }
         public IBossEncounterManager BossEncounter { get; }
         public IReadOnlyList<LootDrop> Loot => _loot;
         public IPortalManager Portals { get; }
@@ -78,10 +71,11 @@ namespace ElementalSpirit.GameEngine
         private float _statusMessageTimer;
         private bool _jumpKeyWasPressed;
         private bool _attackKeyWasPressed;
-        private bool _fireKeyWasPressed;
 
         // Flag đánh dấu stage boss cuối đã kích hoạt encounter
         private bool _bossEncounterTriggered;
+        private bool _resumeBossFight;
+        private int _resumeBossHealth;
         private readonly List<LootDrop> _loot = new();
         private readonly Random _random = new();
         private const double BootsDropChance = 0.15;
@@ -129,13 +123,9 @@ namespace ElementalSpirit.GameEngine
             ICollisionManager collision,
             ISpawnManager spawn,
             IWaveManager waves,
-            ISpiritManager spirits,
             Player player,
             ISkillManager skills,
-            IShopService shop,
-            IUpgradeService upgrades,
             PlayerWallet wallet,
-            Inventory inventory,
             IBossEncounterManager bossEncounter,
             IPortalManager portals)
         {
@@ -145,21 +135,14 @@ namespace ElementalSpirit.GameEngine
             Collision = collision ?? throw new ArgumentNullException(nameof(collision));
             Spawn = spawn ?? throw new ArgumentNullException(nameof(spawn));
             Waves = waves ?? throw new ArgumentNullException(nameof(waves));
-            Spirits = spirits ?? throw new ArgumentNullException(nameof(spirits));
             Player = player ?? throw new ArgumentNullException(nameof(player));
             Skills = skills ?? throw new ArgumentNullException(nameof(skills));
-            Shop = shop ?? throw new ArgumentNullException(nameof(shop));
-            Upgrades = upgrades ?? throw new ArgumentNullException(nameof(upgrades));
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
-            Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             BossEncounter = bossEncounter ?? throw new ArgumentNullException(nameof(bossEncounter));
             BossEncounter.PlayerName = Player.Name;
             Portals = portals ?? throw new ArgumentNullException(nameof(portals));
 
-            RefreshPlayerEquipmentStats();
-
             Player.OnAttackHitFrame += OnPlayerAttackHitFrame;
-            Player.OnFireCastFrame += OnPlayerFireCastFrame;
             Player.OnDeath += OnPlayerDeath;
 
             _stageSequence = StageData.CreateEarthForestCampaign();
@@ -169,6 +152,7 @@ namespace ElementalSpirit.GameEngine
 
             // Đăng ký lắng nghe sự kiện boss encounter
             BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
+            BossEncounter.OnSpiritRescueStarted += OnTerraRescueStarted;
             BossEncounter.OnBossEncounterCompleted += OnBossEncounterCompleted;
 
             // Đăng ký lắng nghe sự kiện cổng di chuyển
@@ -305,7 +289,18 @@ namespace ElementalSpirit.GameEngine
         {
             if (targetStageIndex < 0 || targetStageIndex >= _stageSequence.Count) return;
 
+            int previousStageIndex = _stageIndex;
+            bool wasBossStage = previousStageIndex == _stageSequence.Count - 1;
+            bool remainsOnBossStage = targetStageIndex == _stageSequence.Count - 1;
+            if (wasBossStage && !remainsOnBossStage &&
+                BossEncounter.CurrentState != BossEncounterState.Completed)
+            {
+                BossEncounter.ResetEncounter();
+                _bossEncounterTriggered = false;
+            }
+
             _stageIndex = targetStageIndex;
+            IsStageCompleted = false;
             RefreshGroundY();
             var targetStage = _stageSequence[_stageIndex];
 
@@ -381,6 +376,25 @@ namespace ElementalSpirit.GameEngine
 
             if (Player.Y + Player.Height > GroundY)
                 Player.ResolveGroundCollision(GroundY);
+
+            ResumeBossFightIfPending();
+        }
+
+        private void ResumeBossFightIfPending()
+        {
+            if (!_resumeBossFight || PlayArea.Width <= 0f || PlayArea.Height <= 0f)
+                return;
+
+            var boss = Spawn.SpawnSingle(
+                EnemyType.Gorgon,
+                PlayArea.Right - 250f,
+                GroundY - 170f) as GorgonBoss
+                ?? throw new InvalidOperationException("The Gorgon boss factory returned an unexpected enemy.");
+
+            boss.RestoreHealth(_resumeBossHealth);
+            BossEncounter.RestoreBossFight(boss);
+            _bossEncounterTriggered = true;
+            _resumeBossFight = false;
         }
 
         /// <summary>
@@ -527,13 +541,13 @@ namespace ElementalSpirit.GameEngine
                                      Input.IsKeyDown(Keys.LShiftKey) ||
                                      Input.IsKeyDown(Keys.RShiftKey));
 
-                if (!Player.IsAttacking && !Player.IsFiring && !Player.IsHurt && !Player.IsDead)
+                if (!Player.IsAttacking && !Player.IsHurt && !Player.IsDead)
                 {
                     Player.MoveHorizontal(dirX, deltaTime);
                 }
                 else
                 {
-                    if (Player.IsAttacking || Player.IsFiring)
+                    if (Player.IsAttacking)
                         Player.ApplyVelocityDamping(0.85f);
                     else if (Player.IsHurt)
                         Player.ApplyVelocityDamping(0.9f);
@@ -548,10 +562,6 @@ namespace ElementalSpirit.GameEngine
                 if (attackKeyNow && !_attackKeyWasPressed) TryStartAttack();
                 _attackKeyWasPressed = attackKeyNow;
 
-                bool fireKeyNow = Input.IsKeyDown(Keys.F) || Input.IsKeyDown(Keys.K);
-                if (fireKeyNow && !_fireKeyWasPressed) TryStartFire();
-                _fireKeyWasPressed = fireKeyNow;
-
                 float previousFootY = Player.Y + Player.Height;
                 float previousX = Player.X;
                 Player.Update(deltaTime);
@@ -561,7 +571,6 @@ namespace ElementalSpirit.GameEngine
                 HandlePlayerFallRecovery();
                 CheckLootPickup();
 
-                Spirits.Update(deltaTime, Player);
                 Skills.Update(deltaTime);
                 Projectiles.Update(deltaTime);
 
@@ -610,7 +619,6 @@ namespace ElementalSpirit.GameEngine
                 // Không để phím dùng để kết thúc thoại tự động kích hoạt kỹ năng/đòn đánh.
                 _jumpKeyWasPressed = Input.IsJumpPressed();
                 _attackKeyWasPressed = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
-                _fireKeyWasPressed = Input.IsKeyDown(Keys.F) || Input.IsKeyDown(Keys.K);
             }
 
             // Cập nhật BossEncounterManager
@@ -638,34 +646,28 @@ namespace ElementalSpirit.GameEngine
             Player.ResetAttackCooldown();
         }
 
-        private void TryStartFire()
-        {
-            if (!Player.CanFire()) return;
-            Player.StartFire();
-            Player.ResetAttackCooldown();
-        }
-
         private void OnPlayerAttackHitFrame() => SpawnPlayerProjectile();
-        private void OnPlayerFireCastFrame() => SpawnFireballProjectile();
         private void OnPlayerDeath()
         {
-            Player.ClearDoubleJumpBoots();
-            Inventory.Remove("acc_swift_boots");
-            RefreshPlayerEquipmentStats();
             Services.AudioManager.Instance.PlaySfx("lose.mp3");
         }
         private void OnEnemyDied(Domain.Enemy.Enemy enemy) 
         { 
             float dropX = enemy.X + enemy.Width / 2f - 9f; 
             float dropY = enemy.Y + enemy.Height - 18f; 
-            if (enemy is GorgonBoss) { _loot.Add(LootDrop.CreateGold(dropX, dropY, 100));
-            } else {
+            if (enemy is GorgonBoss)
+            {
+                _loot.Add(LootDrop.CreateGold(dropX, dropY, 100));
+            }
+            else
+            {
                 _loot.Add(LootDrop.CreateGold(dropX, dropY, 10));
                 double dropRoll = _random.NextDouble();
                 if (dropRoll < BootsDropChance)
                 {
-                    _loot.Add(LootDrop.CreateEquipment(dropX + 16f, dropY, "acc_swift_boots"));
-                } else if (dropRoll < BootsDropChance + HealthPotionDropChance)
+                    _loot.Add(LootDrop.CreateBoots(dropX + 16f, dropY));
+                }
+                else if (dropRoll < BootsDropChance + HealthPotionDropChance)
                 {
                     _loot.Add(LootDrop.CreateHealthPotion(dropX + 16f, dropY));
                 }
@@ -686,31 +688,11 @@ namespace ElementalSpirit.GameEngine
             {
                 Services.AudioManager.Instance.PlaySfx("slash.mp3");
             }
-            else if (Player.CurrentProjectileType == ProjectileType.Basic)
+            else if (Player.CurrentProjectileType is ProjectileType.Basic or ProjectileType.Fireball)
             {
                 Services.AudioManager.Instance.PlaySfx("shot.mp3");
             }
 
-            // ✅ WindBarrage xử lý riêng, không liên quan gì đến việc chọn âm thanh
-            if (Player.ActiveWindBarrage && Player.ExtraProjectiles > 0)
-            {
-                float spread = 18f;
-                for (int i = 0; i < Player.ExtraProjectiles; i++)
-                {
-                    int pair = i / 2 + 1;
-                    float offsetY = (i % 2 == 0) ? -spread * pair : spread * pair;
-                    Projectiles.Add(ProjectileFactory.CreatePlayerProjectile(spawnX, spawnY + offsetY, dir, Player.Damage));
-                }
-            }
-        }
-
-        private void SpawnFireballProjectile()
-        {
-            float dir = Player.Facing == FacingDirection.Right ? 1f : -1f;
-            float spawnX = Player.X + Player.Width / 2f + dir * 20f;
-            float spawnY = Player.Y + Player.Height / 2f - 8f;
-            int damage = Player.ActiveFireBoost ? (int)(Player.Damage * 1.5f) : Player.Damage;
-            Projectiles.Add(ProjectileFactory.CreateFireball(spawnX, spawnY, dir, damage));
         }
 
         private void CheckPlayerEnemyCollision()
@@ -749,23 +731,16 @@ namespace ElementalSpirit.GameEngine
             }
         }
 
-        public void RefreshPlayerEquipmentStats()
-        {
-            Player.ApplyEquipmentBonuses(
-                Inventory.TotalBonusDamage,
-                Inventory.TotalBonusMaxHp,
-                Inventory.TotalBonusDefense);
-        }
-
         /// <summary>
-        /// Chụp lại toàn bộ tiến trình hiện tại (khu vực, HP, ví, trang bị, tinh linh)
+        /// Chụp lại toàn bộ tiến trình hiện tại (khu vực, HP, ví và kỹ năng đã mở khóa)
         /// thành 1 snapshot dữ liệu thuần (GameSaveData) để ISaveGameService ghi ra file.
         /// Chỉ ĐỌC state hiện có qua các property public, không thay đổi gì trong lúc chơi.
         /// </summary>
         public GameSaveData CaptureSaveData()
         {
             if (Enemies.Enemies.Count == 0 &&
-       (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted))
+       (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted) &&
+       _stageIndex != _stageSequence.Count - 1)
             {
                 if (!_clearedStages.Contains(_stageIndex))
                 {
@@ -782,24 +757,20 @@ namespace ElementalSpirit.GameEngine
                 PlayerHp = Player.CurrentHp,
                 Gold = Wallet.Gold,
                 TotalGoldEarned = Wallet.TotalGoldEarned,
-                SpiritShards = Wallet.SpiritShards,
-                Crystals = Wallet.Crystals,
                 SavedAtUtc = DateTime.UtcNow,
-                RemainingEnemyCount = Enemies.Enemies.Count
+                RemainingEnemyCount = Enemies.Enemies.Count,
+                BossEncounterStarted = BossEncounter.CurrentState is
+                    BossEncounterState.PreBossDialogue or BossEncounterState.BossFight
+                    && BossEncounter.CurrentBoss is { IsAlive: true },
+                BossEncounterCompleted = BossEncounter.CurrentState == BossEncounterState.Completed,
+                BossHealth = BossEncounter.CurrentBoss is { IsAlive: true } boss
+                    ? boss.Health
+                    : 0,
+                HasDoubleJumpBoots = Player.HasDoubleJumpBoots
             };
 
-            foreach (var item in Inventory.Items)
-                data.OwnedEquipmentIds.Add(item.Id);
             data.ClearedStages = _clearedStages.ToList();
-
-            data.EquippedAccessoryId = Inventory.GetEquipped(EquipmentSlot.Accessory)?.Id;
-            data.HasDoubleJumpBoots = Player.HasDoubleJumpBoots;
-
-            foreach (var spirit in Spirits.Unlocked)
-                data.Spirits.Add(new SpiritSaveData { Id = spirit.Id, Level = spirit.Level });
-
-            data.EquippedSpiritSlot1Id = Spirits.Equipped.Count > 0 ? Spirits.Equipped[0]?.Id : null;
-            data.EquippedSpiritSlot2Id = Spirits.Equipped.Count > 1 ? Spirits.Equipped[1]?.Id : null;
+            data.UnlockedSkillIds.AddRange(Skills.UnlockedSkillIds);
 
             return data;
         }
@@ -812,9 +783,14 @@ namespace ElementalSpirit.GameEngine
             SetPlayerName(string.IsNullOrWhiteSpace(data.PlayerName) ? "Arin" : data.PlayerName);
             int targetIndex = Math.Clamp(data.StageIndex, 0, _stageSequence.Count - 1);
             _stageIndex = targetIndex;
+            _resumeBossFight = false;
+            _resumeBossHealth = 0;
             _clearedStages.Clear(); 
             foreach (var idx in data.ClearedStages) 
-            _clearedStages.Add(idx);
+            {
+                if (idx >= 0 && idx < _stageSequence.Count - 1)
+                    _clearedStages.Add(idx);
+            }
             RefreshGroundY();
 
             TransitionPhase = StageTransitionPhase.None;
@@ -824,54 +800,40 @@ namespace ElementalSpirit.GameEngine
             Projectiles.Clear();
             Waves.LoadStage(_stageSequence[_stageIndex]);
 
-            if (data.RemainingEnemyCount >= 0) 
-            { 
-                Enemies.Clear(); if (data.RemainingEnemyCount == 0)
-                { 
-                    Waves.RestoreState(WaveState.StageCompleted); 
-                } else {
-                    Spawn.Spawn(new SpawnData(EnemyType.Slime, data.RemainingEnemyCount, 0.1f));
-                    Waves.RestoreState(WaveState.WaitingForClear); 
-                }
-            }
+            bool isBossStage = _stageIndex == _stageSequence.Count - 1;
+            bool stageCleared = isBossStage && data.BossEncounterCompleted;
+            bool shouldResumeBoss = isBossStage && !stageCleared &&
+                (data.BossEncounterStarted || data.RemainingEnemyCount > 0);
 
-            foreach (var itemId in data.OwnedEquipmentIds)
+            _bossEncounterTriggered = isBossStage && (stageCleared || shouldResumeBoss);
+            IsStageCompleted = stageCleared;
+            if (shouldResumeBoss)
             {
-                var template = EquipmentCatalog.Find(itemId);
-                if (template != null)
-                    Inventory.Add(template.Clone());
+                _resumeBossFight = true;
+                _resumeBossHealth = data.BossHealth > 0 ? data.BossHealth : 400;
+                _bossEncounterTriggered = true;
+                Waves.RestoreState(WaveState.WaitingForClear);
             }
-
-            if (data.EquippedAccessoryId != null) Inventory.TryEquip(data.EquippedAccessoryId);
-            if (data.HasDoubleJumpBoots) Player.GrantDoubleJumpBoots();
-
-            RefreshPlayerEquipmentStats();
-            Wallet.LoadFrom(data.Gold, data.SpiritShards, data.Crystals, data.TotalGoldEarned);
-
-            foreach (var savedSpirit in data.Spirits)
+            else if (data.RemainingEnemyCount >= 0)
             {
-                var spirit = Spirits.Unlocked.FirstOrDefault(s => s.Id == savedSpirit.Id);
-                if (spirit == null) continue;
-
-                while (spirit.Level < savedSpirit.Level)
+                Enemies.Clear();
+                if (data.RemainingEnemyCount == 0)
                 {
-                    int levelBefore = spirit.Level;
-                    spirit.Upgrade();
-                    if (spirit.Level == levelBefore) break;
+                    Waves.RestoreState(isBossStage && !stageCleared
+                        ? WaveState.WaitingToStart
+                        : WaveState.StageCompleted);
+                }
+                else
+                {
+                    Spawn.Spawn(new SpawnData(EnemyType.Slime, data.RemainingEnemyCount, 0.1f));
+                    Waves.RestoreState(WaveState.WaitingForClear);
                 }
             }
 
-            if (data.EquippedSpiritSlot1Id != null)
-            {
-                var slot1 = Spirits.Unlocked.FirstOrDefault(s => s.Id == data.EquippedSpiritSlot1Id);
-                if (slot1 != null) Spirits.Equip(0, slot1);
-            }
-
-            if (data.EquippedSpiritSlot2Id != null)
-            {
-                var slot2 = Spirits.Unlocked.FirstOrDefault(s => s.Id == data.EquippedSpiritSlot2Id);
-                if (slot2 != null) Spirits.Equip(1, slot2);
-            }
+            Wallet.LoadFrom(data.Gold, data.TotalGoldEarned);
+            foreach (string skillId in data.UnlockedSkillIds)
+                Skills.Unlock(skillId);
+            Player.RestoreDoubleJumpBoots(data.HasDoubleJumpBoots);
 
             Player.ResetPosition(PlayerConstants.DefaultStartX, PlayerConstants.DefaultStartY);
             Player.RestoreHp(data.PlayerHp);
@@ -933,7 +895,7 @@ namespace ElementalSpirit.GameEngine
 
 #if DEBUG
             if (key == Keys.N) Waves.ForceNextWave();
-            if (key == Keys.G) { Wallet.AddGold(100); Wallet.AddSpiritShards(10); SetStatus("+100 Gold, +10 Spirit Shards"); }
+            if (key == Keys.G) { Wallet.AddGold(100); SetStatus("+100 Gold"); }
 #endif
         }
 
@@ -1013,8 +975,14 @@ namespace ElementalSpirit.GameEngine
         private void OnBossEncounterCompleted()
         {
             IsStageCompleted = true;
+            _clearedStages.Add(_stageIndex);
             Services.AudioManager.Instance.PlaySfx("win.mp3");
             FinalBossDefeated?.Invoke();
+        }
+
+        private void OnTerraRescueStarted()
+        {
+            Skills.Unlock("waterfall");
         }
 
         private void TryTriggerBossEncounter()
@@ -1046,25 +1014,12 @@ namespace ElementalSpirit.GameEngine
                     Wallet.AddGold(loot.GoldAmount);
                     SetStatus($"+{loot.GoldAmount} vàng");
                     Services.AudioManager.Instance.PlaySfx("coin.flac");
-                } else if (loot.Type == LootType.Equipment && loot.EquipmentId != null) 
-                { 
-                    var template = Data.EquipmentCatalog.Find(loot.EquipmentId); 
-                    if (template != null) 
-                    {
-                        Inventory.Add(template.Clone());
-
-                        if (template.Id == "acc_swift_boots")
-                        {
-                            Player.GrantDoubleJumpBoots();
-                            SetStatus("Nhặt được: Đôi Giày Tốc Hành - Double Jump đã kích hoạt");
-                        }
-                        else
-                        {
-                            SetStatus($"Nhặt được: {template.Name}");
-                        }
-
-                        Services.AudioManager.Instance.PlaySfx("coin.flac");
-                    } 
+                }
+                else if (loot.Type == LootType.Boots)
+                {
+                    Player.GrantDoubleJumpBoots();
+                    SetStatus("Nhặt được giày: đã mở khóa nhảy đôi");
+                    Services.AudioManager.Instance.PlaySfx("coin.flac");
                 } else if (loot.Type == LootType.HealthPotion)
                 {
                     int healAmount = (int)Math.Ceiling(Player.MaxHp * loot.HealPercent / 100d);

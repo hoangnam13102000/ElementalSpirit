@@ -41,6 +41,15 @@ namespace ElementalSpirit.Domain.Enemy
 
         public void RestoreHorizontalPosition(float x) => X = x;
 
+        public void RestoreHealth(int health)
+        {
+            HP = Math.Clamp(health, 1, MaxHp);
+            IsDead = false;
+            IsDying = false;
+            IsDeathAnimationComplete = false;
+            IsHurt = false;
+        }
+
         protected void UpdateEffectTimers(float deltaTime)
         {
             if (IsHurt)

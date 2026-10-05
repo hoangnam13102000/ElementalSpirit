@@ -83,5 +83,11 @@
         /// Đăng ký boss hiện tại để theo dõi.
         /// </summary>
         void RegisterBoss(GorgonBoss boss);
+
+        /// <summary>Khôi phục trực tiếp trận chiến boss đã được lưu.</summary>
+        void RestoreBossFight(GorgonBoss boss);
+
+        /// <summary>Đặt lại encounter khi rời màn boss chưa hoàn thành.</summary>
+        void ResetEncounter();
     }
 }

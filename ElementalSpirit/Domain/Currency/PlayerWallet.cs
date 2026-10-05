@@ -5,15 +5,11 @@ namespace ElementalSpirit.Domain.Currency
     public class PlayerWallet
     {
         public int Gold { get; private set; }
-        public int SpiritShards { get; private set; }
-        public int Crystals { get; private set; }
         public int TotalGoldEarned { get; private set; }
 
-        public PlayerWallet(int gold = 0, int spiritShards = 0, int crystals = 0)
+        public PlayerWallet(int gold = 0)
         {
             Gold = Math.Max(0, gold);
-            SpiritShards = Math.Max(0, spiritShards);
-            Crystals = Math.Max(0, crystals);
             TotalGoldEarned = Gold;
         }
 
@@ -24,18 +20,6 @@ namespace ElementalSpirit.Domain.Currency
             TotalGoldEarned += amount;
         }
 
-        public void AddSpiritShards(int amount)
-        {
-            if (amount <= 0) return;
-            SpiritShards += amount;
-        }
-
-        public void AddCrystals(int amount)
-        {
-            if (amount <= 0) return;
-            Crystals += amount;
-        }
-
         public bool TrySpendGold(int amount)
         {
             if (amount <= 0 || Gold < amount) return false;
@@ -43,25 +27,9 @@ namespace ElementalSpirit.Domain.Currency
             return true;
         }
 
-        public bool TrySpendSpiritShards(int amount)
-        {
-            if (amount <= 0 || SpiritShards < amount) return false;
-            SpiritShards -= amount;
-            return true;
-        }
-
-        public bool TrySpendCrystals(int amount)
-        {
-            if (amount <= 0 || Crystals < amount) return false;
-            Crystals -= amount;
-            return true;
-        }
-
-        public void LoadFrom(int gold, int spiritShards, int crystals, int? totalGoldEarned = null)
+        public void LoadFrom(int gold, int? totalGoldEarned = null)
         {
             Gold = Math.Max(0, gold);
-            SpiritShards = Math.Max(0, spiritShards);
-            Crystals = Math.Max(0, crystals);
             TotalGoldEarned = Math.Max(Gold, totalGoldEarned ?? Gold);
         }
     }

@@ -125,7 +125,7 @@
         }
 
         /// <summary>
-        /// Tạo cảnh thoại giải cứu tinh linh - Terra trao quyền năng cho Arin.
+        /// Tạo cảnh thoại giải cứu Terra và mở khóa kỹ năng Waterfall.
         /// </summary>
         public static BossDialogueScene CreateSpiritRescueScene(ILocalizationService localization)
         {
@@ -145,7 +145,7 @@
 
                 BossDialogueLine.FromLocalization(
                     localization, BossDialogueSpeaker.OnScreenText,
-                    "", "boss.rescue.l4.caption"),
+                    "", "boss.rescue.waterfallUnlocked"),
 
                 BossDialogueLine.FromLocalization(
                     localization, BossDialogueSpeaker.Narrator,

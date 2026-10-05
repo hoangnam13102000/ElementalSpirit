@@ -33,35 +33,22 @@ namespace ElementalSpirit.Domain.Player
         public FacingDirection Facing { get; private set; } = FacingDirection.Right;
         public void SetFacing(FacingDirection facing) => Facing = facing;
 
-        public int BaseMaxHp { get; private set; } = PlayerConstants.BaseMaxHp;
         public int CurrentHp => HP;
-        public int CoreDamage { get; private set; } = PlayerConstants.BaseDamage;
-        public int BaseDamage { get; private set; } = PlayerConstants.BaseDamage;
         public int Defense { get; private set; } = PlayerConstants.BaseDefense;
-        private float _damageMultiplier = 1f;
 
         public bool IsInvulnerable { get; private set; }
         private float _invulnerabilityTimer;
         public float InvulnerabilityDuration { get; private set; } = PlayerConstants.InvulnerabilityDuration;
 
-        public bool ActiveShield { get; private set; }
-        public bool ActiveFireBoost { get; private set; }
-        public bool ActiveHealEffect { get; private set; }
-        public bool ActiveWindBarrage { get; private set; }
-        public int ExtraProjectiles { get; private set; }
-
         public float AttackCooldown { get; private set; }
         public float AttackInterval { get; private set; } = PlayerConstants.AttackInterval;
 
         public bool IsAttacking { get; private set; }
-        public bool IsFiring { get; private set; }
         public bool IsCastingSkill { get; private set; }
-        public ProjectileType CurrentProjectileType { get; private set; } = ProjectileType.Basic;
+        public ProjectileType CurrentProjectileType { get; private set; } = ProjectileType.Fireball;
 
         public event Action? OnAttackHitFrame;
-        public event Action? OnFireCastFrame;
         public event Action? OnAttackAnimationEnded;
-        public event Action? OnFireAnimationEnded;
         public event Action? OnHurtAnimationEnded;
         public event Action? OnDeathAnimationEnded;
         public event Action? OnDeath;
@@ -99,55 +86,6 @@ namespace ElementalSpirit.Domain.Player
         public void ApplyVelocityDamping(float factor) =>
             VelocityX *= Math.Clamp(factor, 0f, 1f);
 
-        public void ActivateFireBoost(float damageMultiplier)
-        {
-            ActiveFireBoost = true;
-            ApplyDamageMultiplier(damageMultiplier);
-        }
-
-        public void DeactivateFireBoost()
-        {
-            ActiveFireBoost = false;
-            ResetDamageMultiplier();
-        }
-
-        public void ActivateShield()
-        {
-            ActiveShield = true;
-            IsInvulnerable = true;
-        }
-
-        public void DeactivateShield()
-        {
-            ActiveShield = false;
-            IsInvulnerable = false;
-        }
-
-        public void ActivateHeal(int instantAmount)
-        {
-            ActiveHealEffect = true;
-            Heal(instantAmount);
-        }
-
-        public void TickHeal(int amount)
-        {
-            if (amount > 0) Heal(amount);
-        }
-
-        public void DeactivateHeal() => ActiveHealEffect = false;
-
-        public void ActivateWindBarrage(int extraProjectiles)
-        {
-            ActiveWindBarrage = true;
-            ExtraProjectiles = Math.Max(0, extraProjectiles);
-        }
-
-        public void DeactivateWindBarrage()
-        {
-            ActiveWindBarrage = false;
-            ExtraProjectiles = 0;
-        }
-
         public bool TryJump()
         {
             if (IsDead || IsHurt) return false;
@@ -176,9 +114,9 @@ namespace ElementalSpirit.Domain.Player
             _doubleJumpConsumed = false;
         }
 
-        public void ClearDoubleJumpBoots()
+        public void RestoreDoubleJumpBoots(bool hasBoots)
         {
-            HasDoubleJumpBoots = false;
+            HasDoubleJumpBoots = hasBoots;
             _doubleJumpConsumed = false;
         }
 
@@ -242,7 +180,7 @@ namespace ElementalSpirit.Domain.Player
 
         public override void TakeDamage(int amount)
         {
-            if (IsInvulnerable || ActiveShield || IsDead) return;
+            if (IsInvulnerable || IsDead) return;
             int reduced = Math.Max(1, amount - Defense);
             HP = Math.Max(0, HP - reduced);
             if (HP <= 0) StartDeath();
@@ -260,37 +198,13 @@ namespace ElementalSpirit.Domain.Player
             IsHurt = false;
         }
 
-        public void ApplyEquipmentBonuses(int bonusDamage, int bonusMaxHp, int bonusDefense)
-        {
-            float hpRatio = MaxHp > 0 ? (float)HP / MaxHp : 1f;
-            BaseDamage = CoreDamage + bonusDamage;
-            MaxHp = BaseMaxHp + bonusMaxHp;
-            Defense = bonusDefense;
-            HP = Math.Clamp((int)(MaxHp * hpRatio + 0.5f), 0, MaxHp);
-            Damage = Math.Max(1, (int)(BaseDamage * _damageMultiplier));
-        }
-
-        public void ApplyDamageMultiplier(float multiplier)
-        {
-            _damageMultiplier = multiplier;
-            Damage = Math.Max(1, (int)(BaseDamage * _damageMultiplier));
-        }
-
-        public void ResetDamageMultiplier()
-        {
-            _damageMultiplier = 1f;
-            Damage = BaseDamage;
-        }
-
         public void SetProjectileType(ProjectileType projectileType) =>
             CurrentProjectileType = projectileType;
 
-        public bool CanAttack() => AttackCooldown <= 0 && !IsAttacking && !IsFiring && !IsHurt && !IsDead;
-        public bool CanFire() => AttackCooldown <= 0 && !IsAttacking && !IsFiring && !IsHurt && !IsDead;
+        public bool CanAttack() => AttackCooldown <= 0 && !IsAttacking && !IsHurt && !IsDead;
         public void ResetAttackCooldown() => AttackCooldown = AttackInterval;
 
         public void StartAttack() { if (!IsDead) IsAttacking = true; }
-        public void StartFire() { if (!IsDead) IsFiring = true; }
         public void StartSkillCast() { if (!IsDead) IsCastingSkill = true; }
 
         private void StartHurt()
@@ -319,7 +233,6 @@ namespace ElementalSpirit.Domain.Player
 
             IsDead = true;
             IsAttacking = false;
-            IsFiring = false;
             IsCastingSkill = false;
             IsHurt = false;
             VelocityX = 0f;
@@ -327,9 +240,7 @@ namespace ElementalSpirit.Domain.Player
         }
 
         public void NotifyAttackHitFrame() => OnAttackHitFrame?.Invoke();
-        public void NotifyFireCastFrame() => OnFireCastFrame?.Invoke();
         public void NotifyAttackAnimationEnded() { IsAttacking = false; OnAttackAnimationEnded?.Invoke(); }
-        public void NotifyFireAnimationEnded() { IsFiring = false; OnFireAnimationEnded?.Invoke(); }
         public void NotifySkillAnimationEnded() => IsCastingSkill = false;
         public void NotifyHurtAnimationEnded() { IsHurt = false; OnHurtAnimationEnded?.Invoke(); }
         public void NotifyDeathAnimationEnded() => OnDeathAnimationEnded?.Invoke();

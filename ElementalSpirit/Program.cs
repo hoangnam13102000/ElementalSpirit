@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 using ElementalSpirit.Domain.Currency;
-using ElementalSpirit.Domain.Inventory;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
@@ -22,20 +21,15 @@ namespace ElementalSpirit
             var collision = new CollisionManager();
             var spawn = new SpawnManager(enemies);
             var waves = new WaveManager(spawn, enemies);
-            var spirits = new SpiritManager();
             var player = new Player(PlayerConstants.DefaultStartX, PlayerConstants.DefaultStartY);
             var skills = new SkillManager(player);
-            var shop = new ShopService();
-            var upgrades = new UpgradeService();
-            var wallet = new PlayerWallet(0, 0, 0);
-            var inventory = new Inventory();
+            var wallet = new PlayerWallet();
             var localization = LocalizationManager.Instance;
             var bossEncounter = new BossEncounterManager(localization);
             var portals = new PortalManager();
 
             return new GameManager(
-                input, projectiles, enemies, collision, spawn, waves, spirits, player, skills,
-                shop, upgrades, wallet, inventory,
+                input, projectiles, enemies, collision, spawn, waves, player, skills, wallet,
                 bossEncounter,
                 portals);
         }

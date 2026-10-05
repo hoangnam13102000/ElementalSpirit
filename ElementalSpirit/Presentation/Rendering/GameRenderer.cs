@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Collections.Generic;
-using ElementalSpirit.Domain.Equipment;
 using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Projectile;
 using ElementalSpirit.Domain.Enemy;
@@ -40,7 +39,7 @@ namespace ElementalSpirit.Presentation.Rendering
         private Image? _backgroundImage;
         private string _loadedIncomingBackgroundName = "";
         private Image? _incomingBackgroundImage;
-        private Image? bootsImage;
+        private readonly Image? _bootsImage;
         private readonly Image? _healthPotionImage;
 
         public GameRenderer(
@@ -59,18 +58,9 @@ namespace ElementalSpirit.Presentation.Rendering
             _goldAnimation = goldAnimation;
             _fireballFrames = fireballFrames;
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            _bootsImage = AssetLoader.Get("Loot/boots.png");
             _healthPotionImage = AssetLoader.Get("Loot/heal_bottle.png");
 
-            try
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                bootsImage = Image.FromFile(System.IO.Path.Combine(baseDir, "Resources", "Images", "Loot", "boots.png"));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[GameRenderer] Boots image unavailable: {ex}");
-                // Nếu chưa nạp được ảnh thì code vẫn dùng hình tròn vector dự phòng bên dưới
-            }
         }
 
 
@@ -89,7 +79,6 @@ namespace ElementalSpirit.Presentation.Rendering
                 DrawLoot(g);
                 DrawSkillHud(g, clientSize);
                 DrawCurrencyHud(g, clientSize);
-                DrawEquipmentHud(g, clientSize);
                 DrawDebugInfo(g, clientSize);
 
             }
@@ -280,21 +269,23 @@ namespace ElementalSpirit.Presentation.Rendering
                             drawY + height / 2f,
                             width / 2f, Color.FromArgb(255, 232, 185, 35)); 
                     }
-                } else if (loot.Type == LootType.Equipment)
+                }
+                else if (loot.Type == LootType.Boots)
                 {
-                    if (bootsImage != null)
+                    if (_bootsImage != null)
                     {
-                        g.DrawImage(bootsImage, drawX, drawY, width, height);
+                        g.DrawImage(_bootsImage, drawX, drawY, width, height);
                     }
                     else
                     {
-                        using var shoeBrush = new SolidBrush(Color.FromArgb(255, 200, 160, 100));
-                        using var shoeOutline = new Pen(Color.FromArgb(255, 90, 60, 30), 1.4f);
+                        using var bootBrush = new SolidBrush(Color.FromArgb(255, 200, 160, 100));
+                        using var bootOutline = new Pen(Color.FromArgb(255, 90, 60, 30), 1.4f);
                         var rect = new RectangleF(drawX, drawY, width, height);
-                        g.FillEllipse(shoeBrush, rect);
-                        g.DrawEllipse(shoeOutline, rect);
+                        g.FillEllipse(bootBrush, rect);
+                        g.DrawEllipse(bootOutline, rect);
                     }
-                } else if (loot.Type == LootType.HealthPotion)
+                }
+                else if (loot.Type == LootType.HealthPotion)
                 {
                     if (_healthPotionImage != null)
                     {
@@ -424,26 +415,6 @@ namespace ElementalSpirit.Presentation.Rendering
                 g.FillRectangle(flashBrush, drawX, drawY, drawSize, drawSize);
             }
 
-            if (p.ActiveShield)
-            {
-                using var shieldPen = new Pen(Color.FromArgb(120, 200, 120), 3f);
-                g.DrawEllipse(shieldPen, p.X - 6, p.Y - 6, p.Width + 12, p.Height + 12);
-            }
-            if (p.ActiveFireBoost)
-            {
-                using var fireBrush = new SolidBrush(Color.FromArgb(180, 255, 100, 40));
-                g.FillEllipse(fireBrush, p.X + 4, p.Y - 10, 10, 10);
-            }
-            if (p.ActiveHealEffect)
-            {
-                using var healBrush = new SolidBrush(Color.FromArgb(160, 80, 220, 255));
-                g.FillEllipse(healBrush, p.X + p.Width - 14, p.Y - 10, 10, 10);
-            }
-            if (p.ActiveWindBarrage)
-            {
-                using var windPen = new Pen(Color.FromArgb(150, 180, 255, 220), 2f);
-                g.DrawArc(windPen, p.X - 8, p.Y - 8, p.Width + 16, p.Height + 16, 0, 270);
-            }
             if (_gameManager.Skills.CurrentAnimationState == Domain.Skill.SkillAnimationState.Waterfall &&
                 _skillAnimController.CurrentImage != null)
             {
@@ -532,8 +503,7 @@ namespace ElementalSpirit.Presentation.Rendering
         private static readonly Color HudTextSecondary = Color.FromArgb(220, 185, 174, 140);
         private static readonly Color HudHpColor = Color.FromArgb(255, 193, 68, 60);         // đỏ ruby trầm
         private static readonly Color HudGoldColor = Color.FromArgb(255, 232, 185, 35);
-        private static readonly Color HudShardColor = Color.FromArgb(255, 127, 209, 174);    // ngọc lam
-        private static readonly Color HudCrystalColor = Color.FromArgb(255, 126, 200, 227);  // lam nhạt
+        private static readonly Color HudTransitionColor = Color.FromArgb(255, 126, 200, 227);
 
         // ===================== PANEL TRÁI: STAGE / WAVE / HP =====================
         private void DrawDebugInfo(Graphics g, Size clientSize)
@@ -567,7 +537,7 @@ namespace ElementalSpirit.Presentation.Rendering
             if (_gameManager.IsInStageTransition)
             {
                 statusText = "Đang chuyển cảnh";
-                statusColor = HudCrystalColor;
+                statusColor = HudTransitionColor;
             }
             else if (_gameManager.IsStageCompleted)
             {
@@ -670,7 +640,7 @@ namespace ElementalSpirit.Presentation.Rendering
             }
         }
 
-        // ===================== PANEL PHẢI: VÀNG / MẢNH / PHA LÊ =====================
+        // ===================== PANEL PHẢI: VÀNG =====================
         private void DrawCurrencyHud(Graphics g, Size clientSize)
         {
             var w = _gameManager.Wallet;
@@ -679,8 +649,7 @@ namespace ElementalSpirit.Presentation.Rendering
             float startX = clientSize.Width - pillW - 14f;
             float y = 14f;
 
-            DrawResourcePill(g, startX, y, pillW, pillH, IconKind.Coin, HudGoldColor, w.Gold.ToString());
-            
+            DrawResourcePill(g, startX, y, pillW, pillH, HudGoldColor, w.Gold.ToString());
 
             if (!string.IsNullOrEmpty(_gameManager.StatusMessage))
             {
@@ -696,9 +665,7 @@ namespace ElementalSpirit.Presentation.Rendering
             }
         }
 
-        private enum IconKind { Coin, Shard, Crystal }
-
-        private void DrawResourcePill(Graphics g, float x, float y, float w, float h, IconKind icon, Color accent, string value)
+        private void DrawResourcePill(Graphics g, float x, float y, float w, float h, Color accent, string value)
         {
             using var pillPath = CreateRoundedRectangle(new RectangleF(x, y, w, h), h / 2f);
             using var pillBg = new SolidBrush(HudPanelFill);
@@ -708,12 +675,7 @@ namespace ElementalSpirit.Presentation.Rendering
 
             float iconCx = x + h / 2f;
             float iconCy = y + h / 2f;
-            switch (icon)
-            {
-                case IconKind.Coin: DrawCoinIcon(g, iconCx, iconCy, h * 0.34f, accent); break;
-                case IconKind.Shard: DrawShardIcon(g, iconCx, iconCy, h * 0.34f, accent); break;
-                case IconKind.Crystal: DrawCrystalIcon(g, iconCx, iconCy, h * 0.34f, accent); break;
-            }
+            DrawCoinIcon(g, iconCx, iconCy, h * 0.34f, accent);
 
             using var valFont = new Font("Consolas", 11f, FontStyle.Bold);
             using var valBrush = new SolidBrush(HudTextPrimary);
@@ -748,74 +710,6 @@ namespace ElementalSpirit.Presentation.Rendering
             g.FillEllipse(shine, cx - radius * 0.4f, cy - radius * 0.55f, radius * 0.6f, radius * 0.4f);
         }
 
-        private static void DrawShardIcon(Graphics g, float cx, float cy, float size, Color color)
-        {
-            var pts = new[]
-            {
-                new PointF(cx, cy - size),
-                new PointF(cx + size * 0.55f, cy),
-                new PointF(cx, cy + size),
-                new PointF(cx - size * 0.55f, cy)
-            };
-            using var fill = new SolidBrush(color);
-            using var outline = new Pen(Color.FromArgb(200, 20, 60, 45), 1f);
-            g.FillPolygon(fill, pts);
-            g.DrawPolygon(outline, pts);
-        }
-
-        private static void DrawCrystalIcon(Graphics g, float cx, float cy, float size, Color color)
-        {
-            var pts = new[]
-            {
-                new PointF(cx, cy - size * 1.15f),
-                new PointF(cx + size * 0.75f, cy - size * 0.2f),
-                new PointF(cx + size * 0.4f, cy + size),
-                new PointF(cx - size * 0.4f, cy + size),
-                new PointF(cx - size * 0.75f, cy - size * 0.2f)
-            };
-            using var fill = new SolidBrush(color);
-            using var outline = new Pen(Color.FromArgb(200, 20, 50, 65), 1f);
-            g.FillPolygon(fill, pts);
-            g.DrawPolygon(outline, pts);
-            using var facet = new Pen(Color.FromArgb(120, 255, 255, 255), 1f);
-            g.DrawLine(facet, cx, cy - size * 1.15f, cx, cy + size);
-        }
-
-        // ===================== PANEL TRANG BỊ (chip hàng ngang dưới panel vàng) =====================
-        private void DrawEquipmentHud(Graphics g, Size clientSize)
-        {
-            var inv = _gameManager.Inventory;
-            const float chipH = 26f;
-            const float chipGap = 6f;
-            float y = 14f + (30f + 6f) * 1f + 10f; 
-
-            float x = clientSize.Width - 14f;
-            x = DrawEquipChip(g, x, y, chipH, "PK", inv.GetEquipped(EquipmentSlot.Accessory), HudCrystalColor) - chipGap;
-        }
-
-        /// <summary>Vẽ 1 chip trang bị neo theo mép PHẢI tại rightEdgeX, trả về toạ độ X bên trái của chip (để chip kế tiếp nối vào).</summary>
-        private float DrawEquipChip(Graphics g, float rightEdgeX, float y, float h, string label, Equipment? item, Color accent)
-        {
-            string name = item?.Name ?? "—";
-            using var font = new Font("Consolas", 8.5f);
-            using var labelFont = new Font("Consolas", 7.5f, FontStyle.Bold);
-            string display = $"{label}: {name}";
-            var textSize = g.MeasureString(display, font);
-            const float paddingX = 10f;
-            float chipW = textSize.Width + paddingX * 2f;
-            float chipX = rightEdgeX - chipW;
-
-            using var chipPath = CreateRoundedRectangle(new RectangleF(chipX, y, chipW, h), h / 2f);
-            using var chipBg = new SolidBrush(Color.FromArgb(150, 16, 22, 14));
-            using var chipBorder = new Pen(Color.FromArgb(160, accent.R, accent.G, accent.B), 1f);
-            g.FillPath(chipBg, chipPath);
-            g.DrawPath(chipBorder, chipPath);
-
-            using var textBrush = new SolidBrush(item != null ? HudTextPrimary : HudTextSecondary);
-            g.DrawString(display, font, textBrush, chipX + paddingX, y + (h - textSize.Height) / 2f);
-
-            return chipX;
-        }
         private void DrawProjectiles(Graphics g)
         {
             foreach (var p in _gameManager.Projectiles.Projectiles)
@@ -1026,7 +920,7 @@ namespace ElementalSpirit.Presentation.Rendering
         private void DrawSkillHud(Graphics g, Size clientSize)
         {
             var skills = _gameManager.Skills.Skills;
-            const int slotCount = 4;
+            int slotCount = skills.Count;
             const float slotSize = 72f;
             const float slotGap = 8f;
             float totalWidth = slotCount * slotSize + (slotCount - 1) * slotGap;

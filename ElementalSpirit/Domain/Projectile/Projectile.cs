@@ -1,4 +1,4 @@
-using ElementalSpirit.Domain;
+ using ElementalSpirit.Domain;
 
 namespace ElementalSpirit.Domain.Projectile
 {
