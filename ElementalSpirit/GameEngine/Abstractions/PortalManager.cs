@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using ElementalSpirit.Domain.Player;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.GameEngine.Abstractions;
 
@@ -10,7 +9,6 @@ namespace ElementalSpirit.GameEngine
 {
     public sealed class PortalManager : IPortalManager
     {
-        private const float PortalActivationRadius = 180f;
         private readonly List<Portal> _portals = new();
 
         public IReadOnlyList<Portal> Portals => _portals.AsReadOnly();
@@ -55,7 +53,7 @@ namespace ElementalSpirit.GameEngine
             }
         }
 
-        public void UpdatePortalVisibility(bool allEnemiesCleared, RectangleF playerBounds, FacingDirection playerFacing)
+        public void UpdatePortalVisibility(bool allEnemiesCleared)
         {
             foreach (var portal in _portals)
             {
@@ -92,7 +90,7 @@ namespace ElementalSpirit.GameEngine
 
         public void RestoreVisibility(bool allEnemiesCleared)
         {
-            UpdatePortalVisibility(allEnemiesCleared, RectangleF.Empty, FacingDirection.Right);
+            UpdatePortalVisibility(allEnemiesCleared);
         }
     }
 }

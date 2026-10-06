@@ -10,7 +10,6 @@ using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Factories;
 using ElementalSpirit.GameEngine.Abstractions;
-using ElementalSpirit.Presentation.Forms;
 using ElementalSpirit.Services;
 using ElementalSpirit.Services.Abstractions;
 using System;
@@ -89,13 +88,6 @@ namespace ElementalSpirit.GameEngine
         private const float RunOutDuration = 0.6f;   // thời gian tối đa chạy ra mép phải
         private const float FadeDuration = 0.55f;    // thời gian crossfade giữa 2 background
         private const float RunInDuration = 0.6f;    // thời gian chạy vào từ mép trái
-        private GameForm? _gameForm;
-
-        public void SetGameForm(GameForm gameForm)
-        {
-            _gameForm = gameForm;
-        }
-
         public void SetPlayerName(string name)
         {
             Player.SetName(name);
@@ -112,7 +104,6 @@ namespace ElementalSpirit.GameEngine
 
         public bool IsInStageTransition => TransitionPhase != StageTransitionPhase.None;
         public int StageIndex => _stageIndex;
-        public int TotalStagesInCampaign => _stageSequence.Count;
         public int ClearedStageCount => _clearedStages.Count;
         public Guid RunId { get; private set; } = Guid.NewGuid();
 
@@ -240,7 +231,7 @@ namespace ElementalSpirit.GameEngine
                             bool allCleared = Enemies.Enemies.Count == 0 &&
                                               Waves.State == WaveState.WaitingForClear;
                             bool stagePreviouslyCleared = _clearedStages.Contains(_stageIndex);
-                            Portals.UpdatePortalVisibility(allCleared || stagePreviouslyCleared, Player.Bounds, Player.Facing);
+                            Portals.UpdatePortalVisibility(allCleared || stagePreviouslyCleared);
                         }
                         else
                         {
@@ -341,9 +332,7 @@ namespace ElementalSpirit.GameEngine
             bool stagePreviouslyCleared = _clearedStages.Contains(_stageIndex);
             Portals.UpdatePortalVisibility(
                 stagePreviouslyCleared || Enemies.Enemies.Count == 0 &&
-                (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted),
-                Player.Bounds,
-                Player.Facing);
+                (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted));
 
             // Nếu là stage cuối, kích hoạt boss encounter
             bool isLastStage = _stageIndex >= _stageSequence.Count - 1;
@@ -589,6 +578,8 @@ namespace ElementalSpirit.GameEngine
                     }
                     e.OnDied -= OnEnemyDied;
                     e.OnDied += OnEnemyDied;
+                    e.OnHurt -= OnEnemyHurt;
+                    e.OnHurt += OnEnemyHurt;
                 }
 
                 Enemies.Update(deltaTime, GroundY, PlayArea.Left, PlayArea.Right, Player);
@@ -606,7 +597,7 @@ namespace ElementalSpirit.GameEngine
                 bool allEnemiesCleared = Enemies.Enemies.Count == 0 &&
                                          (Waves.State == WaveState.WaitingForClear || Waves.State == WaveState.StageCompleted);
                 bool stagePreviouslyCleared = _clearedStages.Contains(_stageIndex);
-                Portals.UpdatePortalVisibility(allEnemiesCleared || stagePreviouslyCleared, Player.Bounds, Player.Facing);
+                Portals.UpdatePortalVisibility(allEnemiesCleared || stagePreviouslyCleared);
 
                 // Kiểm tra người chơi có đi vào cổng không
                 Portals.CheckPlayerInteraction(Player.Bounds);
@@ -672,6 +663,12 @@ namespace ElementalSpirit.GameEngine
                     _loot.Add(LootDrop.CreateHealthPotion(dropX + 16f, dropY));
                 }
             } 
+        }
+
+        private static void OnEnemyHurt(Domain.Enemy.Enemy enemy)
+        {
+            if (enemy is GorgonBoss)
+                Services.AudioManager.Instance.PlaySfx("enemy_hurt.mp3");
         }
 
         private void SpawnPlayerProjectile()
@@ -858,6 +855,7 @@ namespace ElementalSpirit.GameEngine
 
         public void HandleKeyDown(Keys key)
         {
+            bool wasKeyDown = Input.IsKeyDown(key);
             Input.KeyDown(key);
 
             if (key is Keys.Space or Keys.Enter)
@@ -885,8 +883,13 @@ namespace ElementalSpirit.GameEngine
 
             if (IsBossDialogueActive()) return;
 
-            if (key is Keys.D1 or Keys.NumPad1)
-                ActivateSkill("slash");
+            if (key is Keys.D1 or Keys.NumPad1 && !wasKeyDown)
+            {
+                Player.SetProjectileType(
+                    Player.CurrentProjectileType == ProjectileType.Slash
+                        ? ProjectileType.Fireball
+                        : ProjectileType.Slash);
+            }
             else if (key is Keys.D2 or Keys.NumPad2)
             {
                 if (ActivateSkill("waterfall"))

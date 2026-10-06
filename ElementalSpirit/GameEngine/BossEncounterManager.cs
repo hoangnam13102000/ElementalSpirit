@@ -108,6 +108,7 @@
             if (_currentState == BossEncounterState.BossFight &&
                 _currentBoss != null &&
                 !_currentBoss.IsAlive &&
+                _currentBoss.IsDeathAnimationComplete &&
                 !_bossDefeatedNotified)
             {
                 NotifyBossDefeated(_currentBoss);

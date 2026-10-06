@@ -13,13 +13,6 @@ namespace ElementalSpirit.Presentation.Intro
         private const string BG_TERRA = "Intro/Intro_Terra.png";
         private const string BG_FOREST_ENTRANCE = "Intro/Intro_ForestEntrance.png";
 
-        private const string MUSIC_MAIN = "Intro_MainTheme";
-        private const string MUSIC_SPIRITS = "Intro_Spirits";
-        private const string MUSIC_CORRUPTION = "Intro_Corruption";
-        private const string MUSIC_ARIN = "Intro_Arin";
-        private const string MUSIC_TERRA = "Intro_Terra";
-        private const string MUSIC_JOURNEY = "Intro_JourneyBegins";
-
         public static List<DialogueScene> CreateAllScenes(ILocalizationService localization)
         {
             return new List<DialogueScene>
@@ -38,7 +31,6 @@ namespace ElementalSpirit.Presentation.Intro
             return new DialogueScene(
                 sceneName: "The Beginning",
                 backgroundImageName: BG_WORLD,
-                musicTrackName: MUSIC_MAIN,
                 lines: new List<DialogueLine>
                 {
                     new DialogueLine(localization, Speaker.OnScreenText, "", "intro.s1.l1.caption"),
@@ -52,7 +44,6 @@ namespace ElementalSpirit.Presentation.Intro
             return new DialogueScene(
                 sceneName: "The Four Spirits",
                 backgroundImageName: BG_FOUR_SPIRITS,
-                musicTrackName: MUSIC_SPIRITS,
                 lines: new List<DialogueLine>
                 {
                     new DialogueLine(localization, Speaker.OnScreenText, "", "intro.s2.l1.caption"),
@@ -70,7 +61,6 @@ namespace ElementalSpirit.Presentation.Intro
             return new DialogueScene(
                 sceneName: "The Corruption",
                 backgroundImageName: BG_CRACKED_SYMBOL,
-                musicTrackName: MUSIC_CORRUPTION,
                 lines: new List<DialogueLine>
                 {
                     new DialogueLine(localization, Speaker.OnScreenText, "", "intro.s3.l1.caption"),
@@ -87,13 +77,12 @@ namespace ElementalSpirit.Presentation.Intro
             return new DialogueScene(
                 sceneName: "Arin",
                 backgroundImageName: BG_VILLAGE,
-                musicTrackName: MUSIC_ARIN,
                 lines: new List<DialogueLine>
                 {
                     new DialogueLine(localization, Speaker.OnScreenText, "", "intro.s4.l1.caption"),
-                    new DialogueLine(localization, Speaker.VillageElder, "intro.s4.l2.text"),
+                    new DialogueLine(localization, Speaker.MageInstructor, "intro.s4.l2.text"),
                     new DialogueLine(localization, Speaker.Arin, "intro.s4.l3.text"),
-                    new DialogueLine(localization, Speaker.VillageElder, "intro.s4.l4.text"),
+                    new DialogueLine(localization, Speaker.MageInstructor, "intro.s4.l4.text"),
                     new DialogueLine(localization, Speaker.Arin, "intro.s4.l5.text"),
                     new DialogueLine(localization, Speaker.OnScreenText, "", "intro.s4.l6.caption")
                 });
@@ -104,7 +93,6 @@ namespace ElementalSpirit.Presentation.Intro
             return new DialogueScene(
                 sceneName: "The First Spirit",
                 backgroundImageName: BG_TERRA,
-                musicTrackName: MUSIC_TERRA,
                 lines: new List<DialogueLine>
                 {
                     new DialogueLine(localization, Speaker.OnScreenText, "", "intro.s5.l1.caption"),
@@ -128,11 +116,10 @@ namespace ElementalSpirit.Presentation.Intro
             return new DialogueScene(
                 sceneName: "The Journey Begins",
                 backgroundImageName: BG_FOREST_ENTRANCE,
-                musicTrackName: MUSIC_JOURNEY,
                 lines: new List<DialogueLine>
                 {
                     new DialogueLine(localization, Speaker.Narrator, "intro.s6.l1.text"),
-                    new DialogueLine(localization, Speaker.VillageElder, "intro.s6.l2.text"),
+                    new DialogueLine(localization, Speaker.MageInstructor, "intro.s6.l2.text"),
                     new DialogueLine(localization, Speaker.Arin, "intro.s6.l3.text"),
                     new DialogueLine(localization, Speaker.Arin, "intro.s6.l4.text"),
                     new DialogueLine(localization, Speaker.Narrator, "intro.s6.l5.text"),

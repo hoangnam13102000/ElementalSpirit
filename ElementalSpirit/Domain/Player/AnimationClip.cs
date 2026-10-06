@@ -9,7 +9,6 @@ namespace ElementalSpirit.Domain.Player
         private float _frameTimer;
         private bool _completedRaised;
 
-        public Image[] Frames => _frames;
         public int FrameCount => _frames.Length;
         public int CurrentFrame { get; private set; }
         public float Fps { get; set; }

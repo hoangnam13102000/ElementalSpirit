@@ -262,7 +262,7 @@ namespace ElementalSpirit.Presentation.Forms
             {
                 Speaker.Arin => _playerName,
                 Speaker.Terra => _localization.Translate("speaker.terra"),
-                Speaker.VillageElder => _localization.Translate("speaker.villageElder"),
+                Speaker.MageInstructor => _localization.Translate("speaker.mageInstructor"),
                 _ => ""
             };
         }
@@ -273,7 +273,7 @@ namespace ElementalSpirit.Presentation.Forms
             {
                 Speaker.Arin => Color.FromArgb(160, 200, 255),
                 Speaker.Terra => Color.FromArgb(160, 220, 110),
-                Speaker.VillageElder => Color.FromArgb(220, 190, 140),
+                Speaker.MageInstructor => Color.FromArgb(220, 190, 140),
                 _ => Color.FromArgb(200, 210, 240)
             };
         }

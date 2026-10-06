@@ -15,9 +15,7 @@ namespace ElementalSpirit.GameEngine
         private readonly IEnemyManager _enemyManager;
         private readonly Random _random = new();
 
-        private float _spawnMinY = 120f;
         private float _spawnMaxY = 580f;
-        private float _spawnX = 1280f;
         private IReadOnlyList<TerrainPlatform> _platforms = Array.Empty<TerrainPlatform>();
         private RectangleF _playArea;
         private IEnemyTarget? _safetyTarget;
@@ -30,9 +28,7 @@ namespace ElementalSpirit.GameEngine
 
         public void SetSpawnArea(float screenWidth, float screenHeight)
         {
-            _spawnX = screenWidth - 30f;
             // ===== SUA: Chi spawn enemy trong dai "nen dat" (duong di), khop voi GameManager.GroundTop/GroundBottom =====
-            _spawnMinY = screenHeight * 0.64f;
             _spawnMaxY = screenHeight * 0.78f;
             // ============================================================================================================
         }

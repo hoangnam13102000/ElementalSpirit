@@ -87,7 +87,7 @@ namespace ElementalSpirit.Domain.Stage
                 topRatio: 0.35f,
                 bottomRatio: 0.43f));
 
-            var wave1 = new WaveData(1);
+            var wave1 = new WaveData();
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 6, 0.7f));
             stage.Waves.Add(wave1);
 
@@ -245,7 +245,7 @@ namespace ElementalSpirit.Domain.Stage
                 topRatio: 0.90f,
                 bottomRatio: 0.97f));
 
-            var wave1 = new WaveData(1);
+            var wave1 = new WaveData();
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 8, 0.55f));
             stage.Waves.Add(wave1);
 
@@ -299,7 +299,7 @@ namespace ElementalSpirit.Domain.Stage
             AddPlatform(stage, "CenterPlatform", 0.335f, 0.615f, 0.35f, 0.50f);
             AddPlatform(stage, "RightPlatform", 0.788f, 1.0f, 0.36f, 0.51f);
 
-            var wave1 = new WaveData(1);
+            var wave1 = new WaveData();
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 10, 0.45f));
             stage.Waves.Add(wave1);
 
@@ -322,7 +322,7 @@ namespace ElementalSpirit.Domain.Stage
                 topRatio: 0.78f,
                 bottomRatio: 1.0f));
 
-            var wave1 = new WaveData(1);
+            var wave1 = new WaveData();
             stage.Waves.Add(wave1);
 
             return stage;

@@ -77,8 +77,14 @@ namespace ElementalSpirit.Presentation.Forms
             FormClosing += OnFormClosing;
             _gameManager.Player.OnDeath += RecordAchievement;
             _gameManager.FinalBossDefeated += RecordAchievement;
+            _gameManager.BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
 
-            Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
+            if (_gameManager.BossEncounter.CurrentState is
+                Domain.BossEncounter.BossEncounterState.PreBossDialogue or
+                Domain.BossEncounter.BossEncounterState.BossFight)
+                PlayBossTheme();
+            else
+                Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
         }
 
         protected override void OnShown(EventArgs e)
@@ -225,6 +231,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             _gameManager.Player.OnDeath -= RecordAchievement;
             _gameManager.FinalBossDefeated -= RecordAchievement;
+            _gameManager.BossEncounter.OnPreBossDialogueStarted -= OnPreBossDialogueStarted;
             Services.AudioManager.Instance.StopMusic();
             _gameManager.Dispose();
             _gameTimer.Stop();
@@ -236,6 +243,16 @@ namespace ElementalSpirit.Presentation.Forms
             AssetLoader.DisposeAll();
             MageAnimationLoader.DisposeAll();
             SlimeAnimationLoader.DisposeAll();
+        }
+
+        private void OnPreBossDialogueStarted(Domain.BossEncounter.BossDialogueScene _)
+        {
+            PlayBossTheme();
+        }
+
+        private static void PlayBossTheme()
+        {
+            Services.AudioManager.Instance.PlayMusic("boss_theme.wav", loop: true);
         }
 
         private void RecordAchievement()

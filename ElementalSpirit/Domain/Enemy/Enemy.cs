@@ -80,6 +80,7 @@ namespace ElementalSpirit.Domain.Enemy
             {
                 IsHurt = true;
                 _hurtTimer = HurtDuration;
+                OnHurt?.Invoke(this);
             }
         }
 
@@ -96,6 +97,7 @@ namespace ElementalSpirit.Domain.Enemy
         }
 
         public event Action<Enemy>? OnDied;
+        public event Action<Enemy>? OnHurt;
         public virtual void OnDeath() { }
     }
 }

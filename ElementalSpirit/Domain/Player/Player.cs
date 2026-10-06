@@ -48,9 +48,6 @@ namespace ElementalSpirit.Domain.Player
         public ProjectileType CurrentProjectileType { get; private set; } = ProjectileType.Fireball;
 
         public event Action? OnAttackHitFrame;
-        public event Action? OnAttackAnimationEnded;
-        public event Action? OnHurtAnimationEnded;
-        public event Action? OnDeathAnimationEnded;
         public event Action? OnDeath;
 
         public Player(float startX, float startY)
@@ -240,10 +237,10 @@ namespace ElementalSpirit.Domain.Player
         }
 
         public void NotifyAttackHitFrame() => OnAttackHitFrame?.Invoke();
-        public void NotifyAttackAnimationEnded() { IsAttacking = false; OnAttackAnimationEnded?.Invoke(); }
+        public void NotifyAttackAnimationEnded() { IsAttacking = false; }
         public void NotifySkillAnimationEnded() => IsCastingSkill = false;
-        public void NotifyHurtAnimationEnded() { IsHurt = false; OnHurtAnimationEnded?.Invoke(); }
-        public void NotifyDeathAnimationEnded() => OnDeathAnimationEnded?.Invoke();
+        public void NotifyHurtAnimationEnded() { IsHurt = false; }
+        public void NotifyDeathAnimationEnded() { }
 
         private void UpdateMovementState()
         {

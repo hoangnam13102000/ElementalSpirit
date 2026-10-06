@@ -162,8 +162,8 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _lblTitle.Text = translate("settings.title");
             _lblLanguage.Text = translate("settings.language.label");
             _lblResolution.Text = translate("settings.resolution.label") + " 1280x720";
-            _lblMusic.Text = "Nhạc nền:";
-            _lblSfx.Text = "Âm thanh nhân vật:";
+            _lblMusic.Text = translate("settings.music.label");
+            _lblSfx.Text = translate("settings.sfx.label");
             ApplyFullscreenTranslation(translate);
             _lblSaveGame.Text = translate("settings.savegame.label");
             _btnSaveGame.Text = translate("settings.button.savegame");

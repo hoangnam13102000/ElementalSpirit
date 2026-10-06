@@ -19,7 +19,7 @@ namespace ElementalSpirit.GameEngine.Abstractions
             float playAreaHeight,
             float groundY);
 
-        void UpdatePortalVisibility(bool allEnemiesCleared, RectangleF playerBounds, FacingDirection playerFacing);
+        void UpdatePortalVisibility(bool allEnemiesCleared);
 
         void CheckPlayerInteraction(RectangleF playerBounds);
 

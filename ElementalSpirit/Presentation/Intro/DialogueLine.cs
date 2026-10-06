@@ -8,7 +8,7 @@ namespace ElementalSpirit.Presentation.Intro
         Narrator,
         Arin,
         Terra,
-        VillageElder,
+        MageInstructor,
         OnScreenText
     }
 
