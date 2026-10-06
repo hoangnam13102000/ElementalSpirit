@@ -195,12 +195,14 @@ namespace ElementalSpirit.Presentation.Forms
         {
             PauseGame();
             bool exitToMenu;
+            bool isCurrentlyFullscreen = (this.FormBorderStyle == FormBorderStyle.None);
             using (var settings = new SettingsForm(
                        _localization,
                        _saveGameService,
                        _gameManager,
                        RecordAchievement,
-                       enabled => WindowDisplayMode.SetFullscreen(this, enabled)))
+                       enabled => WindowDisplayMode.SetFullscreen(this, enabled),
+                       isCurrentlyFullscreen))
             {
                 settings.ShowDialog(this);
                 exitToMenu = settings.ExitToMainMenuRequested;

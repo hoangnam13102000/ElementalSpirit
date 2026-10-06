@@ -36,10 +36,12 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             ISaveGameService saveGameService,
             GameManager? activeGame = null,
             Action? onGameSaved = null,
-            Action<bool>? onFullscreenChanged = null)
+            Action<bool>? onFullscreenChanged = null,
+            bool initialIsFullscreen = false)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _onFullscreenChanged = onFullscreenChanged;
+            _isFullscreenOn = initialIsFullscreen;
             ClientSize = new Size(420, 485);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
@@ -68,10 +70,10 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
             _chkMusic = new Button 
             { 
-                Location = new Point(230, 150),
+                Location = new Point(230, 145),
                 Size = new Size(36, 30), 
                 FlatStyle = FlatStyle.Flat, 
-                Font = new Font("Segoe UI Emoji", 12f), 
+                Font = new Font("Segoe UI Emoji", 10f), 
                 ForeColor = Color.White, Cursor = Cursors.Hand 
             };
             _chkMusic.FlatAppearance.BorderSize = 0;
@@ -88,27 +90,30 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
             _chkFullscreen = new Button 
             { 
-                Location = new Point(230, 220), 
+                Location = new Point(230, 218), 
                 Size = new Size(36, 30),
                 FlatStyle = FlatStyle.Flat, 
-                Font = new Font("Segoe UI Emoji", 11f), 
-                ForeColor = Color.White, Cursor = Cursors.Hand, Text = "⛶"
+                Font = new Font("Segoe UI Emoji", 10f),
+                ForeColor = Color.White, Cursor = Cursors.Hand,
+                Text = _isFullscreenOn ? "🗗" : "⛶"
             }; 
             _chkFullscreen.FlatAppearance.BorderSize = 0; 
             _chkFullscreen.Click += (s, e) => 
             {
                 _isFullscreenOn = !_isFullscreenOn; 
                 _chkFullscreen.Text = _isFullscreenOn ? "🗗" : "⛶"; 
-                _onFullscreenChanged?.Invoke(_isFullscreenOn); 
+                _onFullscreenChanged?.Invoke(_isFullscreenOn);
                 ApplyFullscreenTranslation(key => 
                 _localization.Translate(key));
+                _chkFullscreen.Focus();
+                Application.DoEvents();
             };
             _chkSfx = new Button 
             { 
-                Location = new Point(230, 185),
+                Location = new Point(230, 180),
                 Size = new Size(36, 30),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Emoji", 12f), 
+                Font = new Font("Segoe UI Emoji", 10f), 
                 ForeColor = Color.White, Cursor = Cursors.Hand
             };
             _chkSfx.FlatAppearance.BorderSize = 0;
@@ -121,8 +126,24 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
             _lblSaveGame = CreateLabel(267);    
 
-            _btnSaveGame = CreateButton(180, 263, 200);   
+            _btnSaveGame = CreateButton(180, 263, 200);
+            _btnSaveGame.ForeColor = Color.White;
+            _btnSaveGame.UseVisualStyleBackColor = false;
             _btnSaveGame.Click += (s, e) => SaveGameRequested?.Invoke(this, EventArgs.Empty);
+            _btnSaveGame.Paint += (s, e) =>
+            {
+                var btn = (Button)s!;
+                // Nếu nút bị Disabled thì vẽ chữ màu trắng mờ hơn nhẹ hoặc trắng tinh tùy thích
+                Color textColor = btn.Enabled ? Color.White : Color.FromArgb(220, 255, 255, 255);
+
+                TextRenderer.DrawText(
+                    e.Graphics,
+                    btn.Text,
+                    btn.Font,
+                    btn.ClientRectangle,
+                    textColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
 
             _btnSave = CreateButton(100, 345);
             _btnSave.Click += (s, e) => SaveRequested?.Invoke(this, EventArgs.Empty);
@@ -214,6 +235,8 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         public void SetSaveGameAvailable(bool available)
         {
             _btnSaveGame.Enabled = available;
+            _btnSaveGame.BackColor = available ? Color.FromArgb(90, 50, 110) : Color.FromArgb(50, 35, 65);
+            _btnSaveGame.ForeColor = Color.White;
         }
 
         public bool ExitToMainMenuRequested { get; private set; }
@@ -242,7 +265,6 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
         private static void UpdateSoundToggleButton(Button btn, bool isOn) { 
             btn.Text = isOn ? "🔊" : "🔇";
-            btn.BackColor = isOn ? Color.FromArgb(60, 120, 70, 150) : Color.FromArgb(60, 90, 40, 40);
         }
 
         private static Button CreateButton(int x, int y, int width = 100) => new()
