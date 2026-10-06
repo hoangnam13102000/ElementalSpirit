@@ -59,7 +59,8 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
+            if (TopLevel)
+                WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
         }
 
         public void StartIntro()

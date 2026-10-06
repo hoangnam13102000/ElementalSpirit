@@ -90,9 +90,19 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
+            if (TopLevel)
+                WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
             _gameTimer.Start();
+        }
+
+        protected override bool IsInputKey(Keys keyData)
+        {
+            Keys keyCode = keyData & Keys.KeyCode;
+            if (keyCode is Keys.Left or Keys.Right or Keys.Up or Keys.Down)
+                return true;
+
+            return base.IsInputKey(keyData);
         }
 
         private void OnGameTick(float deltaTime)
