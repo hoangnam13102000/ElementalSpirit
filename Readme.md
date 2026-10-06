@@ -94,8 +94,8 @@ Lỗi ứng dụng không xử lý được được ghi tại `%LOCALAPPDATA%\E
 | Họ và tên | MSSV | Lớp |
 | --- | --- | --- |
 | Hoàng Trung Nam | 44.01.104.145 | 48.01.CNTT.B |
-| Lê Thị Vân Anh | 46.01.103.007 | 48.01.TIN.SPA |
-| Lê Thanh Tú | 50.01.104.172 | 50.01.CNTT.B |
+| Lê Thị Vân Anh  | 46.01.103.007 | 48.01.TIN.SPA|
+| Lê Thanh Tú     | 50.01.104.172 | 50.01.CNTT.B |
 | Hồ Thị Mỹ Thuận | 50.01.104.157 | 50.01.CNTT.A |
 
 ## Công nghệ
