@@ -183,7 +183,6 @@ namespace ElementalSpirit.Domain.Enemy
 
         public override void ResolveGroundCollision(float groundY)
         {
-            if (Y + Height > groundY)
                 Y = groundY - Height;
         }
 

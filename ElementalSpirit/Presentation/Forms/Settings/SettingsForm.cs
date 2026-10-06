@@ -18,12 +18,13 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         private readonly ComboBox _cmbLanguage;
         private readonly Label _lblResolution;
         private readonly Label _lblMusic;
-        private readonly CheckBox _chkMusic;           
+        private readonly Button _chkMusic;           
         private readonly Label _lblSfx;              
-        private readonly CheckBox _chkSfx;
+        private readonly Button _chkSfx;
         private readonly Label _lblFullscreen;
-        private readonly CheckBox _chkFullscreen;
+        private readonly Button _chkFullscreen;
         private readonly Action<bool>? _onFullscreenChanged;
+        private bool _isFullscreenOn;
         private readonly Label _lblSaveGame;
         private readonly Button _btnSaveGame;
         private readonly Button _btnSave;
@@ -65,38 +66,57 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
             _lblResolution = CreateLabel(120);
 
+            _chkMusic = new Button 
+            { 
+                Location = new Point(230, 150),
+                Size = new Size(36, 30), 
+                FlatStyle = FlatStyle.Flat, 
+                Font = new Font("Segoe UI Emoji", 12f), 
+                ForeColor = Color.White, Cursor = Cursors.Hand 
+            };
+            _chkMusic.FlatAppearance.BorderSize = 0;
+            UpdateSoundToggleButton(_chkMusic, Services.AudioManager.Instance.MusicEnabled); 
+            _chkMusic.Click += (s, e) => 
+            { 
+                Services.AudioManager.Instance.MusicEnabled = !Services.AudioManager.Instance.MusicEnabled; 
+                UpdateSoundToggleButton(_chkMusic, Services.AudioManager.Instance.MusicEnabled); 
+            };
+
             _lblMusic = CreateLabel(155);
-            _chkMusic = new CheckBox
-            {
-                Location = new Point(230, 154),
-                Checked = Services.AudioManager.Instance.MusicEnabled,
-                ForeColor = Color.FromArgb(230, 220, 255)
-            };
-            _chkMusic.CheckedChanged += (s, e) =>
-                Services.AudioManager.Instance.MusicEnabled = _chkMusic.Checked;
-
-            _lblSfx = CreateLabel(190);
-            _chkSfx = new CheckBox
-            {
-                Location = new Point(230, 189),
-                Checked = Services.AudioManager.Instance.SfxEnabled,
-                ForeColor = Color.FromArgb(230, 220, 255)
-            };
-            _chkSfx.CheckedChanged += (s, e) =>
-                Services.AudioManager.Instance.SfxEnabled = _chkSfx.Checked;
-
             _lblFullscreen = CreateLabel(225);
-            _chkFullscreen = new CheckBox
+            _lblSfx = CreateLabel(190);
+
+            _chkFullscreen = new Button 
+            { 
+                Location = new Point(230, 220), 
+                Size = new Size(36, 30),
+                FlatStyle = FlatStyle.Flat, 
+                Font = new Font("Segoe UI Emoji", 11f), 
+                ForeColor = Color.White, Cursor = Cursors.Hand, Text = "⛶"
+            }; 
+            _chkFullscreen.FlatAppearance.BorderSize = 0; 
+            _chkFullscreen.Click += (s, e) => 
             {
-                Location = new Point(230, 224),
-                Checked = Services.FullscreenPreferenceStore.Load(),
-                ForeColor = Color.FromArgb(230, 220, 255)
+                _isFullscreenOn = !_isFullscreenOn; 
+                _chkFullscreen.Text = _isFullscreenOn ? "🗗" : "⛶"; 
+                _onFullscreenChanged?.Invoke(_isFullscreenOn); 
+                ApplyFullscreenTranslation(key => 
+                _localization.Translate(key));
             };
-            _chkFullscreen.CheckedChanged += (_, _) =>
-            {
-                Services.FullscreenPreferenceStore.Save(_chkFullscreen.Checked);
-                _onFullscreenChanged?.Invoke(_chkFullscreen.Checked);
-                ApplyFullscreenTranslation(key => _localization.Translate(key));
+            _chkSfx = new Button 
+            { 
+                Location = new Point(230, 185),
+                Size = new Size(36, 30),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Emoji", 12f), 
+                ForeColor = Color.White, Cursor = Cursors.Hand
+            };
+            _chkSfx.FlatAppearance.BorderSize = 0;
+            UpdateSoundToggleButton(_chkSfx, Services.AudioManager.Instance.SfxEnabled);
+            _chkSfx.Click += (s, e) =>
+            { 
+                Services.AudioManager.Instance.SfxEnabled = !Services.AudioManager.Instance.SfxEnabled; 
+                UpdateSoundToggleButton(_chkSfx, Services.AudioManager.Instance.SfxEnabled);
             };
 
             _lblSaveGame = CreateLabel(267);    
@@ -209,7 +229,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         private void ApplyFullscreenTranslation(Func<string, string> translate)
         {
             _lblFullscreen.Text = translate("settings.fullscreen.label") + " " +
-                                  translate(_chkFullscreen.Checked ? "settings.value.on" : "settings.value.off");
+                                  translate(_isFullscreenOn ? "settings.value.on" : "settings.value.off");
         }
 
         private static Label CreateLabel(int y, Font? font = null) => new()
@@ -219,6 +239,11 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             ForeColor = Color.FromArgb(230, 220, 255),
             Font = font ?? new Font("Segoe UI", 11f)
         };
+
+        private static void UpdateSoundToggleButton(Button btn, bool isOn) { 
+            btn.Text = isOn ? "🔊" : "🔇";
+            btn.BackColor = isOn ? Color.FromArgb(60, 120, 70, 150) : Color.FromArgb(60, 90, 40, 40);
+        }
 
         private static Button CreateButton(int x, int y, int width = 100) => new()
         {
