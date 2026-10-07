@@ -76,8 +76,29 @@
 		<Compile Update="Presentation\Dialogs\InformationDialog.Designer.cs">
 			<DependentUpon>InformationDialog.cs</DependentUpon>
 		</Compile>
+		<EmbeddedResource Update="Presentation\Forms\BossDialogueForm.resx">
+			<DependentUpon>BossDialogueForm.cs</DependentUpon>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Presentation\Forms\GameForm.resx">
+			<DependentUpon>GameForm.cs</DependentUpon>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Presentation\Forms\GuideAndTeamForm.resx">
+			<DependentUpon>GuideAndTeamForm.cs</DependentUpon>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Presentation\Forms\IntroForm.resx">
+			<DependentUpon>IntroForm.cs</DependentUpon>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Presentation\Forms\LeaderboardForm.resx">
+			<DependentUpon>LeaderboardForm.cs</DependentUpon>
+		</EmbeddedResource>
 		<EmbeddedResource Update="Presentation\Forms\MainMenuForm.resx">
 			<DependentUpon>MainMenuForm.cs</DependentUpon>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Presentation\Forms\PlayerNameDialog.resx">
+			<DependentUpon>PlayerNameDialog.cs</DependentUpon>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Presentation\Forms\Settings\SettingsForm.resx">
+			<DependentUpon>SettingsForm.cs</DependentUpon>
 		</EmbeddedResource>
 	</ItemGroup>
 

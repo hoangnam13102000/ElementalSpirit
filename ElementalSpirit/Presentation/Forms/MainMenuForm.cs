@@ -22,6 +22,7 @@ namespace ElementalSpirit.Presentation.Forms
         private Button _btnSettings = null!;
         private Button _btnExit = null!;
         private Image? _menuBackground;
+        private Font? _responsiveTitleFont;
         private IntroForm? _activeIntro;
         private GameForm? _activeGame;
 
@@ -78,6 +79,7 @@ namespace ElementalSpirit.Presentation.Forms
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
             ApplyTranslations();
+            LayoutMenuButtons();
         }
 
         private void MainMenuForm_Resize(object? sender, EventArgs e)
@@ -115,24 +117,30 @@ namespace ElementalSpirit.Presentation.Forms
         {
             float verticalScale = ClientSize.Height / 720f;
             bool hasSave = _saveGameService.HasSavedGame;
+            int titleTop = (int)(70 * verticalScale);
+            int titleHeight = Math.Max(44, (int)(80 * verticalScale));
             _titleLabel.SetBounds(
                 0,
-                (int)(70 * verticalScale),
+                titleTop,
                 ClientSize.Width,
-                Math.Max(60, (int)(80 * verticalScale)));
+                titleHeight);
+            FitTitleFont(titleHeight);
 
             _btnContinue.Visible = hasSave;
             _btnContinue.Enabled = hasSave;
 
             int buttonHeight = Math.Clamp((int)(58 * verticalScale), 42, 58);
             int spacing = buttonHeight + Math.Max(8, (int)(12 * verticalScale));
-            int buttonWidth = Math.Min(400, ClientSize.Width - 48);
+            int buttonWidth = Math.Max(1, Math.Min(400, ClientSize.Width - 48));
             int left = (ClientSize.Width - buttonWidth) / 2;
             var buttons = hasSave
                 ? new[] { _btnContinue, _btnStart, _btnLeaderboard, _btnGuide, _btnSettings, _btnExit }
                 : new[] { _btnStart, _btnLeaderboard, _btnGuide, _btnSettings, _btnExit };
             int totalHeight = buttons.Length * buttonHeight + (buttons.Length - 1) * (spacing - buttonHeight);
-            int y = Math.Max((int)(120 * verticalScale), (ClientSize.Height - totalHeight) / 2 + (int)(18 * verticalScale));
+            int minButtonTop = titleTop + titleHeight + (int)(12 * verticalScale);
+            int y = Math.Max(
+                minButtonTop,
+                (ClientSize.Height - totalHeight) / 2 + (int)(18 * verticalScale));
 
             foreach (Button button in buttons)
             {
@@ -140,6 +148,46 @@ namespace ElementalSpirit.Presentation.Forms
                 button.Visible = true;
                 y += spacing;
             }
+        }
+
+        private void FitTitleFont(int titleHeight)
+        {
+            const float minimumFontSize = 14f;
+            float low = minimumFontSize;
+            float high = 52f;
+            float fittedSize = low;
+            int availableWidth = Math.Max(1, ClientSize.Width - 48);
+            int availableHeight = Math.Max(1, titleHeight - 6);
+            string title = _titleLabel.Text;
+
+            for (int i = 0; i < 12; i++)
+            {
+                float candidateSize = (low + high) / 2f;
+                using var candidateFont = new Font("Georgia", candidateSize, FontStyle.Bold);
+                Size measured = TextRenderer.MeasureText(
+                    title,
+                    candidateFont,
+                    Size.Empty,
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+
+                if (measured.Width <= availableWidth && measured.Height <= availableHeight)
+                {
+                    fittedSize = candidateSize;
+                    low = candidateSize;
+                }
+                else
+                {
+                    high = candidateSize;
+                }
+            }
+
+            if (_responsiveTitleFont is not null &&
+                Math.Abs(_responsiveTitleFont.Size - fittedSize) < 0.5f)
+                return;
+
+            _responsiveTitleFont?.Dispose();
+            _responsiveTitleFont = new Font("Georgia", fittedSize, FontStyle.Bold);
+            _titleLabel.Font = _responsiveTitleFont;
         }
 
         private void BtnStart_Click(object? sender, EventArgs e)

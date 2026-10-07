@@ -164,7 +164,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _btnCancel.Name = "_btnCancel";
             _btnCancel.Text = "Cancel";
             _btnCancel.Click += CancelButton_Click;
-            _btnExitGame.Bounds = new System.Drawing.Rectangle(100, 370, 270, 36);
+            _btnExitGame.Bounds = new System.Drawing.Rectangle(75, 370, 270, 36);
             _btnExitGame.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             _btnExitGame.BackColor = System.Drawing.Color.FromArgb(70, 40, 80);
             _btnExitGame.ForeColor = System.Drawing.Color.White;

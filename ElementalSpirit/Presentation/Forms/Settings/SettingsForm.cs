@@ -72,7 +72,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _btnSave.Location = new Point(70, 320 + actionOffset);
             _btnCancel.Location = new Point(220, 320 + actionOffset);
             _btnExitGame.BackColor = Color.FromArgb(120, 30, 30);
-            _btnExitGame.Location = new Point(100, 370 + actionOffset);
+            _btnExitGame.Location = new Point((ClientSize.Width - _btnExitGame.Width) / 2, 370 + actionOffset);
 
             _ = new SettingsPresenter(
                 this,
