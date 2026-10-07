@@ -41,6 +41,9 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _onFullscreenChanged = onFullscreenChanged;
+            bool showSaveGame = activeGame != null;
+            int actionOffset = showSaveGame ? 0 : -80;
+            ClientSize = new Size(420, showSaveGame ? 485 : 405);
             _isFullscreenOn = initialIsFullscreen;
             ClientSize = new Size(420, 485);
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -124,11 +127,10 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                 UpdateSoundToggleButton(_chkSfx, Services.AudioManager.Instance.SfxEnabled);
             };
 
-            _lblSaveGame = CreateLabel(267);    
+            _lblSaveGame = CreateLabel(267);
+            _lblSaveGame.Visible = showSaveGame;
 
-            _btnSaveGame = CreateButton(180, 263, 200);
-            _btnSaveGame.ForeColor = Color.White;
-            _btnSaveGame.UseVisualStyleBackColor = false;
+            _btnSaveGame = CreateButton(180, 263, 200);   
             _btnSaveGame.Click += (s, e) => SaveGameRequested?.Invoke(this, EventArgs.Empty);
             _btnSaveGame.Paint += (s, e) =>
             {
@@ -145,13 +147,13 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             };
 
-            _btnSave = CreateButton(100, 345);
+            _btnSave = CreateButton(100, 345 + actionOffset);
             _btnSave.Click += (s, e) => SaveRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnCancel = CreateButton(220, 345);
+            _btnCancel = CreateButton(220, 345 + actionOffset);
             _btnCancel.Click += (s, e) => CancelRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnExitGame = CreateButton(100, 401, 220);
+            _btnExitGame = CreateButton(100, 401 + actionOffset, 220);
             _btnExitGame.BackColor = Color.FromArgb(120, 30, 30);
             _btnExitGame.Click += (s, e) => ExitGameRequested?.Invoke(this, EventArgs.Empty);
 
