@@ -24,6 +24,7 @@ namespace ElementalSpirit.Presentation.Forms
         private Image? _menuBackground;
         private Font? _responsiveTitleFont;
         private GameForm? _activeGame;
+        private bool _firstMenuPaintLogged;
 
         private readonly ILocalizationService _localization = null!;
         private readonly ISaveGameService _saveGameService = null!;
@@ -191,19 +192,41 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnStart_Click(object? sender, EventArgs e)
         {
+            ErrorLogger.LogDiagnostic("Start: opening player-name dialog");
             using var nameDialog = new PlayerNameDialog(_localization);
             if (nameDialog.ShowDialog(this) != DialogResult.OK)
                 return;
 
             string playerName = nameDialog.PlayerName;
+            ErrorLogger.LogDiagnostic("Start: creating game manager");
             var gameManager = Program.CreateGameManager();
             gameManager.SetPlayerName(playerName);
+            ErrorLogger.LogDiagnostic("Start: game manager created");
 
             _btnStart.Enabled = false;
             Services.AudioManager.Instance.StopMusic();
             SetMenuButtonsVisible(false);
-            var introForm = new IntroForm(_localization, playerName);
-            OpenGame(gameManager, introForm);
+            bool introCompleted = false;
+            this.Hide();
+            using (var introForm = new IntroForm(_localization, playerName))
+            {
+                introForm.OnIntroFinished += () => introCompleted = true;
+                introForm.Shown += (_, _) => introForm.StartIntro();
+                ErrorLogger.LogDiagnostic("Start: showing intro dialog");
+                introForm.ShowDialog(this);
+            }
+
+            ErrorLogger.LogDiagnostic($"Start: intro dialog closed; completed={introCompleted}");
+            if (introCompleted)
+            {
+                ErrorLogger.LogDiagnostic("Start: queueing GameForm transition after intro dialog");
+                BeginInvoke(new Action(() => OpenGame(gameManager)));
+            }
+            else
+            {
+                gameManager.Dispose();
+                ReturnToMenu();
+            }
         }
 
         private void BtnContinue_Click(object? sender, EventArgs e)
@@ -297,32 +320,41 @@ namespace ElementalSpirit.Presentation.Forms
             WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
             _menuBackground?.Dispose();
             _menuBackground = AssetLoader.Get("Menu/MainMenu_Background.png");
+            SetMenuButtonsVisible(true);
             LayoutMenuButtons();
             _btnStart.Enabled = true;
             this.Show();
+            this.Enabled = true;
             this.BringToFront();
             this.Activate();
+            Invalidate(true);
+            Update();
             Services.AudioManager.Instance.PlayMusic("menu_theme.wav", loop: true);
         }
 
-        private void OpenGame(
-            ElementalSpirit.GameEngine.GameManager gameManager,
-            IntroForm? introForm = null)
+        private void OpenGame(ElementalSpirit.GameEngine.GameManager gameManager)
         {
+            ErrorLogger.LogDiagnostic("Game transition: constructing GameForm");
             SetMenuButtonsVisible(false);
             this.Hide();
-            var gameForm = new GameForm(gameManager, _localization, _saveGameService, introForm);
+            var gameForm = new GameForm(gameManager, _localization, _saveGameService);
             _activeGame = gameForm;
             gameForm.FormClosed += (_, _) =>
             {
-                Controls.Remove(gameForm);
                 if (ReferenceEquals(_activeGame, gameForm))
                 {
                     _activeGame = null;
                     ReturnToMenu();
                 }
             };
-            gameForm.ShowDialog();
+            gameForm.HandleCreated += (_, _) =>
+                ErrorLogger.LogDiagnostic("Game transition: GameForm handle created");
+            gameForm.Shown += (_, _) =>
+                ErrorLogger.LogDiagnostic("Game transition: GameForm Shown event");
+            ErrorLogger.LogDiagnostic("Game transition: showing GameForm");
+            gameForm.Show();
+            ErrorLogger.LogDiagnostic("Game transition: GameForm.Show returned");
+            gameForm.Activate();
         }
 
         private void ShowEmbeddedForm(Form childForm)
@@ -349,20 +381,23 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
+            if (!_firstMenuPaintLogged)
+            {
+                _firstMenuPaintLogged = true;
+                ErrorLogger.LogDiagnostic("Main menu: first paint");
+            }
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
+            using var gradient = new LinearGradientBrush(
+                ClientRectangle,
+                Color.FromArgb(18, 12, 30),
+                Color.FromArgb(35, 22, 55),
+                135f);
+            g.FillRectangle(gradient, ClientRectangle);
+
             if (_menuBackground != null)
                 g.DrawImage(_menuBackground, 0, 0, ClientSize.Width, ClientSize.Height);
-            else if (BackgroundImage == null)
-            {
-                using var gradient = new LinearGradientBrush(
-                    ClientRectangle,
-                    Color.FromArgb(18, 12, 30),
-                    Color.FromArgb(35, 22, 55),
-                    135f);
-                g.FillRectangle(gradient, ClientRectangle);
-            }
         }
     }
 }

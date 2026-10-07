@@ -8,6 +8,7 @@ using Timer = System.Windows.Forms.Timer;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
 using ElementalSpirit.Presentation.Intro;
+using ElementalSpirit.Services;
 
 namespace ElementalSpirit.Presentation.Forms
 {
@@ -25,14 +26,9 @@ namespace ElementalSpirit.Presentation.Forms
         private float _fadeAlpha = 0f;
         private bool _isFadingIn;
         private Timer? _fadeTimer;
+        private bool _firstIntroPaintLogged;
 
         public event Action? OnIntroFinished;
-        private bool _handleKeyboardInputExternally;
-
-        public void SetKeyboardInputHandledByParent(bool enabled)
-        {
-            _handleKeyboardInputExternally = enabled;
-        }
 
         public IntroForm()
         {
@@ -82,9 +78,11 @@ namespace ElementalSpirit.Presentation.Forms
 
         public void StartIntro()
         {
+            ErrorLogger.LogDiagnostic("Intro: starting manager");
             _introManager.Start();
             BeginFadeIn();
             Services.AudioManager.Instance.PlayMusic("intro_theme.mp3", loop: true);
+            ErrorLogger.LogDiagnostic("Intro: manager started and music queued");
         }
 
         private void HandleSceneChanged(DialogueScene scene)
@@ -144,8 +142,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnKeyPressed(object? sender, KeyEventArgs e)
         {
-            if (!_handleKeyboardInputExternally)
-                e.Handled = HandleIntroKey(e.KeyCode);
+            e.Handled = HandleIntroKey(e.KeyCode);
         }
 
         public bool HandleIntroKey(Keys keyCode)
@@ -203,6 +200,11 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
+            if (!_firstIntroPaintLogged)
+            {
+                _firstIntroPaintLogged = true;
+                ErrorLogger.LogDiagnostic("Intro: first paint");
+            }
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;

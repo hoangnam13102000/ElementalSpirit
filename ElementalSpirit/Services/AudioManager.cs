@@ -20,6 +20,8 @@ namespace ElementalSpirit.Services
 
         private WaveOut? _musicOutput;
         private AudioFileReader? _musicReader;
+        private readonly object _musicOperationsLock = new();
+        private Task _musicOperations = Task.CompletedTask;
 
         private readonly WaveOut _sfxOutput;
         private readonly MixingSampleProvider _sfxMixer;
@@ -41,8 +43,11 @@ namespace ElementalSpirit.Services
             set
             {
                 _musicEnabled = value;
-                if (_musicReader != null)
-                    _musicReader.Volume = value ? MusicVolume : 0f;
+                QueueMusicOperation(() =>
+                {
+                    if (_musicReader != null)
+                        _musicReader.Volume = value ? MusicVolume : 0f;
+                }, "update music volume");
             }
         }
 
@@ -69,28 +74,64 @@ namespace ElementalSpirit.Services
 
         public void PlayMusic(string fileName, bool loop = true)
         {
-            StopMusic();
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentException("Music file name cannot be empty.", nameof(fileName));
 
-            string path = Path.Combine(AudioBaseDir, "Music", fileName);
-            if (!File.Exists(path)) return;
+            QueueMusicOperation(() =>
+            {
+                StopMusicCore();
 
-            _musicReader = new AudioFileReader(path) { Volume = MusicEnabled ? MusicVolume : 0f };
-            ISampleProvider source = loop
-                ? new LoopStream(_musicReader).ToSampleProvider()
-                : _musicReader;
+                string path = Path.Combine(AudioBaseDir, "Music", fileName);
+                if (!File.Exists(path))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AudioManager] Music file not found: {path}");
+                    return;
+                }
 
-            _musicOutput = new WaveOut();
-            _musicOutput.Init(source);
-            _musicOutput.Play();
+                _musicReader = new AudioFileReader(path) { Volume = MusicEnabled ? MusicVolume : 0f };
+                ISampleProvider source = loop
+                    ? new LoopStream(_musicReader).ToSampleProvider()
+                    : _musicReader;
+
+                _musicOutput = new WaveOut();
+                _musicOutput.Init(source);
+                _musicOutput.Play();
+            }, $"play music '{fileName}'");
         }
 
         public void StopMusic()
+        {
+            QueueMusicOperation(StopMusicCore, "stop music");
+        }
+
+        private void StopMusicCore()
         {
             _musicOutput?.Stop();
             _musicOutput?.Dispose();
             _musicReader?.Dispose();
             _musicOutput = null;
             _musicReader = null;
+        }
+
+        private void QueueMusicOperation(Action operation, string description)
+        {
+            lock (_musicOperationsLock)
+            {
+                Task previousOperation = _musicOperations;
+                _musicOperations = Task.Run(async () =>
+                {
+                    await previousOperation.ConfigureAwait(false);
+                    try
+                    {
+                        operation();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[AudioManager] Could not {description}: {ex}");
+                    }
+                });
+            }
         }
 
         public void PlaySfx(string fileName)
@@ -225,6 +266,10 @@ namespace ElementalSpirit.Services
         public void Dispose()
         {
             StopMusic();
+            Task musicOperations;
+            lock (_musicOperationsLock)
+                musicOperations = _musicOperations;
+            musicOperations.GetAwaiter().GetResult();
             _sfxOutput.Stop();
             _sfxOutput.Dispose();
         }

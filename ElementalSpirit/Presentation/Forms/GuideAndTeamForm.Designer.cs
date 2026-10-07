@@ -122,10 +122,6 @@ namespace ElementalSpirit.Presentation.Forms
             _teamGrid.ColumnHeadersHeight = 36;
             _teamGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             _teamGrid.Columns.AddRange(new DataGridViewColumn[] { dataGridViewTextBoxColumn1, dataGridViewTextBoxColumn2, dataGridViewTextBoxColumn3 });
-            _teamGrid.Rows.Add("Hoàng Trung Nam", "44.01.104.145", "48.01.CNTT.B");
-            _teamGrid.Rows.Add("Lê Thị Vân Anh", "46.01.103.007", "48.01.TIN.SPA");
-            _teamGrid.Rows.Add("Lê Thanh Tú", "50.01.104.172", "50.01.CNTT.B");
-            _teamGrid.Rows.Add("Hồ Thị Mỹ Thuận", "50.01.104.157", "50.01.CNTT.A");
             dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle3.BackColor = Color.FromArgb(25, 30, 44);
             dataGridViewCellStyle3.Font = new Font("Segoe UI", 9.5F);
@@ -207,7 +203,7 @@ namespace ElementalSpirit.Presentation.Forms
             Name = "GuideAndTeamForm";
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;
-            Text = " ";
+            Text = "  ";
             Load += GuideAndTeamForm_Load;
             ((System.ComponentModel.ISupportInitialize)_teamGrid).EndInit();
             ResumeLayout(false);

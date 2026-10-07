@@ -54,5 +54,10 @@ namespace ElementalSpirit.Presentation.Forms
             DialogResult = DialogResult.OK;
             Close();
         }
+
+        private void _nameTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }
