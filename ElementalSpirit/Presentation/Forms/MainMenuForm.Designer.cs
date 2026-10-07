@@ -19,7 +19,6 @@ namespace ElementalSpirit.Presentation.Forms
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainMenuForm));
-            components = new System.ComponentModel.Container();
             _titleLabel = new Label();
             _btnContinue = new Button();
             _btnStart = new Button();
@@ -161,6 +160,7 @@ namespace ElementalSpirit.Presentation.Forms
             FormBorderStyle = FormBorderStyle.None;
             Name = "MainMenuForm";
             StartPosition = FormStartPosition.CenterScreen;
+            Load += MainMenuForm_Load;
             Resize += MainMenuForm_Resize;
             ResumeLayout(false);
         }

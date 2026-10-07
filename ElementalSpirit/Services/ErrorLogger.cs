@@ -6,6 +6,26 @@ namespace ElementalSpirit.Services
 {
     internal static class ErrorLogger
     {
+        public static void LogDiagnostic(string message)
+        {
+            string entry = $"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}";
+            Debug.Write(entry);
+
+            try
+            {
+                string logDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "ElementalSpirit",
+                    "Logs");
+                Directory.CreateDirectory(logDirectory);
+                File.AppendAllText(Path.Combine(logDirectory, "diagnostic.log"), entry);
+            }
+            catch (Exception loggingException)
+            {
+                Debug.WriteLine($"[ErrorLogger] Could not write diagnostic log: {loggingException}");
+            }
+        }
+
         public static void Log(string context, Exception exception)
         {
             string message = $"[{DateTimeOffset.Now:O}] {context}{Environment.NewLine}{exception}";

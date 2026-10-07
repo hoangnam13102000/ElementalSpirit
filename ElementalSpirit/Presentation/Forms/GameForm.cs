@@ -21,7 +21,6 @@ namespace ElementalSpirit.Presentation.Forms
         private GameTimer _gameTimer = null!;
         private ILocalizationService _localization = null!;
         private ISaveGameService _saveGameService = null!;
-        private IntroForm? _introForm;
         private GameRenderer _renderer = null!;
         private PlayerAnimationController _playerAnimController = null!;
         private SkillAnimationController _skillAnimController = null!;
@@ -30,6 +29,8 @@ namespace ElementalSpirit.Presentation.Forms
         private Image[]? _fireballFrames;
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
+        private bool _firstGameTickLogged;
+        private bool _firstGamePaintLogged;
         private const int AttackHitFrameIndex = 3;
 
         public GameForm()
@@ -41,34 +42,34 @@ namespace ElementalSpirit.Presentation.Forms
             InitializeRuntime(
                 Program.CreateGameManager(),
                 LocalizationManager.Instance,
-                new SaveGameService(),
-                null);
+                new SaveGameService());
         }
 
         public GameForm(
             GameManager gameManager,
             ILocalizationService localization,
-            ISaveGameService saveGameService,
-            IntroForm? introForm = null)
+            ISaveGameService saveGameService)
         {
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
                 return;
 
-            InitializeRuntime(gameManager, localization, saveGameService, introForm);
+            InitializeRuntime(gameManager, localization, saveGameService);
         }
 
         private void InitializeRuntime(
             GameManager gameManager,
             ILocalizationService localization,
-            ISaveGameService saveGameService,
-            IntroForm? introForm)
+            ISaveGameService saveGameService)
         {
+            ErrorLogger.LogDiagnostic("GameForm: initialization started");
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
-            _introForm = introForm;
             AppIcon.ApplyTo(this);
+            if (Services.FullscreenPreferenceStore.Load())
+                WindowDisplayMode.SetFullscreen(this, enabled: true);
+
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
@@ -92,6 +93,7 @@ namespace ElementalSpirit.Presentation.Forms
                 _goldAnimation,
                 _fireballFrames,
                 _localization);
+            ErrorLogger.LogDiagnostic("GameForm: renderer initialized");
 
             _gameTimer = new GameTimer(targetFps: 60);
             _gameTimer.OnTick += OnGameTick;
@@ -100,56 +102,20 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager.FinalBossDefeated += RecordAchievement;
             _gameManager.BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
 
-            if (_introForm is null)
-                PlayGameMusic();
-            else
-            {
-                _introForm.OnIntroFinished += OnIntroFinished;
-                _introForm.SetKeyboardInputHandledByParent(true);
-                _introForm.TopLevel = false;
-                _introForm.FormBorderStyle = FormBorderStyle.None;
-                _introForm.Dock = DockStyle.Fill;
-                Controls.Add(_introForm);
-                _introForm.BringToFront();
-            }
+            PlayGameMusic();
         }
 
         protected override void OnShown(EventArgs e)
         {
+            ErrorLogger.LogDiagnostic("GameForm: OnShown entered");
             base.OnShown(e);
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime ||
                 _gameManager is null)
                 return;
 
-            if (TopLevel)
-                WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
-            _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
-            if (_introForm is not null)
-            {
-                _introForm.Show();
-                _introForm.Focus();
-                _introForm.StartIntro();
-            }
-            else
-            {
-                _gameTimer.Start();
-            }
-        }
-
-        private void OnIntroFinished()
-        {
-            if (_introForm is null)
-                return;
-
-            IntroForm completedIntro = _introForm;
-            _introForm = null;
-            completedIntro.OnIntroFinished -= OnIntroFinished;
-            Controls.Remove(completedIntro);
-            completedIntro.Dispose();
-
-            PlayGameMusic();
+            ErrorLogger.LogDiagnostic("GameForm: starting timer");
             _gameTimer.Start();
-            Invalidate();
+            ErrorLogger.LogDiagnostic("GameForm: shown and timer started");
         }
 
         private void PlayGameMusic()
@@ -165,10 +131,6 @@ namespace ElementalSpirit.Presentation.Forms
         protected override bool IsInputKey(Keys keyData)
         {
             Keys keyCode = keyData & Keys.KeyCode;
-            if (_introForm is not null &&
-                keyCode is Keys.Space or Keys.Enter or Keys.Tab or Keys.Escape)
-                return true;
-
             if (keyCode is Keys.Left or Keys.Right or Keys.Up or Keys.Down)
                 return true;
 
@@ -177,12 +139,20 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnGameTick(float deltaTime)
         {
+            bool logFirstGameTick = !_firstGameTickLogged;
+            if (logFirstGameTick)
+            {
+                _firstGameTickLogged = true;
+                ErrorLogger.LogDiagnostic("GameForm: first game tick started");
+            }
             _gameManager.Update(deltaTime);
             UpdatePlayerAnimation(deltaTime);
             UpdateSkillAnimation(deltaTime);
             _portalAnimController.Update(deltaTime);
             _goldAnimation?.Update(deltaTime);
             Invalidate();
+            if (logFirstGameTick)
+                ErrorLogger.LogDiagnostic("GameForm: first game tick completed");
         }
         private void UpdateSkillAnimation(float deltaTime)
         {
@@ -270,14 +240,6 @@ namespace ElementalSpirit.Presentation.Forms
             if (_gameManager is null)
                 return;
 
-            if (_introForm is not null)
-            {
-                _introForm.HandleIntroKey(e.KeyCode);
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-                return;
-            }
-
             if (e.KeyCode == Keys.P) { OpenSettings(); return; }
             _gameManager.HandleKeyDown(e.KeyCode);
             if (e.KeyCode == Keys.Escape) Close();
@@ -332,14 +294,6 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
-            if (_introForm is not null)
-            {
-                _introForm.OnIntroFinished -= OnIntroFinished;
-                Controls.Remove(_introForm);
-                _introForm.Dispose();
-                _introForm = null;
-            }
-
             if (_gameManager is null)
                 return;
 
@@ -397,8 +351,14 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
+            bool logFirstPaint = !_firstGamePaintLogged;
+            _firstGamePaintLogged = true;
+            if (logFirstPaint)
+                ErrorLogger.LogDiagnostic("GameForm: first paint started");
             if (_renderer is not null)
                 _renderer.Render(e.Graphics, ClientSize);
+            if (logFirstPaint)
+                ErrorLogger.LogDiagnostic("GameForm: first paint completed");
         }
     }
 }
