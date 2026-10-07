@@ -187,7 +187,6 @@ namespace ElementalSpirit.Domain.Enemy
         }
 
         // === CHỈ MẤT MÁU KHI ĐƯỢC GỌI TỪ BÊN NGOÀI ===
-        // KHÔNG có logic nào tự giảm HP trong Update
         public override void TakeDamage(int amount)
         {
             base.TakeDamage(amount);

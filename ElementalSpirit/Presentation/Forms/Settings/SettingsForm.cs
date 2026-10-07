@@ -41,8 +41,10 @@ namespace ElementalSpirit.Presentation.Forms.Settings
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _onFullscreenChanged = onFullscreenChanged;
+            bool showSaveGame = activeGame != null;
+            int actionOffset = showSaveGame ? 0 : -50;
+            ClientSize = new Size(420, showSaveGame ? 485 : 420);
             _isFullscreenOn = initialIsFullscreen;
-            ClientSize = new Size(420, 485);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
@@ -84,13 +86,13 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                 UpdateSoundToggleButton(_chkMusic, Services.AudioManager.Instance.MusicEnabled); 
             };
 
-            _lblMusic = CreateLabel(155);
-            _lblFullscreen = CreateLabel(225);
-            _lblSfx = CreateLabel(190);
+            _lblMusic = CreateLabel(150);
+            _lblFullscreen = CreateLabel(220);
+            _lblSfx = CreateLabel(185);
 
             _chkFullscreen = new Button 
             { 
-                Location = new Point(230, 218), 
+                Location = new Point(230, 215), 
                 Size = new Size(36, 30),
                 FlatStyle = FlatStyle.Flat, 
                 Font = new Font("Segoe UI Emoji", 10f),
@@ -124,11 +126,11 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                 UpdateSoundToggleButton(_chkSfx, Services.AudioManager.Instance.SfxEnabled);
             };
 
-            _lblSaveGame = CreateLabel(267);    
+            _lblSaveGame = CreateLabel(267);
+            _lblSaveGame.Visible = showSaveGame;
 
             _btnSaveGame = CreateButton(180, 263, 200);
-            _btnSaveGame.ForeColor = Color.White;
-            _btnSaveGame.UseVisualStyleBackColor = false;
+            _btnSaveGame.Visible = showSaveGame;
             _btnSaveGame.Click += (s, e) => SaveGameRequested?.Invoke(this, EventArgs.Empty);
             _btnSaveGame.Paint += (s, e) =>
             {
@@ -145,15 +147,23 @@ namespace ElementalSpirit.Presentation.Forms.Settings
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             };
 
-            _btnSave = CreateButton(100, 345);
+            _btnSave = CreateButton(70, 320 + actionOffset,120);
             _btnSave.Click += (s, e) => SaveRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnCancel = CreateButton(220, 345);
+            _btnCancel = CreateButton(220, 320 + actionOffset,120);
             _btnCancel.Click += (s, e) => CancelRequested?.Invoke(this, EventArgs.Empty);
 
-            _btnExitGame = CreateButton(100, 401, 220);
+            _btnExitGame = CreateButton(100, 370 + actionOffset, 270);
             _btnExitGame.BackColor = Color.FromArgb(120, 30, 30);
-            _btnExitGame.Click += (s, e) => ExitGameRequested?.Invoke(this, EventArgs.Empty);
+            _btnExitGame.Click += (s, e) =>
+            {
+                
+                if (Confirm(_localization.Translate("settings.exitgame.confirm.message"),
+                            _localization.Translate("settings.exitgame.confirm.title")))
+                {
+                    RequestExitToMainMenu(); 
+                }
+            };
 
             Controls.AddRange(new Control[]
             {

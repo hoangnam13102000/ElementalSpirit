@@ -20,6 +20,8 @@ namespace ElementalSpirit.Presentation.Forms
         private readonly Button _btnSettings;
         private readonly Button _btnExit;
         private Image? _menuBackground;
+        private IntroForm? _activeIntro;
+        private GameForm? _activeGame;
 
         private readonly ILocalizationService _localization;
         private readonly ISaveGameService _saveGameService;
@@ -160,26 +162,32 @@ namespace ElementalSpirit.Presentation.Forms
 
             _btnStart.Enabled = false;
             Services.AudioManager.Instance.StopMusic();
-            this.Hide();
+            SetMenuButtonsVisible(false);
 
-            using var introForm = new IntroForm(_localization, playerName);
-            bool introCompleted = false;
-            introForm.OnIntroFinished += () => introCompleted = true;
+            var introForm = new IntroForm(_localization, playerName);
+            _activeIntro = introForm;
+            introForm.OnIntroFinished += () =>
+            {
+                if (!ReferenceEquals(_activeIntro, introForm))
+                    return;
+
+                 _activeIntro = null;
+                 OpenGame(gameManager);
+       
+            };
+            introForm.FormClosed += (_, _) =>
+            {
+                this.Hide();
+                if (ReferenceEquals(_activeIntro, introForm))
+                {
+                    _activeIntro = null;
+                    gameManager.Dispose();
+                    ReturnToMenu();
+                }
+            };
             introForm.Shown += (_, _) => introForm.StartIntro();
             introForm.ShowDialog();
 
-            if (introCompleted)
-            {
-                using var gameForm = new GameForm(gameManager, _localization, _saveGameService);
-                gameForm.ShowDialog();
-            }
-            else
-            {
-                gameManager.Dispose();
-            }
-
-            ReturnToMenu();
-            _btnStart.Enabled = true;
         }
 
         private void BtnContinue_Click(object? sender, EventArgs e)
@@ -214,15 +222,11 @@ namespace ElementalSpirit.Presentation.Forms
                 return;
             }
 
-            this.Hide();
             Services.AudioManager.Instance.StopMusic();
 
             var gameManager = Program.CreateGameManager();
             gameManager.ApplySaveData(saveData);
-
-            var gameForm = new GameForm(gameManager, _localization, _saveGameService);
-            gameForm.ShowDialog();
-            ReturnToMenu();
+            OpenGame(gameManager);
         }
 
         private void BtnExit_Click(object? sender, EventArgs e)
@@ -263,9 +267,50 @@ namespace ElementalSpirit.Presentation.Forms
             _menuBackground?.Dispose();
             _menuBackground = LoadMenuBackground();
             LayoutMenuButtons();
+            _btnStart.Enabled = true;
             this.Show();
+            this.BringToFront();
             this.Activate();
             Services.AudioManager.Instance.PlayMusic("menu_theme.wav", loop: true);
+        }
+
+        private void OpenGame(ElementalSpirit.GameEngine.GameManager gameManager)
+        {
+            SetMenuButtonsVisible(false);
+            this.Hide();
+            var gameForm = new GameForm(gameManager, _localization, _saveGameService);
+            _activeGame = gameForm;
+            gameForm.FormClosed += (_, _) =>
+            {
+                Controls.Remove(gameForm);
+                if (ReferenceEquals(_activeGame, gameForm))
+                {
+                    _activeGame = null;
+                    ReturnToMenu();
+                }
+            };
+            gameForm.ShowDialog();
+        }
+
+        private void ShowEmbeddedForm(Form childForm)
+        {
+            childForm.TopLevel = false;
+            childForm.FormBorderStyle = FormBorderStyle.None;
+            childForm.Dock = DockStyle.Fill;
+            Controls.Add(childForm);
+            childForm.BringToFront();
+            childForm.Show();
+            childForm.Focus();
+        }
+
+        private void SetMenuButtonsVisible(bool visible)
+        {
+            _btnContinue.Visible = visible && _saveGameService.HasSavedGame;
+            _btnStart.Visible = visible;
+            _btnLeaderboard.Visible = visible;
+            _btnGuide.Visible = visible;
+            _btnSettings.Visible = visible;
+            _btnExit.Visible = visible;
         }
 
         protected override void OnPaint(PaintEventArgs e)
