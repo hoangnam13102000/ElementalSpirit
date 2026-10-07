@@ -3,6 +3,7 @@
     using ElementalSpirit.Domain.BossEncounter;
     using ElementalSpirit.Localization;
     using ElementalSpirit.Presentation.BossEncounter;
+    using System.ComponentModel;
     using System;
     using System.Drawing;
     using System.Windows.Forms;
@@ -17,20 +18,32 @@
     /// - KHÔNG chứa logic xử lý luồng thoại
     /// - KHÔNG chứa logic game
     /// </summary>
-    public sealed class BossDialogueForm : Form, IBossDialogueView
+    public sealed partial class BossDialogueForm : Form, IBossDialogueView
     {
-        private readonly ILocalizationService _localization;
-        private readonly string _playerName;
-        private readonly Panel _dialoguePanel;
-        private readonly Label _speakerLabel;
-        private readonly Label _textLabel;
-        private readonly Label _captionLabel;
-        private readonly Label _sceneNameLabel;
-        private readonly Button _nextButton;
-        private readonly Button _skipButton;
+        private readonly ILocalizationService _localization = null!;
+        private readonly string _playerName = "Arin";
+        private Panel _dialoguePanel = null!;
+        private Label _speakerLabel = null!;
+        private Label _textLabel = null!;
+        private Label _captionLabel = null!;
+        private Label _sceneNameLabel = null!;
+        private Button _nextButton = null!;
+        private Button _skipButton = null!;
 
         public event EventHandler? NextLineRequested;
         public event EventHandler? SkipSceneRequested;
+
+        public BossDialogueForm()
+        {
+            _localization = null!;
+            _playerName = "Arin";
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            _localization = LocalizationManager.Instance;
+            ApplyTranslations();
+        }
 
         public BossDialogueForm(ILocalizationService localization, string playerName = "Arin")
         {
@@ -39,112 +52,42 @@
                 throw new ArgumentException("Player name cannot be empty.", nameof(playerName));
             _playerName = playerName.Trim();
 
-            // Form setup
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            ApplyTranslations();
+        }
+
+        private void ApplyTranslations()
+        {
             Text = _localization.Translate("boss.dialogue.title");
-            ClientSize = new Size(1280, 720);
-            StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.None;
-            BackColor = Color.Black;
-            DoubleBuffered = true;
-            KeyPreview = true;
+            _nextButton.Text = _localization.Translate("boss.dialogue.next");
+            _skipButton.Text = _localization.Translate("boss.dialogue.skip");
+        }
 
-            // Scene name label (top)
-            _sceneNameLabel = new Label
+        private void NextButton_Click(object? sender, EventArgs e)
+        {
+            NextLineRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void SkipButton_Click(object? sender, EventArgs e)
+        {
+            SkipSceneRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BossDialogueForm_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter)
             {
-                Dock = DockStyle.Top,
-                Height = 40,
-                ForeColor = Color.FromArgb(255, 215, 0),
-                Font = new Font("Segoe UI", 16f, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.FromArgb(180, 0, 0, 0)
-            };
-            Controls.Add(_sceneNameLabel);
-
-            // Dialogue panel (bottom)
-            _dialoguePanel = new Panel
+                e.Handled = true;
+                NextLineRequested?.Invoke(this, EventArgs.Empty);
+            }
+            else if (e.KeyCode == Keys.Escape)
             {
-                Dock = DockStyle.Bottom,
-                Height = 220,
-                BackColor = Color.FromArgb(200, 20, 20, 40),
-                Padding = new Padding(30)
-            };
-
-            // Speaker label
-            _speakerLabel = new Label
-            {
-                Location = new Point(30, 20),
-                AutoSize = true,
-                Font = new Font("Segoe UI", 14f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(100, 200, 255)
-            };
-            _dialoguePanel.Controls.Add(_speakerLabel);
-
-            // Text label
-            _textLabel = new Label
-            {
-                Location = new Point(30, 60),
-                Size = new Size(1000, 100),
-                Font = new Font("Segoe UI", 13f),
-                ForeColor = Color.White,
-                TextAlign = ContentAlignment.TopLeft
-            };
-            _dialoguePanel.Controls.Add(_textLabel);
-
-            // Caption label (on-screen text)
-            _captionLabel = new Label
-            {
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 18f, FontStyle.Italic),
-                ForeColor = Color.FromArgb(255, 230, 150),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Visible = false
-            };
-            Controls.Add(_captionLabel);
-
-            // Next button
-            _nextButton = new Button
-            {
-                Text = _localization.Translate("boss.dialogue.next"),
-                Location = new Point(1080, 160),
-                Size = new Size(120, 40),
-                BackColor = Color.FromArgb(60, 120, 200),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11f, FontStyle.Bold)
-            };
-            _nextButton.Click += (s, e) => NextLineRequested?.Invoke(this, EventArgs.Empty);
-            _dialoguePanel.Controls.Add(_nextButton);
-
-            // Skip button
-            _skipButton = new Button
-            {
-                Text = _localization.Translate("boss.dialogue.skip"),
-                Location = new Point(940, 160),
-                Size = new Size(120, 40),
-                BackColor = Color.FromArgb(80, 80, 100),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11f)
-            };
-            _skipButton.Click += (s, e) => SkipSceneRequested?.Invoke(this, EventArgs.Empty);
-            _dialoguePanel.Controls.Add(_skipButton);
-
-            Controls.Add(_dialoguePanel);
-
-            // Keyboard support
-            KeyDown += (s, e) =>
-            {
-                if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter)
-                {
-                    e.Handled = true;
-                    NextLineRequested?.Invoke(this, EventArgs.Empty);
-                }
-                else if (e.KeyCode == Keys.Escape)
-                {
-                    e.Handled = true;
-                    SkipSceneRequested?.Invoke(this, EventArgs.Empty);
-                }
-            };
+                e.Handled = true;
+                SkipSceneRequested?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         public void ShowDialogueLine(BossDialogueLine line)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -7,45 +8,57 @@ using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
 using ElementalSpirit.Presentation.Forms.Settings;
 using ElementalSpirit.Presentation.Dialogs;
+using ElementalSpirit.Services;
 using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Presentation.Forms
 {
-    public class MainMenuForm : Form
+    public partial class MainMenuForm : Form
     {
-        private readonly Button _btnContinue;
-        private readonly Button _btnStart;
-        private readonly Button _btnLeaderboard;
-        private readonly Button _btnGuide;
-        private readonly Button _btnSettings;
-        private readonly Button _btnExit;
+        private Button _btnContinue = null!;
+        private Button _btnStart = null!;
+        private Button _btnLeaderboard = null!;
+        private Button _btnGuide = null!;
+        private Button _btnSettings = null!;
+        private Button _btnExit = null!;
         private Image? _menuBackground;
         private IntroForm? _activeIntro;
         private GameForm? _activeGame;
 
-        private readonly ILocalizationService _localization;
-        private readonly ISaveGameService _saveGameService;
+        private readonly ILocalizationService _localization = null!;
+        private readonly ISaveGameService _saveGameService = null!;
 
-        private static Image? LoadMenuBackground()
+        public MainMenuForm()
         {
-            var source = AssetLoader.Get("Menu/MainMenu_Background.png");
-            return source == null ? null : new Bitmap(source);
+            _localization = null!;
+            _saveGameService = null!;
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            _localization = LocalizationManager.Instance;
+            _saveGameService = new SaveGameService();
+            InitializeRuntime();
         }
 
         public MainMenuForm(ILocalizationService localization, ISaveGameService saveGameService)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            InitializeRuntime();
+        }
+
+        private void InitializeRuntime()
+        {
             AppIcon.ApplyTo(this);
-            ClientSize = new Size(1280, 720);
-            FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(6, 8, 15);
-            DoubleBuffered = true;
 
             try
             {
-                _menuBackground = LoadMenuBackground();
+                _menuBackground = AssetLoader.Get("Menu/MainMenu_Background.png");
             }
             catch (Exception ex)
             {
@@ -53,46 +66,36 @@ namespace ElementalSpirit.Presentation.Forms
                 _menuBackground = null;
             }
 
-            _btnContinue = CreateMenuButton();
-            _btnContinue.Click += BtnContinue_Click;
-
-            _btnStart = CreateMenuButton();
-            _btnStart.Click += BtnStart_Click;
-
-            _btnLeaderboard = CreateMenuButton();
-            _btnLeaderboard.Click += BtnLeaderboard_Click;
-
-            _btnGuide = CreateMenuButton();
-            _btnGuide.Click += BtnGuide_Click;
-
-            _btnSettings = CreateMenuButton();
-            _btnSettings.Click += BtnSettings_Click;
-
-            _btnExit = CreateMenuButton();
-            _btnExit.Click += BtnExit_Click;
-
-            Controls.Add(_btnContinue);
-            Controls.Add(_btnStart);
-            Controls.Add(_btnLeaderboard);
-            Controls.Add(_btnGuide);
-            Controls.Add(_btnSettings);
-            Controls.Add(_btnExit);
-
-            Resize += (_, _) =>
-            {
-                LayoutMenuButtons();
-                Invalidate();
-            };
-            _localization.LanguageChanged += (s, e) => ApplyTranslations();
+            _localization.LanguageChanged += OnLanguageChanged;
 
             ApplyTranslations();
             LayoutMenuButtons();
-            Services.AudioManager.Instance.PlayMusic("menu_theme.wav", loop: true);
+            if (System.ComponentModel.LicenseManager.UsageMode !=
+                System.ComponentModel.LicenseUsageMode.Designtime)
+                Services.AudioManager.Instance.PlayMusic("menu_theme.wav", loop: true);
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            ApplyTranslations();
+        }
+
+        private void MainMenuForm_Resize(object? sender, EventArgs e)
+        {
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime ||
+                _saveGameService is null)
+                return;
+
+            LayoutMenuButtons();
+            Invalidate();
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
             WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
         }
 
@@ -105,13 +108,18 @@ namespace ElementalSpirit.Presentation.Forms
             _btnGuide.Text = _localization.Translate("menu.guide");
             _btnSettings.Text = _localization.Translate("menu.settings");
             _btnExit.Text = _localization.Translate("menu.exit");
-            Invalidate(); // vẽ lại tiêu đề game trong OnPaint
+            _titleLabel.Text = _localization.Translate("menu.gameTitle");
         }
 
         private void LayoutMenuButtons()
         {
             float verticalScale = ClientSize.Height / 720f;
             bool hasSave = _saveGameService.HasSavedGame;
+            _titleLabel.SetBounds(
+                0,
+                (int)(70 * verticalScale),
+                ClientSize.Width,
+                Math.Max(60, (int)(80 * verticalScale)));
 
             _btnContinue.Visible = hasSave;
             _btnContinue.Enabled = hasSave;
@@ -132,22 +140,6 @@ namespace ElementalSpirit.Presentation.Forms
                 button.Visible = true;
                 y += spacing;
             }
-        }
-
-        private Button CreateMenuButton()
-        {
-            var btn = new Button
-            {
-                Bounds = new Rectangle(0, 0, 400, 58),
-                Font = new Font("Georgia", 16f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(230, 220, 255),
-                BackColor = Color.FromArgb(70, 40, 80, 150),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            btn.FlatAppearance.BorderSize = 2;
-            btn.FlatAppearance.BorderColor = Color.FromArgb(150, 180, 220);
-            return btn;
         }
 
         private void BtnStart_Click(object? sender, EventArgs e)
@@ -265,7 +257,7 @@ namespace ElementalSpirit.Presentation.Forms
         {
             WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
             _menuBackground?.Dispose();
-            _menuBackground = LoadMenuBackground();
+            _menuBackground = AssetLoader.Get("Menu/MainMenu_Background.png");
             LayoutMenuButtons();
             _btnStart.Enabled = true;
             this.Show();
@@ -319,22 +311,9 @@ namespace ElementalSpirit.Presentation.Forms
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            if (_menuBackground == null)
-            {
-                try
-                {
-                    _menuBackground = LoadMenuBackground();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[MainMenuForm] Menu background unavailable: {ex}");
-                    _menuBackground = null;
-                }
-            }
-
             if (_menuBackground != null)
                 g.DrawImage(_menuBackground, 0, 0, ClientSize.Width, ClientSize.Height);
-            else
+            else if (BackgroundImage == null)
             {
                 using var gradient = new LinearGradientBrush(
                     ClientRectangle,
@@ -343,16 +322,6 @@ namespace ElementalSpirit.Presentation.Forms
                     135f);
                 g.FillRectangle(gradient, ClientRectangle);
             }
-
-            using var titleFont = new Font("Georgia", 52f, FontStyle.Bold);
-            using var titleBrush = new SolidBrush(Color.FromArgb(245, 235, 255));
-
-            string title = _localization.Translate("menu.gameTitle");
-            var size = g.MeasureString(title, titleFont);
-            float x = (ClientSize.Width - size.Width) / 2;
-            float y = 70;
-
-            g.DrawString(title, titleFont, titleBrush, x, y);
         }
     }
 }

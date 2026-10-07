@@ -9,42 +9,59 @@ using ElementalSpirit.Presentation.Rendering;
 using ElementalSpirit.Services;
 using ElementalSpirit.Services.Abstractions;
 using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace ElementalSpirit.Presentation.Forms
 {
-    public class GameForm : Form
+    public partial class GameForm : Form
     {
-        private readonly GameManager _gameManager;
-        private readonly GameTimer _gameTimer;
-        private readonly ILocalizationService _localization;
-        private readonly ISaveGameService _saveGameService;
-        private readonly GameRenderer _renderer;
-        private readonly PlayerAnimationController _playerAnimController;
-        private readonly SkillAnimationController _skillAnimController;
-        private readonly PortalAnimationController _portalAnimController;
-        private readonly AnimationClip? _goldAnimation;
-        private readonly Image[]? _fireballFrames;
+        private GameManager _gameManager = null!;
+        private GameTimer _gameTimer = null!;
+        private ILocalizationService _localization = null!;
+        private ISaveGameService _saveGameService = null!;
+        private GameRenderer _renderer = null!;
+        private PlayerAnimationController _playerAnimController = null!;
+        private SkillAnimationController _skillAnimController = null!;
+        private PortalAnimationController _portalAnimController = null!;
+        private AnimationClip? _goldAnimation;
+        private Image[]? _fireballFrames;
         private PlayerAnimationState _lastAnimState = PlayerAnimationState.Idle;
         private bool _attackHitFrameTriggered;
         private const int AttackHitFrameIndex = 3;
 
+        public GameForm()
+        {
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            InitializeRuntime(
+                Program.CreateGameManager(),
+                LocalizationManager.Instance,
+                new SaveGameService());
+        }
+
         public GameForm(GameManager gameManager, ILocalizationService localization, ISaveGameService saveGameService)
+        {
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            InitializeRuntime(gameManager, localization, saveGameService);
+        }
+
+        private void InitializeRuntime(
+            GameManager gameManager,
+            ILocalizationService localization,
+            ISaveGameService saveGameService)
         {
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
             AppIcon.ApplyTo(this);
-            Text = "Elemental Spirit";
-            ClientSize = new Size(1280, 720);
-            StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
-            DoubleBuffered = true;
-            KeyPreview = true;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
-
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
             _playerAnimController = MageAnimationLoader.CreateController();
@@ -71,10 +88,6 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer = new GameTimer(targetFps: 60);
             _gameTimer.OnTick += OnGameTick;
 
-            KeyDown += OnKeyDown;
-            KeyUp += OnKeyUp;
-            Resize += OnFormResize;
-            FormClosing += OnFormClosing;
             _gameManager.Player.OnDeath += RecordAchievement;
             _gameManager.FinalBossDefeated += RecordAchievement;
             _gameManager.BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
@@ -90,6 +103,10 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime ||
+                _gameManager is null)
+                return;
+
             if (TopLevel)
                 WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
@@ -197,6 +214,9 @@ namespace ElementalSpirit.Presentation.Forms
         }
         private void OnKeyDown(object? sender, KeyEventArgs e)
         {
+            if (_gameManager is null)
+                return;
+
             if (e.KeyCode == Keys.P) { OpenSettings(); return; }
             _gameManager.HandleKeyDown(e.KeyCode);
             if (e.KeyCode == Keys.Escape) Close();
@@ -237,10 +257,23 @@ namespace ElementalSpirit.Presentation.Forms
             _gameTimer.Resume();
             Invalidate();
         }
-        private void OnKeyUp(object? sender, KeyEventArgs e) => _gameManager.HandleKeyUp(e.KeyCode);
-        private void OnFormResize(object? sender, EventArgs e) => _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
+        private void OnKeyUp(object? sender, KeyEventArgs e)
+        {
+            if (_gameManager is not null)
+                _gameManager.HandleKeyUp(e.KeyCode);
+        }
+
+        private void OnFormResize(object? sender, EventArgs e)
+        {
+            if (_gameManager is not null)
+                _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
+        }
+
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
+            if (_gameManager is null)
+                return;
+
             _gameManager.Player.OnDeath -= RecordAchievement;
             _gameManager.FinalBossDefeated -= RecordAchievement;
             _gameManager.BossEncounter.OnPreBossDialogueStarted -= OnPreBossDialogueStarted;
@@ -295,7 +328,8 @@ namespace ElementalSpirit.Presentation.Forms
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            _renderer.Render(e.Graphics, ClientSize);
+            if (_renderer is not null)
+                _renderer.Render(e.Graphics, ClientSize);
         }
     }
 }

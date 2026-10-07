@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -10,11 +11,11 @@ using ElementalSpirit.Presentation.Intro;
 
 namespace ElementalSpirit.Presentation.Forms
 {
-    public class IntroForm : Form
+    public partial class IntroForm : Form
     {
-        private readonly ILocalizationService _localization;
-        private readonly IntroManager _introManager;
-        private readonly string _playerName;
+        private ILocalizationService _localization = null!;
+        private IntroManager _introManager = null!;
+        private string _playerName = "Arin";
         private Image? _currentBackground;
         private string _currentSpeakerName = "";
         private string _currentText = "";
@@ -23,11 +24,29 @@ namespace ElementalSpirit.Presentation.Forms
 
         private float _fadeAlpha = 0f;
         private bool _isFadingIn;
-        private readonly Timer _fadeTimer;
+        private Timer? _fadeTimer;
 
         public event Action? OnIntroFinished;
 
+        public IntroForm()
+        {
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            InitializeRuntime(LocalizationManager.Instance, "Arin");
+        }
+
         public IntroForm(ILocalizationService localization, string playerName = "Arin")
+        {
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            InitializeRuntime(localization, playerName);
+        }
+
+        private void InitializeRuntime(ILocalizationService localization, string playerName)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             if (string.IsNullOrWhiteSpace(playerName))
@@ -40,26 +59,18 @@ namespace ElementalSpirit.Presentation.Forms
             _introManager.OnIntroCompleted += HandleIntroCompleted;
 
             Text = _localization.Translate("intro.windowTitle");
-            ClientSize = new Size(1280, 720);
-            FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(8, 10, 18);
-            DoubleBuffered = true;
             SetStyle(ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer, true);
 
             _fadeTimer = new Timer { Interval = 30 };
             _fadeTimer.Tick += OnFadeTick;
-
-            KeyDown += OnKeyPressed;
-            MouseClick += OnMouseClicked;
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            if (TopLevel)
+            if (LicenseManager.UsageMode != LicenseUsageMode.Designtime && TopLevel)
                 WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
         }
 
@@ -114,7 +125,7 @@ namespace ElementalSpirit.Presentation.Forms
         
         private void HandleIntroCompleted()
         {
-            _fadeTimer.Stop();
+            _fadeTimer?.Stop();
             _currentBackground?.Dispose();
             Services.AudioManager.Instance.StopMusic();
 
@@ -125,6 +136,9 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnKeyPressed(object? sender, KeyEventArgs e)
         {
+            if (_introManager is null)
+                return;
+
             if (e.KeyCode == Keys.Escape) { _introManager.SkipAll(); return; }
             if (e.KeyCode == Keys.Tab) { _introManager.SkipScene(); return; }
             if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter)
@@ -135,14 +149,14 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnMouseClicked(object? sender, MouseEventArgs e)
         {
-            _introManager.NextLine();
+            _introManager?.NextLine();
         }
 
         private void BeginFadeIn()
         {
             _fadeAlpha = 0f;
             _isFadingIn = true;
-            _fadeTimer.Start();
+            _fadeTimer?.Start();
         }
 
         private void OnFadeTick(object? sender, EventArgs e)
@@ -154,7 +168,7 @@ namespace ElementalSpirit.Presentation.Forms
                 {
                     _fadeAlpha = 1f;
                     _isFadingIn = false;
-                    _fadeTimer.Stop();
+                    _fadeTimer?.Stop();
                 }
             }
             Invalidate();
@@ -179,6 +193,9 @@ namespace ElementalSpirit.Presentation.Forms
                 g.FillRectangle(bgBrush, ClientRectangle);
             }
 
+            if (_localization is null)
+                return;
+
             if (_fadeAlpha < 1f)
             {
                 int alpha = (int)(255 * (1 - _fadeAlpha));
@@ -193,6 +210,18 @@ namespace ElementalSpirit.Presentation.Forms
                 DrawDialogueBox(g);
 
             DrawControlHint(g);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                components?.Dispose();
+                _fadeTimer?.Dispose();
+                _currentBackground?.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
 
         private void DrawCenteredCaption(Graphics g)

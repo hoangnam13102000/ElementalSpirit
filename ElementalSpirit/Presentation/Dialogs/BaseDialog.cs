@@ -1,14 +1,31 @@
 using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace ElementalSpirit.Presentation.Dialogs
 {
-    public abstract class BaseDialog : Form
+    public abstract partial class BaseDialog : Form
     {
-        protected readonly Label MessageLabel;
-        protected readonly Panel ButtonPanel;
+        protected Label MessageLabel = null!;
+        protected Panel ButtonPanel = null!;
+        protected Button SecondaryButton = null!;
+        protected Button PrimaryButton = null!;
+
+        private Label _titleLabel = null!;
+        private Panel _headerPanel = null!;
+        private Panel _iconPanel = null!;
+        private Color _accentColor = Color.FromArgb(45, 105, 190);
+
+        protected BaseDialog()
+        {
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            ApplyRoundedRegions();
+        }
 
         protected BaseDialog(
             string title,
@@ -17,92 +34,33 @@ namespace ElementalSpirit.Presentation.Dialogs
             string secondaryButtonText,
             Color primaryButtonColor,
             Color accentColor)
+            : this()
         {
             Text = title;
-            ClientSize = new Size(500, 260);
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.None;
-            ShowInTaskbar = false;
-            MinimizeBox = false;
-            MaximizeBox = false;
-            BackColor = Color.White;
-            DoubleBuffered = true;
+            _titleLabel.Text = title;
+            MessageLabel.Text = message;
+            PrimaryButton.Text = primaryButtonText;
+            SecondaryButton.Text = secondaryButtonText;
+            PrimaryButton.BackColor = primaryButtonColor;
+            _accentColor = accentColor;
+            PrimaryButton.DialogResult = DialogResult.OK;
+            SecondaryButton.DialogResult = DialogResult.Cancel;
+            AcceptButton = PrimaryButton;
+            CancelButton = SecondaryButton;
+            _iconPanel.Invalidate();
+        }
+
+        private void ApplyRoundedRegions()
+        {
             Region = CreateRoundedRegion(ClientSize.Width, ClientSize.Height, 16);
-
-            var header = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 72,
-                BackColor = Color.White
-            };
-            header.Paint += (_, e) =>
-            {
-                using var pen = new Pen(Color.FromArgb(185, 198, 220));
-                e.Graphics.DrawLine(pen, 24, header.Height - 1, header.Width - 24, header.Height - 1);
-            };
-
-            var titleLabel = new Label
-            {
-                Text = title,
-                Location = new Point(68, 18),
-                AutoSize = true,
-                Font = new Font("Segoe UI", 16f, FontStyle.Regular),
-                ForeColor = Color.FromArgb(20, 25, 35)
-            };
-            header.Controls.Add(titleLabel);
-
-            var iconPanel = new Panel
-            {
-                Location = new Point(28, 90),
-                Size = new Size(72, 72),
-                BackColor = Color.FromArgb(255, 242, 242)
-            };
-            iconPanel.Paint += (_, e) => DrawIcon(e.Graphics, iconPanel.ClientRectangle, accentColor);
-
-            MessageLabel = new Label
-            {
-                Text = message,
-                Location = new Point(126, 108),
-                Size = new Size(340, 48),
-                AutoEllipsis = false,
-                Font = new Font("Segoe UI", 12f),
-                ForeColor = Color.FromArgb(25, 30, 40)
-            };
-
-            ButtonPanel = new Panel
-            {
-                Location = new Point(28, 194),
-                Size = new Size(ClientSize.Width - 56, 52)
-            };
-
-            var secondary = CreateButton(
-                secondaryButtonText,
-                new Point(ButtonPanel.Width - 256, 6),
-                110,
-                40);
-            secondary.BackColor = Color.FromArgb(241, 245, 250);
-            secondary.ForeColor = Color.FromArgb(35, 45, 60);
-            secondary.DialogResult = DialogResult.Cancel;
-
-            var primary = CreateButton(
-                primaryButtonText,
-                new Point(ButtonPanel.Width - 134, 6),
-                110,
-                40);
-            primary.BackColor = primaryButtonColor;
-            primary.ForeColor = Color.White;
-            primary.DialogResult = DialogResult.OK;
-
-            ButtonPanel.Controls.Add(secondary);
-            ButtonPanel.Controls.Add(primary);
-            Controls.Add(header);
-            Controls.Add(iconPanel);
-            Controls.Add(MessageLabel);
-            Controls.Add(ButtonPanel);
-
-            AcceptButton = primary;
-            CancelButton = secondary;
-            Shown += (_, _) => ActiveControl = primary;
+            SecondaryButton.Region = CreateRoundedRegion(
+                SecondaryButton.Width,
+                SecondaryButton.Height,
+                10);
+            PrimaryButton.Region = CreateRoundedRegion(
+                PrimaryButton.Width,
+                PrimaryButton.Height,
+                10);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -114,21 +72,27 @@ namespace ElementalSpirit.Presentation.Dialogs
             e.Graphics.DrawPath(pen, path);
         }
 
-        private static Button CreateButton(string text, Point location, int width, int height)
+        private void HeaderPanel_Paint(object? sender, PaintEventArgs e)
         {
-            var button = new Button
-            {
-                Text = text,
-                Location = location,
-                Size = new Size(width, height),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11f),
-                Cursor = Cursors.Hand,
-                TabStop = true
-            };
-            button.FlatAppearance.BorderSize = 0;
-            button.Region = CreateRoundedRegion(width, height, 10);
-            return button;
+            using var pen = new Pen(Color.FromArgb(185, 198, 220));
+            e.Graphics.DrawLine(pen, 24, _headerPanel.Height - 1, _headerPanel.Width - 24, _headerPanel.Height - 1);
+        }
+
+        private void IconPanel_Paint(object? sender, PaintEventArgs e)
+        {
+            DrawIcon(e.Graphics, _iconPanel.ClientRectangle, _accentColor);
+        }
+
+        private void BaseDialog_Shown(object? sender, EventArgs e)
+        {
+            ActiveControl = PrimaryButton;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                components?.Dispose();
+            base.Dispose(disposing);
         }
 
         private static Region CreateRoundedRegion(int width, int height, int radius)

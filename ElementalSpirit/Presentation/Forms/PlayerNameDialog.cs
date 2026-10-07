@@ -1,97 +1,58 @@
 using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using ElementalSpirit.Localization;
 
 namespace ElementalSpirit.Presentation.Forms
 {
-    public sealed class PlayerNameDialog : Form
+    public sealed partial class PlayerNameDialog : Form
     {
-        private readonly ILocalizationService _localization;
-        private readonly TextBox _nameTextBox;
-        private readonly Label _errorLabel;
+        private readonly ILocalizationService _localization = null!;
 
         public string PlayerName => _nameTextBox.Text.Trim();
+
+        public PlayerNameDialog()
+        {
+            _localization = null!;
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            _localization = LocalizationManager.Instance;
+            ApplyTranslations();
+        }
 
         public PlayerNameDialog(ILocalizationService localization)
         {
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            ApplyTranslations();
+        }
+
+        private void ApplyTranslations()
+        {
             Text = _localization.Translate("playerName.title");
-            ClientSize = new Size(420, 185);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            StartPosition = FormStartPosition.CenterParent;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            ShowInTaskbar = false;
-            BackColor = Color.FromArgb(24, 18, 36);
+            _promptLabel.Text = _localization.Translate("playerName.prompt");
+            _startButton.Text = _localization.Translate("playerName.start");
+            _cancelButton.Text = _localization.Translate("playerName.cancel");
+        }
 
-            var prompt = new Label
+        private void StartButton_Click(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(PlayerName))
             {
-                Text = _localization.Translate("playerName.prompt"),
-                Location = new Point(24, 20),
-                Size = new Size(372, 28),
-                ForeColor = Color.FromArgb(230, 220, 255),
-                Font = new Font("Segoe UI", 10f)
-            };
+                _errorLabel.Text = _localization.Translate("playerName.required");
+                _errorLabel.Visible = true;
+                _nameTextBox.Focus();
+                return;
+            }
 
-            _nameTextBox = new TextBox
-            {
-                Location = new Point(24, 54),
-                Size = new Size(372, 28),
-                MaxLength = 24,
-                Font = new Font("Segoe UI", 11f)
-            };
-
-            _errorLabel = new Label
-            {
-                Location = new Point(24, 85),
-                Size = new Size(372, 22),
-                ForeColor = Color.LightCoral,
-                Visible = false
-            };
-
-            var startButton = new Button
-            {
-                Text = _localization.Translate("playerName.start"),
-                Location = new Point(220, 120),
-                Size = new Size(176, 38),
-                DialogResult = DialogResult.None,
-                BackColor = Color.FromArgb(55, 90, 140),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                UseVisualStyleBackColor = false
-            };
-            startButton.FlatAppearance.BorderColor = Color.FromArgb(150, 190, 240);
-            startButton.Click += (_, _) =>
-            {
-                if (string.IsNullOrWhiteSpace(PlayerName))
-                {
-                    _errorLabel.Text = _localization.Translate("playerName.required");
-                    _errorLabel.Visible = true;
-                    _nameTextBox.Focus();
-                    return;
-                }
-
-                DialogResult = DialogResult.OK;
-                Close();
-            };
-
-            var cancelButton = new Button
-            {
-                Text = _localization.Translate("playerName.cancel"),
-                Location = new Point(24, 120),
-                Size = new Size(176, 38),
-                DialogResult = DialogResult.Cancel,
-                BackColor = Color.FromArgb(65, 55, 80),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                UseVisualStyleBackColor = false
-            };
-            cancelButton.FlatAppearance.BorderColor = Color.FromArgb(150, 140, 170);
-
-            Controls.AddRange(new Control[] { prompt, _nameTextBox, _errorLabel, startButton, cancelButton });
-            AcceptButton = startButton;
-            CancelButton = cancelButton;
+            DialogResult = DialogResult.OK;
+            Close();
         }
     }
 }

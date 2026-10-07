@@ -1,9 +1,17 @@
+using System.ComponentModel;
 using System.Drawing;
 
 namespace ElementalSpirit.Presentation.Dialogs
 {
-    public sealed class ConfirmationDialog : BaseDialog
+    public sealed partial class ConfirmationDialog : BaseDialog
     {
+        public ConfirmationDialog() : base()
+        {
+            InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+        }
+
         public ConfirmationDialog(
             string title,
             string message,
@@ -17,6 +25,7 @@ namespace ElementalSpirit.Presentation.Dialogs
                 Color.FromArgb(220, 35, 40),
                 Color.FromArgb(220, 35, 40))
         {
+            InitializeComponent();
         }
     }
 }
