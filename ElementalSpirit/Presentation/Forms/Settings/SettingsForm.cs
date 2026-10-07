@@ -45,7 +45,6 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             int actionOffset = showSaveGame ? 0 : -80;
             ClientSize = new Size(420, showSaveGame ? 485 : 405);
             _isFullscreenOn = initialIsFullscreen;
-            ClientSize = new Size(420, 485);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
@@ -130,7 +129,9 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _lblSaveGame = CreateLabel(267);
             _lblSaveGame.Visible = showSaveGame;
 
-            _btnSaveGame = CreateButton(180, 263, 200);   
+            _btnSaveGame = CreateButton(180, 263, 200);
+            _btnSaveGame.Visible = showSaveGame;
+            _btnSaveGame.Enabled = showSaveGame;
             _btnSaveGame.Click += (s, e) => SaveGameRequested?.Invoke(this, EventArgs.Empty);
             _btnSaveGame.Paint += (s, e) =>
             {
@@ -236,6 +237,8 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
         public void SetSaveGameAvailable(bool available)
         {
+            _btnSaveGame.Visible = available;
+            _lblSaveGame.Visible = available;
             _btnSaveGame.Enabled = available;
             _btnSaveGame.BackColor = available ? Color.FromArgb(90, 50, 110) : Color.FromArgb(50, 35, 65);
             _btnSaveGame.ForeColor = Color.White;

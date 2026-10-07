@@ -13,10 +13,6 @@ namespace ElementalSpirit.Domain.Stage
         public List<TerrainPlatform> Platforms { get; set; } = new();
         public List<TerrainWall> Walls { get; set; } = new();
 
-        /// <summary>
-        /// Vị trí mặt đất chính của stage (tỉ lệ theo chiều cao vùng chơi). Dùng cho điểm xuất hiện của Player,
-        /// vị trí cổng, mặt đất dự phòng của quái... Mặc định 0.78 như các màn khác; màn 3 có mặt đất cao hơn.
-        /// </summary>
         public float GroundTopRatio { get; set; } = 0.78f;
 
         private static void AddPlatform(StageData stage, string name, float minXRatio, float maxXRatio, float topRatio, float bottomRatio)
@@ -90,6 +86,7 @@ namespace ElementalSpirit.Domain.Stage
             var wave1 = new WaveData();
             wave1.Spawns.Add(new SpawnData(EnemyType.Slime, 6, 0.7f));
             stage.Waves.Add(wave1);
+           // wave 2: no spawn, just a pause before next stage
 
             return stage;
         }
