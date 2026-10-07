@@ -21,6 +21,7 @@ namespace ElementalSpirit.Presentation.Forms
         private GameTimer _gameTimer = null!;
         private ILocalizationService _localization = null!;
         private ISaveGameService _saveGameService = null!;
+        private IntroForm? _introForm;
         private GameRenderer _renderer = null!;
         private PlayerAnimationController _playerAnimController = null!;
         private SkillAnimationController _skillAnimController = null!;
@@ -40,26 +41,33 @@ namespace ElementalSpirit.Presentation.Forms
             InitializeRuntime(
                 Program.CreateGameManager(),
                 LocalizationManager.Instance,
-                new SaveGameService());
+                new SaveGameService(),
+                null);
         }
 
-        public GameForm(GameManager gameManager, ILocalizationService localization, ISaveGameService saveGameService)
+        public GameForm(
+            GameManager gameManager,
+            ILocalizationService localization,
+            ISaveGameService saveGameService,
+            IntroForm? introForm = null)
         {
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
                 return;
 
-            InitializeRuntime(gameManager, localization, saveGameService);
+            InitializeRuntime(gameManager, localization, saveGameService, introForm);
         }
 
         private void InitializeRuntime(
             GameManager gameManager,
             ILocalizationService localization,
-            ISaveGameService saveGameService)
+            ISaveGameService saveGameService,
+            IntroForm? introForm)
         {
             _gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
+            _introForm = introForm;
             AppIcon.ApplyTo(this);
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
@@ -92,12 +100,18 @@ namespace ElementalSpirit.Presentation.Forms
             _gameManager.FinalBossDefeated += RecordAchievement;
             _gameManager.BossEncounter.OnPreBossDialogueStarted += OnPreBossDialogueStarted;
 
-            if (_gameManager.BossEncounter.CurrentState is
-                Domain.BossEncounter.BossEncounterState.PreBossDialogue or
-                Domain.BossEncounter.BossEncounterState.BossFight)
-                PlayBossTheme();
+            if (_introForm is null)
+                PlayGameMusic();
             else
-                Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
+            {
+                _introForm.OnIntroFinished += OnIntroFinished;
+                _introForm.SetKeyboardInputHandledByParent(true);
+                _introForm.TopLevel = false;
+                _introForm.FormBorderStyle = FormBorderStyle.None;
+                _introForm.Dock = DockStyle.Fill;
+                Controls.Add(_introForm);
+                _introForm.BringToFront();
+            }
         }
 
         protected override void OnShown(EventArgs e)
@@ -110,12 +124,51 @@ namespace ElementalSpirit.Presentation.Forms
             if (TopLevel)
                 WindowDisplayMode.SetFullscreen(this, Services.FullscreenPreferenceStore.Load());
             _gameManager.SetPlayArea(ClientSize.Width, ClientSize.Height);
+            if (_introForm is not null)
+            {
+                _introForm.Show();
+                _introForm.Focus();
+                _introForm.StartIntro();
+            }
+            else
+            {
+                _gameTimer.Start();
+            }
+        }
+
+        private void OnIntroFinished()
+        {
+            if (_introForm is null)
+                return;
+
+            IntroForm completedIntro = _introForm;
+            _introForm = null;
+            completedIntro.OnIntroFinished -= OnIntroFinished;
+            Controls.Remove(completedIntro);
+            completedIntro.Dispose();
+
+            PlayGameMusic();
             _gameTimer.Start();
+            Invalidate();
+        }
+
+        private void PlayGameMusic()
+        {
+            if (_gameManager.BossEncounter.CurrentState is
+                Domain.BossEncounter.BossEncounterState.PreBossDialogue or
+                Domain.BossEncounter.BossEncounterState.BossFight)
+                PlayBossTheme();
+            else
+                Services.AudioManager.Instance.PlayMusic("forest_theme.mp3", loop: true);
         }
 
         protected override bool IsInputKey(Keys keyData)
         {
             Keys keyCode = keyData & Keys.KeyCode;
+            if (_introForm is not null &&
+                keyCode is Keys.Space or Keys.Enter or Keys.Tab or Keys.Escape)
+                return true;
+
             if (keyCode is Keys.Left or Keys.Right or Keys.Up or Keys.Down)
                 return true;
 
@@ -217,6 +270,14 @@ namespace ElementalSpirit.Presentation.Forms
             if (_gameManager is null)
                 return;
 
+            if (_introForm is not null)
+            {
+                _introForm.HandleIntroKey(e.KeyCode);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
             if (e.KeyCode == Keys.P) { OpenSettings(); return; }
             _gameManager.HandleKeyDown(e.KeyCode);
             if (e.KeyCode == Keys.Escape) Close();
@@ -271,6 +332,14 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void OnFormClosing(object? sender, FormClosingEventArgs e)
         {
+            if (_introForm is not null)
+            {
+                _introForm.OnIntroFinished -= OnIntroFinished;
+                Controls.Remove(_introForm);
+                _introForm.Dispose();
+                _introForm = null;
+            }
+
             if (_gameManager is null)
                 return;
 

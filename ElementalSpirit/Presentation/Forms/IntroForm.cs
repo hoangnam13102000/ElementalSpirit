@@ -27,6 +27,12 @@ namespace ElementalSpirit.Presentation.Forms
         private Timer? _fadeTimer;
 
         public event Action? OnIntroFinished;
+        private bool _handleKeyboardInputExternally;
+
+        public void SetKeyboardInputHandledByParent(bool enabled)
+        {
+            _handleKeyboardInputExternally = enabled;
+        }
 
         public IntroForm()
         {
@@ -129,22 +135,42 @@ namespace ElementalSpirit.Presentation.Forms
             _currentBackground?.Dispose();
             Services.AudioManager.Instance.StopMusic();
 
+            bool shouldClose = TopLevel;
             this.Hide();
             OnIntroFinished?.Invoke();
-            Close();
+            if (shouldClose && !IsDisposed)
+                Close();
         }
 
         private void OnKeyPressed(object? sender, KeyEventArgs e)
         {
-            if (_introManager is null)
-                return;
+            if (!_handleKeyboardInputExternally)
+                e.Handled = HandleIntroKey(e.KeyCode);
+        }
 
-            if (e.KeyCode == Keys.Escape) { _introManager.SkipAll(); return; }
-            if (e.KeyCode == Keys.Tab) { _introManager.SkipScene(); return; }
-            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter)
+        public bool HandleIntroKey(Keys keyCode)
+        {
+            if (_introManager is null)
+                return false;
+
+            if (keyCode == Keys.Escape) { _introManager.SkipAll(); return true; }
+            if (keyCode == Keys.Tab) { _introManager.SkipScene(); return true; }
+            if (keyCode == Keys.Space || keyCode == Keys.Enter)
             {
                 _introManager.NextLine();
+                return true;
             }
+
+            return false;
+        }
+
+        protected override bool IsInputKey(Keys keyData)
+        {
+            Keys keyCode = keyData & Keys.KeyCode;
+            if (keyCode is Keys.Space or Keys.Enter or Keys.Tab or Keys.Escape)
+                return true;
+
+            return base.IsInputKey(keyData);
         }
 
         private void OnMouseClicked(object? sender, MouseEventArgs e)

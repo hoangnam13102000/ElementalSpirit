@@ -55,5 +55,25 @@ namespace ElementalSpirit.Presentation.Forms
             _teamGrid.Columns[2].HeaderText = localization.Translate("guide.class");
             _closeButton.Text = localization.Translate("guide.close");
         }
+
+        private void _teamGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void _instructionsLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void _titleLabel_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void GuideAndTeamForm_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }

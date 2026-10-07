@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace ElementalSpirit.Presentation.Dialogs
 {
-    public abstract partial class BaseDialog : Form
+    public partial class BaseDialog : Form
     {
         protected Label MessageLabel = null!;
         protected Panel ButtonPanel = null!;
@@ -18,7 +18,7 @@ namespace ElementalSpirit.Presentation.Dialogs
         private Panel _iconPanel = null!;
         private Color _accentColor = Color.FromArgb(45, 105, 190);
 
-        protected BaseDialog()
+        public BaseDialog()
         {
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)

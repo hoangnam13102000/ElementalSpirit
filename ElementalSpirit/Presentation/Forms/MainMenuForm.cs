@@ -23,7 +23,6 @@ namespace ElementalSpirit.Presentation.Forms
         private Button _btnExit = null!;
         private Image? _menuBackground;
         private Font? _responsiveTitleFont;
-        private IntroForm? _activeIntro;
         private GameForm? _activeGame;
 
         private readonly ILocalizationService _localization = null!;
@@ -203,31 +202,8 @@ namespace ElementalSpirit.Presentation.Forms
             _btnStart.Enabled = false;
             Services.AudioManager.Instance.StopMusic();
             SetMenuButtonsVisible(false);
-
             var introForm = new IntroForm(_localization, playerName);
-            _activeIntro = introForm;
-            introForm.OnIntroFinished += () =>
-            {
-                if (!ReferenceEquals(_activeIntro, introForm))
-                    return;
-
-                 _activeIntro = null;
-                 OpenGame(gameManager);
-       
-            };
-            introForm.FormClosed += (_, _) =>
-            {
-                this.Hide();
-                if (ReferenceEquals(_activeIntro, introForm))
-                {
-                    _activeIntro = null;
-                    gameManager.Dispose();
-                    ReturnToMenu();
-                }
-            };
-            introForm.Shown += (_, _) => introForm.StartIntro();
-            introForm.ShowDialog();
-
+            OpenGame(gameManager, introForm);
         }
 
         private void BtnContinue_Click(object? sender, EventArgs e)
@@ -282,23 +258,38 @@ namespace ElementalSpirit.Presentation.Forms
 
         private void BtnSettings_Click(object? sender, EventArgs e)
         {
-            using var settingsForm = new SettingsForm(
-                _localization,
-                _saveGameService,
-                onFullscreenChanged: enabled => WindowDisplayMode.SetFullscreen(this, enabled));
-            settingsForm.ShowDialog(this);
+            using (var settingsForm = new SettingsForm(
+                       _localization,
+                       _saveGameService,
+                       onFullscreenChanged: enabled => WindowDisplayMode.SetFullscreen(this, enabled)))
+            {
+                settingsForm.ShowDialog(this);
+            }
+
+            this.Activate();
+            this.BringToFront();
         }
 
         private void BtnLeaderboard_Click(object? sender, EventArgs e)
         {
-            using var leaderboard = new LeaderboardForm(_localization);
-            leaderboard.ShowDialog(this);
+            using (var leaderboard = new LeaderboardForm(_localization))
+            {
+                leaderboard.ShowDialog(this);
+            }
+
+            this.Activate();
+            this.BringToFront();
         }
 
         private void BtnGuide_Click(object? sender, EventArgs e)
         {
-            using var guide = new GuideAndTeamForm(_localization);
-            guide.ShowDialog(this);
+            using (var guide = new GuideAndTeamForm(_localization))
+            {
+                guide.ShowDialog(this);
+            }
+
+            this.Activate();
+            this.BringToFront();
         }
 
         private void ReturnToMenu()
@@ -314,11 +305,13 @@ namespace ElementalSpirit.Presentation.Forms
             Services.AudioManager.Instance.PlayMusic("menu_theme.wav", loop: true);
         }
 
-        private void OpenGame(ElementalSpirit.GameEngine.GameManager gameManager)
+        private void OpenGame(
+            ElementalSpirit.GameEngine.GameManager gameManager,
+            IntroForm? introForm = null)
         {
             SetMenuButtonsVisible(false);
             this.Hide();
-            var gameForm = new GameForm(gameManager, _localization, _saveGameService);
+            var gameForm = new GameForm(gameManager, _localization, _saveGameService, introForm);
             _activeGame = gameForm;
             gameForm.FormClosed += (_, _) =>
             {

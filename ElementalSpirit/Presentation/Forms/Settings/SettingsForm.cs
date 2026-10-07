@@ -141,12 +141,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
 
         private void ExitGameButton_Click(object? sender, EventArgs e)
         {
-            if (Confirm(
-                _localization.Translate("settings.exitgame.confirm.message"),
-                _localization.Translate("settings.exitgame.confirm.title")))
-            {
-                RequestExitToMainMenu();
-            }
+            ExitGameRequested?.Invoke(this, EventArgs.Empty);
         }
 
         [Browsable(false)]
