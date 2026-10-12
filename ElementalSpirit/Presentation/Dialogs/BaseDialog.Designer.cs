@@ -11,7 +11,6 @@ namespace ElementalSpirit.Presentation.Dialogs
             _titleLabel = new System.Windows.Forms.Label();
             _iconPanel = new System.Windows.Forms.Panel();
             MessageLabel = new System.Windows.Forms.Label();
-            SecondaryButton = new System.Windows.Forms.Button();
             PrimaryButton = new System.Windows.Forms.Button();
             _headerPanel.SuspendLayout();
             SuspendLayout();
@@ -54,23 +53,6 @@ namespace ElementalSpirit.Presentation.Dialogs
             MessageLabel.Text = "Dialog message";
             MessageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             MessageLabel.UseMnemonic = false;
-            //
-            // SecondaryButton
-            //
-            SecondaryButton.BackColor = System.Drawing.Color.FromArgb(241, 245, 250);
-            SecondaryButton.Cursor = System.Windows.Forms.Cursors.Hand;
-            SecondaryButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            SecondaryButton.FlatAppearance.BorderSize = 0;
-            SecondaryButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            SecondaryButton.Font = new System.Drawing.Font("Segoe UI", 11F);
-            SecondaryButton.ForeColor = System.Drawing.Color.FromArgb(35, 45, 60);
-            SecondaryButton.Location = new System.Drawing.Point(216, 200);
-            SecondaryButton.Name = "SecondaryButton";
-            SecondaryButton.Size = new System.Drawing.Size(110, 40);
-            SecondaryButton.TabIndex = 0;
-            SecondaryButton.Text = "Cancel";
-            SecondaryButton.UseVisualStyleBackColor = false;
-            //
             // PrimaryButton
             //
             PrimaryButton.BackColor = System.Drawing.Color.FromArgb(45, 105, 190);
@@ -91,12 +73,10 @@ namespace ElementalSpirit.Presentation.Dialogs
             //
             BackColor = System.Drawing.Color.White;
             AcceptButton = PrimaryButton;
-            CancelButton = SecondaryButton;
             ClientSize = new System.Drawing.Size(500, 260);
             Controls.Add(_headerPanel);
             Controls.Add(_iconPanel);
             Controls.Add(MessageLabel);
-            Controls.Add(SecondaryButton);
             Controls.Add(PrimaryButton);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             MaximizeBox = false;

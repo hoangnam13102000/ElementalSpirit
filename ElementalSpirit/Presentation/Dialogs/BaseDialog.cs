@@ -16,10 +16,39 @@ namespace ElementalSpirit.Presentation.Dialogs
         private Panel _headerPanel = null!;
         private Panel _iconPanel = null!;
         private Color _accentColor = Color.FromArgb(45, 105, 190);
+        private readonly bool _hasSecondaryButton;
 
-        public BaseDialog()
+        public BaseDialog() : this(true)
         {
+        }
+
+        protected BaseDialog(bool hasSecondaryButton)
+        {
+            _hasSecondaryButton = hasSecondaryButton;
             InitializeComponent();
+            SecondaryButton = new Button
+            {
+                BackColor = Color.FromArgb(241, 245, 250),
+                Cursor = Cursors.Hand,
+                DialogResult = DialogResult.Cancel,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F),
+                ForeColor = Color.FromArgb(35, 45, 60),
+                Location = new Point(216, 200),
+                Name = "SecondaryButton",
+                Size = new Size(110, 40),
+                TabIndex = 0,
+                Text = "Cancel",
+                UseVisualStyleBackColor = false,
+                Visible = hasSecondaryButton
+            };
+            SecondaryButton.FlatAppearance.BorderSize = 0;
+            if (hasSecondaryButton)
+            {
+                Controls.Add(SecondaryButton);
+                CancelButton = SecondaryButton;
+            }
+
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
                 return;
         }
@@ -30,25 +59,30 @@ namespace ElementalSpirit.Presentation.Dialogs
             string primaryButtonText,
             string secondaryButtonText,
             Color primaryButtonColor,
-            Color accentColor)
-            : this()
+            Color accentColor,
+            bool hasSecondaryButton = true)
+            : this(hasSecondaryButton)
         {
             Text = title;
             _titleLabel.Text = title;
             MessageLabel.Text = message;
             PrimaryButton.Text = primaryButtonText;
-            SecondaryButton.Text = secondaryButtonText;
             PrimaryButton.BackColor = primaryButtonColor;
             _accentColor = accentColor;
             PrimaryButton.DialogResult = DialogResult.None;
-            SecondaryButton.DialogResult = DialogResult.None;
             AcceptButton = PrimaryButton;
-            CancelButton = SecondaryButton;
-            SecondaryButton.Visible = !string.IsNullOrEmpty(secondaryButtonText);
-            SecondaryButton.Enabled = !string.IsNullOrEmpty(secondaryButtonText);
+            if (_hasSecondaryButton)
+            {
+                SecondaryButton.Text = secondaryButtonText;
+                SecondaryButton.DialogResult = DialogResult.None;
+                CancelButton = SecondaryButton;
+                SecondaryButton.Visible = !string.IsNullOrEmpty(secondaryButtonText);
+                SecondaryButton.Enabled = !string.IsNullOrEmpty(secondaryButtonText);
+                SecondaryButton.Click += OnSecondaryButtonClick;
+            }
+
             PrimaryButton.Visible = !string.IsNullOrEmpty(primaryButtonText);
             PrimaryButton.Enabled = !string.IsNullOrEmpty(primaryButtonText);
-            SecondaryButton.Click += OnSecondaryButtonClick;
             PrimaryButton.Click += OnPrimaryButtonClick;
             _iconPanel.Invalidate();
             RecalculateLayout();
@@ -117,7 +151,7 @@ namespace ElementalSpirit.Presentation.Dialogs
 
         private void UpdateButtonLayout()
         {
-            if (SecondaryButton.Visible && PrimaryButton.Visible)
+            if (_hasSecondaryButton && SecondaryButton!.Visible && PrimaryButton.Visible)
             {
                 int spacing = 18;
                 int totalWidth = SecondaryButton.Width + PrimaryButton.Width + spacing;
@@ -128,8 +162,10 @@ namespace ElementalSpirit.Presentation.Dialogs
                 return;
             }
 
-            Button visibleButton = PrimaryButton.Visible ? PrimaryButton : SecondaryButton;
-            if (visibleButton.Visible)
+            Button? visibleButton = PrimaryButton.Visible
+                ? PrimaryButton
+                : _hasSecondaryButton ? SecondaryButton : null;
+            if (visibleButton is not null && visibleButton.Visible)
             {
                 visibleButton.Location = new Point(
                     (ClientSize.Width - visibleButton.Width) / 2,

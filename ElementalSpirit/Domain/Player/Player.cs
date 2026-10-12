@@ -25,6 +25,7 @@ namespace ElementalSpirit.Domain.Player
         public bool WantsToRun { get; private set; }
         public float JumpForce { get; private set; } = PlayerConstants.JumpForce;
         public float Gravity { get; private set; } = PlayerConstants.Gravity;
+        private float _playAreaScale = 1f;
         public bool IsGrounded { get; private set; }
         public bool HasDoubleJumpBoots { get; private set; }
         private bool _doubleJumpConsumed;
@@ -80,6 +81,17 @@ namespace ElementalSpirit.Domain.Player
 
         public void SetWantsToRun(bool wantsToRun) => WantsToRun = wantsToRun;
 
+        public void SetPlayAreaScale(float scale)
+        {
+            if (!float.IsFinite(scale) || scale <= 0f)
+                throw new ArgumentOutOfRangeException(nameof(scale));
+
+            VelocityY *= scale / _playAreaScale;
+            _playAreaScale = scale;
+            JumpForce = PlayerConstants.JumpForce * scale;
+            Gravity = PlayerConstants.Gravity * scale;
+        }
+
         public void ApplyVelocityDamping(float factor) =>
             VelocityX *= Math.Clamp(factor, 0f, 1f);
 
@@ -128,14 +140,16 @@ namespace ElementalSpirit.Domain.Player
             if (IsDead)
             {
                 VelocityY += Gravity * deltaTime;
-                if (VelocityY > PlayerConstants.MaxFallSpeed) VelocityY = PlayerConstants.MaxFallSpeed;
+                float maxFallSpeed = PlayerConstants.MaxFallSpeed * _playAreaScale;
+                if (VelocityY > maxFallSpeed) VelocityY = maxFallSpeed;
                 Y += VelocityY * deltaTime;
                 return;
             }
             if (!IsGrounded)
             {
                 VelocityY += Gravity * deltaTime;
-                if (VelocityY > PlayerConstants.MaxFallSpeed) VelocityY = PlayerConstants.MaxFallSpeed;
+                float maxFallSpeed = PlayerConstants.MaxFallSpeed * _playAreaScale;
+                if (VelocityY > maxFallSpeed) VelocityY = maxFallSpeed;
             }
             X += VelocityX * deltaTime;
             Y += VelocityY * deltaTime;

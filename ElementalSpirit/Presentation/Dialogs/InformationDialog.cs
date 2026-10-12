@@ -5,7 +5,7 @@ namespace ElementalSpirit.Presentation.Dialogs
 {
     public sealed partial class InformationDialog : BaseDialog
     {
-        public InformationDialog() : base()
+        public InformationDialog() : base(false)
         {
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
@@ -19,7 +19,8 @@ namespace ElementalSpirit.Presentation.Dialogs
                 okText,
                 string.Empty,
                 Color.FromArgb(45, 105, 190),
-                Color.FromArgb(45, 105, 190))
+                Color.FromArgb(45, 105, 190),
+                hasSecondaryButton: false)
         {
             InitializeComponent();
         }

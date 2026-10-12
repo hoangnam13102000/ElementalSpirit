@@ -34,6 +34,8 @@ namespace ElementalSpirit.Presentation.Rendering
         private const int StandardFrameSize = 128;
         private const int DeathFrameSize = 256;
         private const float ProjectileVisualScale = 2.2f;
+        private const float ReferenceWidth = 1280f;
+        private const float ReferenceHeight = 720f;
 
         private string _loadedBackgroundName = "";
         private Image? _backgroundImage;
@@ -72,9 +74,10 @@ namespace ElementalSpirit.Presentation.Rendering
 
             if (!_gameManager.BossEncounter.IsIntroDialogue)
             {
-                DrawPlayer(g);
-                DrawProjectiles(g);
-                DrawEnemies(g);
+                float sceneScale = GetSceneScale(clientSize);
+                DrawPlayer(g, sceneScale);
+                DrawProjectiles(g, sceneScale);
+                DrawEnemies(g, sceneScale);
                 DrawPortals(g);
                 DrawLoot(g);
                 DrawSkillHud(g, clientSize);
@@ -87,6 +90,16 @@ namespace ElementalSpirit.Presentation.Rendering
                 DrawIntroNarratorText(g);
             else
                 DrawBossSpeechBubbles(g);
+        }
+
+        private static float GetSceneScale(Size clientSize)
+        {
+            if (clientSize.Width <= 0 || clientSize.Height <= 0)
+                return 1f;
+
+            return Math.Min(
+                clientSize.Width / ReferenceWidth,
+                clientSize.Height / ReferenceHeight);
         }
 
         private void DrawBackground(Graphics g, Size clientSize)
@@ -370,7 +383,7 @@ namespace ElementalSpirit.Presentation.Rendering
             return longest;
         }
 
-        private void DrawPlayer(Graphics g)
+        private void DrawPlayer(Graphics g, float sceneScale)
         {
             var p = _gameManager.Player;
             var currentImage = _playerAnimController.CurrentImage;
@@ -378,7 +391,7 @@ namespace ElementalSpirit.Presentation.Rendering
 
             bool isDeath = _playerAnimController.CurrentState == PlayerAnimationState.Death;
             int frameSize = isDeath ? DeathFrameSize : StandardFrameSize;
-            float drawSize = frameSize * BaseRenderScale;
+            float drawSize = frameSize * BaseRenderScale * sceneScale;
 
             float feetX = p.X + p.Width / 2f;
             float feetY = p.Y + p.Height;
@@ -422,15 +435,15 @@ namespace ElementalSpirit.Presentation.Rendering
                 Rectangle sourceBounds = GetVisibleAssetBounds(image);
                 float direction = p.Facing == FacingDirection.Right ? 1f : -1f;
                 float baseX = p.X + p.Width / 2f;
-                float columnWidth = WaterfallSkill.ColumnWidth;
-                float columnHeight = WaterfallSkill.ColumnHeight;
+                float columnWidth = WaterfallSkill.ColumnWidth * sceneScale;
+                float columnHeight = WaterfallSkill.ColumnHeight * sceneScale;
                 float columnY = p.Y + p.Height - columnHeight;
                 int activeColumnCount = _gameManager.Skills.ActiveWaterfall?.ActiveColumnCount
                     ?? WaterfallSkill.ColumnCount;
 
                 for (int column = 0; column < activeColumnCount; column++)
                 {
-                    float centerX = baseX + direction * column * WaterfallSkill.ColumnSpacing;
+                    float centerX = baseX + direction * column * WaterfallSkill.ColumnSpacing * sceneScale;
                     g.DrawImage(
                         image,
                         new Rectangle(
@@ -448,24 +461,31 @@ namespace ElementalSpirit.Presentation.Rendering
 
             Rectangle visibleSpriteBounds = GetVisibleAssetBounds(currentImage);
             float visibleSpriteTop = drawY + visibleSpriteBounds.Top * drawSize / currentImage.Height;
-            DrawPlayerHealthBar(g, p, feetX, visibleSpriteTop);
+            DrawPlayerHealthBar(g, p, feetX, visibleSpriteTop, sceneScale);
         }
 
         private const float HealthBarWidth = 64f;
         private const float HealthBarHeight = 6f;
         private const float HealthBarVerticalGap = 8f;
 
-        private void DrawPlayerHealthBar(Graphics g, Player p, float centerX, float visualTopY)
+        private void DrawPlayerHealthBar(
+            Graphics g,
+            Player p,
+            float centerX,
+            float visualTopY,
+            float sceneScale)
         {
             if (p.IsDead) return;
 
-            float barX = centerX - HealthBarWidth / 2f;
-            float barY = visualTopY - HealthBarVerticalGap;
+            float barWidth = HealthBarWidth * sceneScale;
+            float barHeight = HealthBarHeight * sceneScale;
+            float barX = centerX - barWidth / 2f;
+            float barY = visualTopY - HealthBarVerticalGap * sceneScale;
 
             float hpPercent = p.MaxHp > 0 ? Math.Clamp((float)p.CurrentHp / p.MaxHp, 0f, 1f) : 0f;
 
             using var bgBrush = new SolidBrush(Color.FromArgb(170, 30, 30, 34));
-            g.FillRectangle(bgBrush, barX, barY, HealthBarWidth, HealthBarHeight);
+            g.FillRectangle(bgBrush, barX, barY, barWidth, barHeight);
 
             Color hpColor = hpPercent > 0.5f
                 ? Color.FromArgb(230, 90, 220, 100)
@@ -473,16 +493,16 @@ namespace ElementalSpirit.Presentation.Rendering
                     ? Color.FromArgb(230, 235, 200, 60)
                     : Color.FromArgb(230, 230, 70, 70);
             using var hpBrush = new SolidBrush(hpColor);
-            g.FillRectangle(hpBrush, barX, barY, HealthBarWidth * hpPercent, HealthBarHeight);
+            g.FillRectangle(hpBrush, barX, barY, barWidth * hpPercent, barHeight);
 
-            using var borderPen = new Pen(Color.FromArgb(200, 10, 10, 12), 1f);
-            g.DrawRectangle(borderPen, barX, barY, HealthBarWidth, HealthBarHeight);
+            using var borderPen = new Pen(Color.FromArgb(200, 10, 10, 12), sceneScale);
+            g.DrawRectangle(borderPen, barX, barY, barWidth, barHeight);
 
-            using var nameFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            using var nameFont = new Font("Segoe UI", 9f * sceneScale, FontStyle.Bold);
             using var nameShadowBrush = new SolidBrush(Color.FromArgb(230, 0, 0, 0));
             using var nameBrush = new SolidBrush(Color.White);
             string displayName = p.Name;
-            const float maxNameWidth = HealthBarWidth - 4f;
+            float maxNameWidth = barWidth - 4f * sceneScale;
             while (displayName.Length > 1 && g.MeasureString(displayName, nameFont).Width > maxNameWidth)
                 displayName = displayName[..^1];
             if (displayName != p.Name && displayName.Length > 3)
@@ -710,7 +730,7 @@ namespace ElementalSpirit.Presentation.Rendering
             g.FillEllipse(shine, cx - radius * 0.4f, cy - radius * 0.55f, radius * 0.6f, radius * 0.4f);
         }
 
-        private void DrawProjectiles(Graphics g)
+        private void DrawProjectiles(Graphics g, float sceneScale)
         {
             foreach (var p in _gameManager.Projectiles.Projectiles)
             {
@@ -724,7 +744,7 @@ namespace ElementalSpirit.Presentation.Rendering
                             .ToArray();
                         int nuclearFrameIndex = (int)(Math.Abs(enemyProjectile.Lifetime * 12f)) % nuclearFrames.Length;
                         var nuclearImage = AssetLoader.Get(nuclearFrames[nuclearFrameIndex]);
-                        const float nuclearVisualSize = 72f;
+                        float nuclearVisualSize = 72f * sceneScale;
                         float nuclearX = enemyProjectile.X + enemyProjectile.Width / 2f - nuclearVisualSize / 2f;
                         float nuclearY = enemyProjectile.Y + enemyProjectile.Height - nuclearVisualSize;
 
@@ -751,7 +771,7 @@ namespace ElementalSpirit.Presentation.Rendering
 
                     int frameIndex = (int)(Math.Abs(p.Lifetime * 10f)) % bossSkillFrames.Length;
                     var bossSkillImage = AssetLoader.Get(bossSkillFrames[frameIndex]);
-                    float drawW = Math.Max(28f, p.Width * 2.2f);
+                    float drawW = Math.Max(28f, p.Width * 2.2f) * sceneScale;
                     float drawH = drawW;
                     float drawX = p.X + p.Width / 2f - drawW / 2f;
                     float drawY = p.Y + p.Height / 2f - drawH / 2f;
@@ -763,20 +783,29 @@ namespace ElementalSpirit.Presentation.Rendering
                     }
 
                     using var glowBrush = new SolidBrush(Color.FromArgb(120, 120, 220, 255));
-                    g.FillEllipse(glowBrush, drawX - 6f, drawY - 6f, drawW + 12f, drawH + 12f);
+                    g.FillEllipse(
+                        glowBrush,
+                        drawX - 6f * sceneScale,
+                        drawY - 6f * sceneScale,
+                        drawW + 12f * sceneScale,
+                        drawH + 12f * sceneScale);
                     using var orbBrush = new SolidBrush(Color.FromArgb(220, 90, 200, 255));
                     g.FillEllipse(orbBrush, drawX, drawY, drawW, drawH);
-                    using var innerPen = new Pen(Color.FromArgb(200, 230, 245, 255), 2f);
-                    g.DrawEllipse(innerPen, drawX + 5f, drawY + 5f, drawW - 10f, drawH - 10f);
+                    using var innerPen = new Pen(Color.FromArgb(200, 230, 245, 255), 2f * sceneScale);
+                    g.DrawEllipse(
+                        innerPen,
+                        drawX + 5f * sceneScale,
+                        drawY + 5f * sceneScale,
+                        drawW - 10f * sceneScale,
+                        drawH - 10f * sceneScale);
                     continue;
                 }
 
                 if (p is PlayerProjectile pp && pp.IsFireball && _fireballFrames != null && _fireballFrames.Length > 0)
                 {
                     var fireImg = _fireballFrames[_fireballFrames.Length / 2];
-                    float scale = 1.4f;
-                    float drawW = fireImg.Width * scale;
-                    float drawH = fireImg.Height * scale;
+                    float drawW = fireImg.Width * 1.4f * sceneScale;
+                    float drawH = fireImg.Height * 1.4f * sceneScale;
                     float drawX = p.X + p.Width / 2f - drawW / 2f;
                     float drawY = p.Y + p.Height / 2f - drawH / 2f;
                     g.DrawImage(fireImg, drawX, drawY, drawW, drawH);
@@ -790,8 +819,8 @@ namespace ElementalSpirit.Presentation.Rendering
                         Rectangle sourceBounds = GetVisibleAssetBounds(
                             "Characters/Skill/Slash/WindSlash/Double Wind Slashes_Frame_01.png",
                             slashImage);
-                        float drawW = 58f;
-                        float drawH = 58f;
+                        float drawW = 58f * sceneScale;
+                        float drawH = 58f * sceneScale;
                         float centerX = slash.X + slash.Width / 2f;
                         float centerY = slash.Y + slash.Height / 2f;
                         var state = g.Save();
@@ -818,21 +847,26 @@ namespace ElementalSpirit.Presentation.Rendering
                 {
                     float centerX = p.X + p.Width / 2f;
                     float centerY = p.Y + p.Height / 2f;
-                    float drawW = p.Width * ProjectileVisualScale;
-                    float drawH = p.Height * ProjectileVisualScale;
+                    float drawW = p.Width * ProjectileVisualScale * sceneScale;
+                    float drawH = p.Height * ProjectileVisualScale * sceneScale;
                     var visualBounds = new RectangleF(centerX - drawW / 2f, centerY - drawH / 2f, drawW, drawH);
 
                     using var glow = new SolidBrush(Color.FromArgb(130, 150, 235, 255));
-                    g.FillEllipse(glow, visualBounds.X - 3f, visualBounds.Y - 3f, visualBounds.Width + 6f, visualBounds.Height + 6f);
+                    g.FillEllipse(
+                        glow,
+                        visualBounds.X - 3f * sceneScale,
+                        visualBounds.Y - 3f * sceneScale,
+                        visualBounds.Width + 6f * sceneScale,
+                        visualBounds.Height + 6f * sceneScale);
                     using var brush = new SolidBrush(Color.FromArgb(255, 90, 225, 255));
                     g.FillEllipse(brush, visualBounds);
-                    using var corePen = new Pen(Color.FromArgb(255, 230, 250, 255), 1.5f);
+                    using var corePen = new Pen(Color.FromArgb(255, 230, 250, 255), 1.5f * sceneScale);
                     g.DrawEllipse(corePen, visualBounds);
                 }
             }
         }
 
-        private void DrawEnemies(Graphics g)
+        private void DrawEnemies(Graphics g, float sceneScale)
         {
             var player = _gameManager.Player;
             float playerCenterX = player.X + player.Width / 2f;
@@ -855,7 +889,7 @@ namespace ElementalSpirit.Presentation.Rendering
 
                 if (enemyImage != null)
                 {
-                    float targetSize = Math.Max(e.Width, e.Height) * 1.8f;
+                    float targetSize = Math.Max(e.Width, e.Height) * 1.8f * sceneScale;
                     float drawWidth = targetSize;
                     float drawHeight = targetSize;
                     float drawX = e.X + e.Width / 2f - drawWidth / 2f;
@@ -894,25 +928,32 @@ namespace ElementalSpirit.Presentation.Rendering
                 }
                 else
                 {
+                    float fallbackWidth = e.Width * sceneScale;
+                    float fallbackHeight = e.Height * sceneScale;
+                    var fallbackBounds = new RectangleF(
+                        e.X + (e.Width - fallbackWidth) / 2f,
+                        e.Y + e.Height - fallbackHeight,
+                        fallbackWidth,
+                        fallbackHeight);
                     using var body = new SolidBrush(Color.FromArgb(80, 200, 90));
-                    using var outline = new Pen(Color.FromArgb(40, 120, 50), 2f);
-                    g.FillEllipse(body, e.Bounds);
-                    g.DrawEllipse(outline, e.Bounds);
+                    using var outline = new Pen(Color.FromArgb(40, 120, 50), 2f * sceneScale);
+                    g.FillEllipse(body, fallbackBounds);
+                    g.DrawEllipse(outline, fallbackBounds);
                 }
 
                 if (e.IsAlive && !e.IsDying)
                 {
                     float hpPercent = e.MaxHealth > 0 ? (float)e.Health / e.MaxHealth : 0f;
-                    float barWidth = e is GorgonBoss ? e.Width * 1.25f : e.Width;
+                    float barWidth = (e is GorgonBoss ? e.Width * 1.25f : e.Width) * sceneScale;
                     float barX = e.X + (e.Width - barWidth) / 2f;
-                    float barY = e.Y - 14f;
+                    float barY = e.Y - 14f * sceneScale;
 
                     using var bgBrush = new SolidBrush(Color.FromArgb(120, 40, 40, 40));
-                    g.FillRectangle(bgBrush, barX, barY, barWidth, 6);
+                    g.FillRectangle(bgBrush, barX, barY, barWidth, 6 * sceneScale);
                     using var hpBrush = new SolidBrush(Color.FromArgb(220, 60, 60));
-                    g.FillRectangle(hpBrush, barX, barY, barWidth * hpPercent, 6);
-                    using var border = new Pen(Color.FromArgb(180, 240, 240, 240), 1f);
-                    g.DrawRectangle(border, barX, barY, barWidth, 6);
+                    g.FillRectangle(hpBrush, barX, barY, barWidth * hpPercent, 6 * sceneScale);
+                    using var border = new Pen(Color.FromArgb(180, 240, 240, 240), sceneScale);
+                    g.DrawRectangle(border, barX, barY, barWidth, 6 * sceneScale);
                 }
             }
         }

@@ -350,6 +350,12 @@ namespace ElementalSpirit.GameEngine
         public void SetPlayArea(float width, float height)
         {
             PlayArea = new RectangleF(0, 0, width, height);
+            if (width > 0f && height > 0f)
+            {
+                float scale = Math.Min(width / 1280f, height / 720f);
+                Player.SetPlayAreaScale(scale);
+            }
+
             RefreshGroundY();
             Spawn.SetSpawnArea(width, height);
             Spawn.SetTerrain(_stageSequence[_stageIndex].Platforms, PlayArea);
