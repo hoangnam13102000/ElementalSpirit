@@ -2,7 +2,6 @@
 {
     using ElementalSpirit.Domain.BossEncounter;
     using ElementalSpirit.Domain.Enemy;
-    using ElementalSpirit.Presentation.BossEncounter;
     using System;
 
     public interface IBossEncounterManager : IBossEncounterListener

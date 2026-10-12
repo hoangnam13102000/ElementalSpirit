@@ -1,7 +1,5 @@
-cat > .gitignore <<'EOF'
 .vs/
 bin/
 obj/
 *.user
 *.suo
-EOF

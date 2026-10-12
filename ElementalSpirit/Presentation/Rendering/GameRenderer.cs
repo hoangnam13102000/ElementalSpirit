@@ -13,7 +13,7 @@ using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.GameEngine;
 using ElementalSpirit.Localization;
 using ElementalSpirit.Presentation.Assets;
-using ElementalSpirit.Presentation.BossEncounter;
+using ElementalSpirit.Domain.BossEncounter;
 
 namespace ElementalSpirit.Presentation.Rendering
 {

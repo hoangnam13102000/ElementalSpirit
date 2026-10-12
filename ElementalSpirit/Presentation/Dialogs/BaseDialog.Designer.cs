@@ -11,11 +11,9 @@ namespace ElementalSpirit.Presentation.Dialogs
             _titleLabel = new System.Windows.Forms.Label();
             _iconPanel = new System.Windows.Forms.Panel();
             MessageLabel = new System.Windows.Forms.Label();
-            ButtonPanel = new System.Windows.Forms.Panel();
             SecondaryButton = new System.Windows.Forms.Button();
             PrimaryButton = new System.Windows.Forms.Button();
             _headerPanel.SuspendLayout();
-            ButtonPanel.SuspendLayout();
             SuspendLayout();
             //
             // _headerPanel
@@ -46,21 +44,16 @@ namespace ElementalSpirit.Presentation.Dialogs
             //
             // MessageLabel
             //
+            MessageLabel.AutoSize = false;
             MessageLabel.Font = new System.Drawing.Font("Segoe UI", 12F);
             MessageLabel.ForeColor = System.Drawing.Color.FromArgb(25, 30, 40);
             MessageLabel.Location = new System.Drawing.Point(126, 108);
+            MessageLabel.MaximumSize = new System.Drawing.Size(340, 0);
             MessageLabel.Name = "MessageLabel";
             MessageLabel.Size = new System.Drawing.Size(340, 48);
             MessageLabel.Text = "Dialog message";
-            //
-            // ButtonPanel
-            //
-            ButtonPanel.Controls.Add(SecondaryButton);
-            ButtonPanel.Controls.Add(PrimaryButton);
-            ButtonPanel.Location = new System.Drawing.Point(28, 194);
-            ButtonPanel.Name = "ButtonPanel";
-            ButtonPanel.Size = new System.Drawing.Size(444, 52);
-            ButtonPanel.TabIndex = 0;
+            MessageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            MessageLabel.UseMnemonic = false;
             //
             // SecondaryButton
             //
@@ -71,7 +64,7 @@ namespace ElementalSpirit.Presentation.Dialogs
             SecondaryButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             SecondaryButton.Font = new System.Drawing.Font("Segoe UI", 11F);
             SecondaryButton.ForeColor = System.Drawing.Color.FromArgb(35, 45, 60);
-            SecondaryButton.Location = new System.Drawing.Point(188, 6);
+            SecondaryButton.Location = new System.Drawing.Point(216, 200);
             SecondaryButton.Name = "SecondaryButton";
             SecondaryButton.Size = new System.Drawing.Size(110, 40);
             SecondaryButton.TabIndex = 0;
@@ -87,7 +80,7 @@ namespace ElementalSpirit.Presentation.Dialogs
             PrimaryButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             PrimaryButton.Font = new System.Drawing.Font("Segoe UI", 11F);
             PrimaryButton.ForeColor = System.Drawing.Color.White;
-            PrimaryButton.Location = new System.Drawing.Point(310, 6);
+            PrimaryButton.Location = new System.Drawing.Point(344, 200);
             PrimaryButton.Name = "PrimaryButton";
             PrimaryButton.Size = new System.Drawing.Size(110, 40);
             PrimaryButton.TabIndex = 1;
@@ -100,10 +93,11 @@ namespace ElementalSpirit.Presentation.Dialogs
             AcceptButton = PrimaryButton;
             CancelButton = SecondaryButton;
             ClientSize = new System.Drawing.Size(500, 260);
-            Controls.Add(ButtonPanel);
-            Controls.Add(MessageLabel);
-            Controls.Add(_iconPanel);
             Controls.Add(_headerPanel);
+            Controls.Add(_iconPanel);
+            Controls.Add(MessageLabel);
+            Controls.Add(SecondaryButton);
+            Controls.Add(PrimaryButton);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -114,7 +108,6 @@ namespace ElementalSpirit.Presentation.Dialogs
             Shown += BaseDialog_Shown;
             _headerPanel.ResumeLayout(false);
             _headerPanel.PerformLayout();
-            ButtonPanel.ResumeLayout(false);
             ResumeLayout(false);
         }
     }

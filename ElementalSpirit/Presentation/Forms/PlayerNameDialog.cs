@@ -14,6 +14,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         public PlayerNameDialog()
         {
+            components = new Container();
             _localization = null!;
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
@@ -25,6 +26,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         public PlayerNameDialog(ILocalizationService localization)
         {
+            components = new Container();
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)

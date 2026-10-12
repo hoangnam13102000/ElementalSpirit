@@ -4,7 +4,6 @@
     using ElementalSpirit.Domain.Enemy;
     using ElementalSpirit.GameEngine.Abstractions;
     using ElementalSpirit.Localization;
-    using ElementalSpirit.Presentation.BossEncounter;
     using System;
 
     /// <summary>

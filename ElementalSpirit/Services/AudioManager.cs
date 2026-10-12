@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using ElementalSpirit.Services.Abstractions;
 
 namespace ElementalSpirit.Services
 {
@@ -13,7 +14,7 @@ namespace ElementalSpirit.Services
     /// SFX dùng chung 1 thiết bị output + MixingSampleProvider để tránh xung đột
     /// khi bấm skill liên tục (mỗi lần bấm không tạo mới thiết bị âm thanh).
     /// </summary>
-    public class AudioManager : IDisposable
+    public class AudioManager : IDisposable, IAudioService
     {
         private static AudioManager? _instance;
         public static AudioManager Instance => _instance ??= new AudioManager();

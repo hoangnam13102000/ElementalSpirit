@@ -1,7 +1,6 @@
 using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Domain.Enemy.AI;
-using ElementalSpirit.Factories;
 using System.Collections.Generic;
 using System.Drawing;
 

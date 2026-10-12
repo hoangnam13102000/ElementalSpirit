@@ -2,7 +2,6 @@ using System;
 using System.Drawing;
 using ElementalSpirit.Domain.Enemy.AI;
 using ElementalSpirit.Domain.Player;
-using ElementalSpirit.Presentation.Assets;
 
 namespace ElementalSpirit.Domain.Enemy
 {
@@ -24,7 +23,7 @@ namespace ElementalSpirit.Domain.Enemy
         private float _skillCooldown;
         private float _directionX = -1f;
         private readonly Random _random = new();
-        private readonly GorgonBossAnimationController? _animController;
+        private readonly IGorgonBossAnimationController? _animController;
 
         private bool _isCastingSkill;
         private float _skillCastTimer;
@@ -36,7 +35,7 @@ namespace ElementalSpirit.Domain.Enemy
         public GorgonAnimationState CurrentAnimState => _animController?.CurrentState ?? GorgonAnimationState.Idle;
         public GorgonBossSkill CurrentSkill => _currentSkill;
 
-        public GorgonBoss(float x, float y, GorgonBossAnimationController? animController = null)
+        public GorgonBoss(float x, float y, IGorgonBossAnimationController? animController = null)
             : base(x, y, 400, 18)
         {
             Width = 180;

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using ElementalSpirit.Factories;
+using ElementalSpirit.Domain.Enemy;
 
 namespace ElementalSpirit.Domain.Stage
 {

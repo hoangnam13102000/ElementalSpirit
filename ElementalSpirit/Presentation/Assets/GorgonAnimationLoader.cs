@@ -4,22 +4,12 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Text.RegularExpressions;
+using ElementalSpirit.Domain.Enemy;
 using ElementalSpirit.Domain.Player;
 
 namespace ElementalSpirit.Presentation.Assets
 {
-    public enum GorgonAnimationState
-    {
-        Idle,
-        Walk,
-        Run,
-        Attack,
-        Special,
-        Hurt,
-        Dead
-    }
-
-    public sealed class GorgonBossAnimationController : IDisposable
+    public sealed class GorgonBossAnimationController : IDisposable, IGorgonBossAnimationController
     {
         private readonly Dictionary<GorgonAnimationState, AnimationClip> _clips;
         private GorgonAnimationState _currentState;
