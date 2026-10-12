@@ -5,10 +5,21 @@ namespace ElementalSpirit.Presentation.Dialogs
         private void InitializeComponent()
         {
             SuspendLayout();
-            Controls.Remove(SecondaryButton);
+            // 
+            // SecondaryButton
+            // 
+            SecondaryButton.FlatAppearance.BorderSize = 0;
+            SecondaryButton.Location = new Point(131, 182);
             SecondaryButton.Visible = false;
-            PrimaryButton.Location = new System.Drawing.Point(195, 182);
-            ClientSize = new System.Drawing.Size(500, 260);
+            // 
+            // PrimaryButton
+            // 
+            PrimaryButton.FlatAppearance.BorderSize = 0;
+            PrimaryButton.Location = new Point(199, 184);
+            // 
+            // InformationDialog
+            // 
+            ClientSize = new Size(500, 260);
             Name = "InformationDialog";
             Text = "Information";
             ResumeLayout(false);
