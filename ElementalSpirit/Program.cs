@@ -31,7 +31,8 @@ namespace ElementalSpirit
             return new GameManager(
                 input, projectiles, enemies, collision, spawn, waves, player, skills, wallet,
                 bossEncounter,
-                portals);
+                portals,
+                Services.AudioManager.Instance);
         }
 
         [STAThread]

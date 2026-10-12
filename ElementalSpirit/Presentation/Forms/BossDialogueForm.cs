@@ -2,6 +2,7 @@
 {
     using ElementalSpirit.Domain.BossEncounter;
     using ElementalSpirit.Localization;
+    using ElementalSpirit.Presentation.Presenters;
     using ElementalSpirit.Presentation.BossEncounter;
     using System.ComponentModel;
     using System;

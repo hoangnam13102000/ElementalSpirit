@@ -68,6 +68,7 @@ namespace ElementalSpirit.Presentation.Forms.Settings
             _lblSaveGame.Visible = showSaveGame;
             _btnSaveGame.Visible = showSaveGame;
             _btnSaveGame.Enabled = showSaveGame;
+            _btnExitGame.Visible = showSaveGame;
             _btnSaveGame.Location = new Point(180, 263);
             _btnSave.Location = new Point(70, 320 + actionOffset);
             _btnCancel.Location = new Point(220, 320 + actionOffset);

@@ -6,6 +6,14 @@ namespace ElementalSpirit.Presentation.Forms
 {
     public sealed partial class GuideAndTeamForm : Form
     {
+        private static readonly string[,] TeamMembers =
+        {
+            { "Hoàng Trung Nam", "44.01.104.145", "48.01.CNTT.B" },
+            { "Lê Thị Vân Anh", "46.01.103.007", "48.01.TIN.SPA" },
+            { "Lê Thanh Tú", "50.01.104.172", "50.01.CNTT.B" },
+            { "Hồ Thị Mỹ Thuận", "50.01.104.157", "50.01.CNTT.A" }
+        };
+
         private static readonly Color WindowColor = Color.FromArgb(17, 20, 31);
         private static readonly Color SurfaceColor = Color.FromArgb(25, 30, 44);
         private static readonly Color HeaderColor = Color.FromArgb(33, 41, 58);
@@ -53,6 +61,14 @@ namespace ElementalSpirit.Presentation.Forms
             _teamGrid.Columns[0].HeaderText = localization.Translate("guide.member");
             _teamGrid.Columns[1].HeaderText = localization.Translate("guide.studentId");
             _teamGrid.Columns[2].HeaderText = localization.Translate("guide.class");
+            _teamGrid.Rows.Clear();
+            for (int i = 0; i < TeamMembers.GetLength(0); i++)
+            {
+                _teamGrid.Rows.Add(
+                    TeamMembers[i, 0],
+                    TeamMembers[i, 1],
+                    TeamMembers[i, 2]);
+            }
             _closeButton.Text = localization.Translate("guide.close");
         }
 

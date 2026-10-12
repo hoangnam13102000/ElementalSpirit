@@ -10,7 +10,6 @@ using ElementalSpirit.Domain.Skill;
 using ElementalSpirit.Domain.Stage;
 using ElementalSpirit.Factories;
 using ElementalSpirit.GameEngine.Abstractions;
-using ElementalSpirit.Services;
 using ElementalSpirit.Services.Abstractions;
 using System;
 using System.Collections.Generic;
@@ -46,6 +45,7 @@ namespace ElementalSpirit.GameEngine
         public IBossEncounterManager BossEncounter { get; }
         public IReadOnlyList<LootDrop> Loot => _loot;
         public IPortalManager Portals { get; }
+        private readonly IAudioService _audioService;
 
         public RectangleF PlayArea { get; private set; }
         // Mặt đất chính của stage hiện tại (theo StageData.GroundTopRatio), được cập nhật mỗi khi
@@ -118,7 +118,8 @@ namespace ElementalSpirit.GameEngine
             ISkillManager skills,
             PlayerWallet wallet,
             IBossEncounterManager bossEncounter,
-            IPortalManager portals)
+            IPortalManager portals,
+            IAudioService audioService)
         {
             Input = input ?? throw new ArgumentNullException(nameof(input));
             Projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
@@ -132,6 +133,7 @@ namespace ElementalSpirit.GameEngine
             BossEncounter = bossEncounter ?? throw new ArgumentNullException(nameof(bossEncounter));
             BossEncounter.PlayerName = Player.Name;
             Portals = portals ?? throw new ArgumentNullException(nameof(portals));
+            _audioService = audioService ?? throw new ArgumentNullException(nameof(audioService));
 
             Player.OnAttackHitFrame += OnPlayerAttackHitFrame;
             Player.OnDeath += OnPlayerDeath;
@@ -165,7 +167,7 @@ namespace ElementalSpirit.GameEngine
             if (isLastStage)
             {
                 IsStageCompleted = true;
-                Services.AudioManager.Instance.PlaySfx("win.mp3");
+                _audioService.PlaySfx("win.mp3");
                 return;
 
             }
@@ -455,7 +457,7 @@ namespace ElementalSpirit.GameEngine
             if (slime.CanHitTarget(Player))
             {
                 Player.TakeDamage(slime.Damage);
-                Services.AudioManager.Instance.PlaySfx("hurt.mp3");
+                _audioService.PlaySfx("hurt.mp3");
             }
         }
 
@@ -544,7 +546,7 @@ namespace ElementalSpirit.GameEngine
 
                 bool jumpKeyNow = Input.IsJumpPressed();
                 if (jumpKeyNow && !_jumpKeyWasPressed && Player.TryJump()) 
-                    Services.AudioManager.Instance.PlaySfx("jump.mp3");
+                    _audioService.PlaySfx("jump.mp3");
                 _jumpKeyWasPressed = jumpKeyNow;
 
                 bool attackKeyNow = Input.IsKeyDown(Keys.Space) || Input.IsKeyDown(Keys.J);
@@ -640,7 +642,7 @@ namespace ElementalSpirit.GameEngine
         private void OnPlayerAttackHitFrame() => SpawnPlayerProjectile();
         private void OnPlayerDeath()
         {
-            Services.AudioManager.Instance.PlaySfx("lose.mp3");
+            _audioService.PlaySfx("lose.mp3");
         }
         private void OnEnemyDied(Domain.Enemy.Enemy enemy) 
         { 
@@ -665,10 +667,10 @@ namespace ElementalSpirit.GameEngine
             } 
         }
 
-        private static void OnEnemyHurt(Domain.Enemy.Enemy enemy)
+        private void OnEnemyHurt(Domain.Enemy.Enemy enemy)
         {
             if (enemy is GorgonBoss)
-                Services.AudioManager.Instance.PlaySfx("enemy_hurt.mp3");
+                _audioService.PlaySfx("enemy_hurt.mp3");
         }
 
         private void SpawnPlayerProjectile()
@@ -683,11 +685,11 @@ namespace ElementalSpirit.GameEngine
             // ✅ Gom chung logic phát âm thanh theo loại đạn vào 1 chỗ, tách biệt hẳn khỏi WindBarrage
             if (Player.CurrentProjectileType == ProjectileType.Slash)
             {
-                Services.AudioManager.Instance.PlaySfx("slash.mp3");
+                _audioService.PlaySfx("slash.mp3");
             }
             else if (Player.CurrentProjectileType is ProjectileType.Basic or ProjectileType.Fireball)
             {
-                Services.AudioManager.Instance.PlaySfx("shot.mp3");
+                _audioService.PlaySfx("shot.mp3");
             }
 
         }
@@ -704,7 +706,7 @@ namespace ElementalSpirit.GameEngine
                 if (Player.Bounds.IntersectsWith(e.Bounds))
                 {
                     Player.TakeDamage(e.Damage);
-                    Services.AudioManager.Instance.PlaySfx("hurt.mp3");
+                    _audioService.PlaySfx("hurt.mp3");
                     break;
                 }
             }
@@ -721,7 +723,7 @@ namespace ElementalSpirit.GameEngine
                 if (Player.Bounds.IntersectsWith(projectile.Bounds))
                 {
                     Player.TakeDamage(projectile.Damage);
-                    Services.AudioManager.Instance.PlaySfx("hurt.mp3");
+                    _audioService.PlaySfx("hurt.mp3");
                     projectile.Kill();
                     break;
                 }
@@ -910,7 +912,7 @@ namespace ElementalSpirit.GameEngine
             Player.StartSkillCast();
 
             if (skillId == "waterfall")
-                Services.AudioManager.Instance.PlaySfx("waterfall.mp3");
+                _audioService.PlaySfx("waterfall.mp3");
 
             return true;
         }
@@ -979,7 +981,7 @@ namespace ElementalSpirit.GameEngine
         {
             IsStageCompleted = true;
             _clearedStages.Add(_stageIndex);
-            Services.AudioManager.Instance.PlaySfx("win.mp3");
+            _audioService.PlaySfx("win.mp3");
             FinalBossDefeated?.Invoke();
         }
 
@@ -1016,19 +1018,19 @@ namespace ElementalSpirit.GameEngine
                 {
                     Wallet.AddGold(loot.GoldAmount);
                     SetStatus($"+{loot.GoldAmount} vàng");
-                    Services.AudioManager.Instance.PlaySfx("coin.flac");
+                    _audioService.PlaySfx("coin.flac");
                 }
                 else if (loot.Type == LootType.Boots)
                 {
                     Player.GrantDoubleJumpBoots();
                     SetStatus("Nhặt được giày: đã mở khóa nhảy đôi");
-                    Services.AudioManager.Instance.PlaySfx("coin.flac");
+                    _audioService.PlaySfx("coin.flac");
                 } else if (loot.Type == LootType.HealthPotion)
                 {
                     int healAmount = (int)Math.Ceiling(Player.MaxHp * loot.HealPercent / 100d);
                     Player.Heal(healAmount);
                     SetStatus($"Hồi phục {loot.HealPercent}% máu");
-                    Services.AudioManager.Instance.PlaySfx("coin.flac");
+                    _audioService.PlaySfx("coin.flac");
                 }
                 _loot.RemoveAt(i);
             }

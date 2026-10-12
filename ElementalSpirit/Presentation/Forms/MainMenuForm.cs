@@ -31,6 +31,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         public MainMenuForm()
         {
+            components = new Container();
             _localization = null!;
             _saveGameService = null!;
             InitializeComponent();
@@ -44,6 +45,7 @@ namespace ElementalSpirit.Presentation.Forms
 
         public MainMenuForm(ILocalizationService localization, ISaveGameService saveGameService)
         {
+            components = new Container();
             _localization = localization ?? throw new ArgumentNullException(nameof(localization));
             _saveGameService = saveGameService ?? throw new ArgumentNullException(nameof(saveGameService));
             InitializeComponent();
@@ -398,11 +400,6 @@ namespace ElementalSpirit.Presentation.Forms
 
             if (_menuBackground != null)
                 g.DrawImage(_menuBackground, 0, 0, ClientSize.Width, ClientSize.Height);
-        }
-
-        private void MainMenuForm_Load(object sender, EventArgs e)
-        {
-
         }
     }
 }

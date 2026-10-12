@@ -116,13 +116,23 @@ JSON
 
 ```text
 ElementalSpirit/
-├── Presentation/
 ├── Domain/
+│   └── Enemy/
+│       └── AI/  (AI nằm trong Domain/Enemy/AI/)
 ├── GameEngine/
-├── AI/
+│   └── Abstractions/
+├── Localization/
 ├── Factories/
 ├── Services/
-├── Data/
+├── Presentation/
+│   ├── Forms/
+│   ├── Dialogs/
+│   ├── Rendering/
+│   ├── Assets/
+│   ├── Intro/
+│   ├── Presenters/
+│   └── BossEncounter/
+├── Properties/
 └── Resources/
 ```
 

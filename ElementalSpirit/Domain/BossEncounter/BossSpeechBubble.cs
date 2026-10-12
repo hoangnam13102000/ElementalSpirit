@@ -1,4 +1,4 @@
-namespace ElementalSpirit.Presentation.BossEncounter
+namespace ElementalSpirit.Domain.BossEncounter
 {
     public sealed class BossSpeechBubble
     {

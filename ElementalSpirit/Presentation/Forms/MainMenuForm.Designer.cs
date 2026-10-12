@@ -34,7 +34,7 @@ namespace ElementalSpirit.Presentation.Forms
             _titleLabel.BackColor = Color.Transparent;
             _titleLabel.Font = new Font("Georgia", 52F, FontStyle.Bold);
             _titleLabel.ForeColor = Color.FromArgb(245, 235, 255);
-            _titleLabel.Location = new Point(0, 60);
+            _titleLabel.Location = new Point(-12, 47);
             _titleLabel.Name = "_titleLabel";
             _titleLabel.Size = new Size(1280, 115);
             _titleLabel.TabIndex = 0;
@@ -148,7 +148,7 @@ namespace ElementalSpirit.Presentation.Forms
             BackColor = Color.FromArgb(6, 8, 15);
             BackgroundImage = (Image)resources.GetObject("$this.BackgroundImage");
             BackgroundImageLayout = ImageLayout.Stretch;
-            ClientSize = new Size(1280, 720);
+            ClientSize = new Size(1281, 720);
             Controls.Add(_btnContinue);
             Controls.Add(_btnStart);
             Controls.Add(_btnLeaderboard);
@@ -160,7 +160,6 @@ namespace ElementalSpirit.Presentation.Forms
             FormBorderStyle = FormBorderStyle.None;
             Name = "MainMenuForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Load += MainMenuForm_Load;
             Resize += MainMenuForm_Resize;
             ResumeLayout(false);
         }

@@ -9,7 +9,6 @@ namespace ElementalSpirit.Presentation.Dialogs
     public partial class BaseDialog : Form
     {
         protected Label MessageLabel = null!;
-        protected Panel ButtonPanel = null!;
         protected Button SecondaryButton = null!;
         protected Button PrimaryButton = null!;
 
@@ -23,8 +22,6 @@ namespace ElementalSpirit.Presentation.Dialogs
             InitializeComponent();
             if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
                 return;
-
-            ApplyRoundedRegions();
         }
 
         protected BaseDialog(
@@ -43,24 +40,34 @@ namespace ElementalSpirit.Presentation.Dialogs
             SecondaryButton.Text = secondaryButtonText;
             PrimaryButton.BackColor = primaryButtonColor;
             _accentColor = accentColor;
-            PrimaryButton.DialogResult = DialogResult.OK;
-            SecondaryButton.DialogResult = DialogResult.Cancel;
+            PrimaryButton.DialogResult = DialogResult.None;
+            SecondaryButton.DialogResult = DialogResult.None;
             AcceptButton = PrimaryButton;
             CancelButton = SecondaryButton;
+            SecondaryButton.Visible = !string.IsNullOrEmpty(secondaryButtonText);
+            SecondaryButton.Enabled = !string.IsNullOrEmpty(secondaryButtonText);
+            PrimaryButton.Visible = !string.IsNullOrEmpty(primaryButtonText);
+            PrimaryButton.Enabled = !string.IsNullOrEmpty(primaryButtonText);
+            SecondaryButton.Click += OnSecondaryButtonClick;
+            PrimaryButton.Click += OnPrimaryButtonClick;
             _iconPanel.Invalidate();
+            RecalculateLayout();
         }
 
-        private void ApplyRoundedRegions()
+        private void OnSecondaryButtonClick(object? sender, EventArgs e)
         {
-            Region = CreateRoundedRegion(ClientSize.Width, ClientSize.Height, 16);
-            SecondaryButton.Region = CreateRoundedRegion(
-                SecondaryButton.Width,
-                SecondaryButton.Height,
-                10);
-            PrimaryButton.Region = CreateRoundedRegion(
-                PrimaryButton.Width,
-                PrimaryButton.Height,
-                10);
+            CloseWithResult(DialogResult.Cancel);
+        }
+
+        private void OnPrimaryButtonClick(object? sender, EventArgs e)
+        {
+            CloseWithResult(DialogResult.OK);
+        }
+
+        private void CloseWithResult(DialogResult result)
+        {
+            DialogResult = result;
+            Close();
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -83,8 +90,61 @@ namespace ElementalSpirit.Presentation.Dialogs
             DrawIcon(e.Graphics, _iconPanel.ClientRectangle, _accentColor);
         }
 
+        private void RecalculateLayout()
+        {
+            MessageLabel.AutoSize = false;
+            MessageLabel.AutoEllipsis = false;
+            MessageLabel.MaximumSize = new Size(GetMessageContentWidth(), 0);
+            MessageLabel.Width = GetMessageContentWidth();
+
+            int textHeight = TextRenderer.MeasureText(
+                MessageLabel.Text,
+                MessageLabel.Font,
+                new Size(MessageLabel.Width, int.MaxValue),
+                TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + 12;
+
+            MessageLabel.Height = Math.Max(48, textHeight);
+            MessageLabel.Location = new Point(126, 108);
+
+            int buttonTop = MessageLabel.Bottom + 26;
+            UpdateButtonLayout();
+
+            int buttonBottom = buttonTop + 46;
+            int dialogHeight = buttonBottom + 24;
+            if (dialogHeight > ClientSize.Height)
+                ClientSize = new Size(ClientSize.Width, dialogHeight);
+        }
+
+        private void UpdateButtonLayout()
+        {
+            if (SecondaryButton.Visible && PrimaryButton.Visible)
+            {
+                int spacing = 18;
+                int totalWidth = SecondaryButton.Width + PrimaryButton.Width + spacing;
+                int startX = (ClientSize.Width - totalWidth) / 2;
+                int buttonTop = MessageLabel.Bottom + 26;
+                SecondaryButton.Location = new Point(startX, buttonTop);
+                PrimaryButton.Location = new Point(startX + SecondaryButton.Width + spacing, buttonTop);
+                return;
+            }
+
+            Button visibleButton = PrimaryButton.Visible ? PrimaryButton : SecondaryButton;
+            if (visibleButton.Visible)
+            {
+                visibleButton.Location = new Point(
+                    (ClientSize.Width - visibleButton.Width) / 2,
+                    MessageLabel.Bottom + 26);
+            }
+        }
+
+        private static int GetMessageContentWidth()
+        {
+            return 340;
+        }
+
         private void BaseDialog_Shown(object? sender, EventArgs e)
         {
+            RecalculateLayout();
             ActiveControl = PrimaryButton;
         }
 
@@ -93,11 +153,6 @@ namespace ElementalSpirit.Presentation.Dialogs
             if (disposing)
                 components?.Dispose();
             base.Dispose(disposing);
-        }
-
-        private static Region CreateRoundedRegion(int width, int height, int radius)
-        {
-            return new Region(CreateRoundedPath(width, height, radius, 0));
         }
 
         private static GraphicsPath CreateRoundedPath(

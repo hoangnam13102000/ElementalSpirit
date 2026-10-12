@@ -5,12 +5,6 @@ using ElementalSpirit.Presentation.Assets;
 
 namespace ElementalSpirit.Factories
 {
-    public enum EnemyType
-    {
-        Slime,
-        Gorgon
-    }
-
     public static class EnemyFactory
     {
         public static Enemy Create(EnemyType type, float x, float y)

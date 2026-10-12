@@ -1,5 +1,6 @@
-﻿namespace ElementalSpirit.Presentation.BossEncounter
+namespace ElementalSpirit.Presentation.Presenters
 {
+    using ElementalSpirit.Presentation.BossEncounter;
     using ElementalSpirit.Domain.BossEncounter;
     using System;
 
